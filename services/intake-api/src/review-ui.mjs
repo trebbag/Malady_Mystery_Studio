@@ -274,8 +274,8 @@ function renderArtifactGroups(groups) {
  */
 export function renderReviewRunPage(options) {
   const approvalForms = options.workflowRun.requiredApprovalRoles
-    .filter((role) => options.approvableRoles.includes(role))
-    .map((role) => `<form method="post" action="/review/runs/${encodeURIComponent(options.workflowRun.id)}/approvals" class="surface">
+    .filter((/** @type {string} */ role) => options.approvableRoles.includes(role))
+    .map((/** @type {string} */ role) => `<form method="post" action="/review/runs/${encodeURIComponent(options.workflowRun.id)}/approvals" class="surface">
       <input type="hidden" name="role" value="${escapeHtml(role)}" />
       <label>Decision for <strong>${escapeHtml(role)}</strong>
         <select name="decision">
@@ -291,7 +291,7 @@ export function renderReviewRunPage(options) {
     .join('');
 
   const approvalSummary = options.workflowRun.approvals
-    .map((approval) => `<tr>
+    .map((/** @type {{ role: string, decision: string, reviewerId?: string, comment?: string, timestamp?: string }} */ approval) => `<tr>
       <td>${escapeHtml(approval.role)}</td>
       <td>${statusTag(approval.decision)}</td>
       <td>${escapeHtml(approval.reviewerId ?? 'pending')}</td>
@@ -369,7 +369,7 @@ export function renderReviewRunPage(options) {
       </div>
       <div class="surface stack">
         <h2>Stage timeline</h2>
-        ${options.workflowRun.stages.map((stage) => `<div><strong>${escapeHtml(stage.name)}</strong>: ${escapeHtml(stage.status)}${stage.notes ? ` · ${escapeHtml(stage.notes)}` : ''}</div>`).join('')}
+        ${options.workflowRun.stages.map((/** @type {{ name: string, status: string, notes?: string }} */ stage) => `<div><strong>${escapeHtml(stage.name)}</strong>: ${escapeHtml(stage.status)}${stage.notes ? ` · ${escapeHtml(stage.notes)}` : ''}</div>`).join('')}
       </div>
     </section>
 

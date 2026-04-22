@@ -1529,8 +1529,8 @@ function exportWorkflowRun(options) {
   }
 
   const qaReports = options.workflowRun.artifacts
-    .filter((artifact) => artifact.artifactType === 'qa-report')
-    .map((artifact) => options.store.getArtifact(artifact.artifactType, artifact.artifactId))
+    .filter((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'qa-report')
+    .map((/** @type {{ artifactType: string, artifactId: string }} */ artifact) => options.store.getArtifact(artifact.artifactType, artifact.artifactId))
     .filter(Boolean);
   const releasePackage = options.exporterService.assembleRelease({
     workflowRun: options.workflowRun,
@@ -1702,7 +1702,7 @@ export async function createApp(options = {}) {
       const method = request.method ?? 'GET';
       const requestUrl = createRequestUrl(request.url ?? '/');
       const { pathname } = requestUrl;
-      const actor = getActorFromRequest(request);
+      const actor = getActorFromRequest();
 
       if (!requireLocalActor(actor, response)) {
         return;

@@ -68,7 +68,7 @@ function isRelevantArtifactType(artifactType) {
  * @returns {any[]}
  */
 function listArtifactReferencesByType(workflowRun, artifactType) {
-  return workflowRun.artifacts.filter((artifact) => artifact.artifactType === artifactType);
+  return workflowRun.artifacts.filter((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === artifactType);
 }
 
 /**
@@ -100,8 +100,8 @@ function loadLatestArtifactByType(store, workflowRun, artifactType) {
  */
 function collectReleaseArtifactManifest(store, workflowRun) {
   return workflowRun.artifacts
-    .filter((artifactReference) => artifactReference.artifactType !== 'project')
-    .map((artifactReference) => {
+    .filter((/** @type {{ artifactType: string }} */ artifactReference) => artifactReference.artifactType !== 'project')
+    .map((/** @type {{ artifactType: string, artifactId: string }} */ artifactReference) => {
       const artifactMetadata = store.getArtifactMetadata(artifactReference.artifactType, artifactReference.artifactId);
 
       if (!artifactMetadata) {
@@ -120,23 +120,23 @@ function collectReleaseArtifactManifest(store, workflowRun) {
 }
 
 /**
- * @param {import('./store.mjs').PlatformStore} store
+ * @param {{ getArtifactMetadata: (artifactType: string, artifactId: string) => ({ createdAt: string } | null) }} store
  * @param {any} workflowRun
  * @returns {string}
  */
 export function getLatestRelevantArtifactAt(store, workflowRun) {
   const artifactTimestamps = workflowRun.artifacts
-    .filter((artifactReference) => isRelevantArtifactType(artifactReference.artifactType))
-    .map((artifactReference) => store.getArtifactMetadata(artifactReference.artifactType, artifactReference.artifactId))
+    .filter((/** @type {{ artifactType: string }} */ artifactReference) => isRelevantArtifactType(artifactReference.artifactType))
+    .map((/** @type {{ artifactType: string, artifactId: string }} */ artifactReference) => store.getArtifactMetadata(artifactReference.artifactType, artifactReference.artifactId))
     .filter(Boolean)
-    .map((artifactMetadata) => artifactMetadata.createdAt);
+    .map((/** @type {{ createdAt: string }} */ artifactMetadata) => artifactMetadata.createdAt);
 
   return artifactTimestamps.sort().at(-1) ?? workflowRun.updatedAt;
 }
 
 /**
  * @param {any} evalRun
- * @param {import('./store.mjs').PlatformStore} store
+ * @param {{ getArtifactMetadata: (artifactType: string, artifactId: string) => ({ createdAt: string } | null) }} store
  * @param {any} workflowRun
  * @returns {'missing' | 'stale' | 'failed' | 'passed'}
  */
@@ -157,7 +157,7 @@ export function deriveEvalStatus(evalRun, store, workflowRun) {
  * @returns {any[]}
  */
 export function listEvaluationReferences(workflowRun) {
-  return workflowRun.artifacts.filter((artifactReference) => artifactReference.artifactType === 'eval-run');
+  return workflowRun.artifacts.filter((/** @type {{ artifactType: string }} */ artifactReference) => artifactReference.artifactType === 'eval-run');
 }
 
 /**
@@ -166,6 +166,10 @@ export function listEvaluationReferences(workflowRun) {
  * @returns {boolean}
  */
 function artifactIsAvailable(artifactType, context) {
+  if (artifactType === 'workflow-run') {
+    return Boolean(context.workflowRun);
+  }
+
   if (VIRTUAL_RELEASE_ARTIFACT_TYPES.has(artifactType)) {
     return Boolean(context.project && context.diseasePacket);
   }
@@ -200,7 +204,7 @@ function scoreMedicalPacket(diseasePacket) {
   let score = 1;
   const evidenceCount = Array.isArray(diseasePacket.evidence) ? diseasePacket.evidence.length : 0;
   const approvedEvidenceCount = Array.isArray(diseasePacket.evidence)
-    ? diseasePacket.evidence.filter((evidence) => evidence.approvalStatus === 'approved').length
+    ? diseasePacket.evidence.filter((/** @type {{ approvalStatus: string }} */ evidence) => evidence.approvalStatus === 'approved').length
     : 0;
   const evidenceApprovalRatio = evidenceCount > 0 ? approvedEvidenceCount / evidenceCount : 0;
 
@@ -320,6 +324,13 @@ function scoreEvaluationCase(evaluationCase, context, threshold) {
         break;
       }
 
+      if (artifactType === 'workflow-run') {
+        score = context.workflowRun.tenantId && context.actor.id
+          ? 1
+          : 0;
+        break;
+      }
+
       if (!preview.preview) {
         return {
           score: 0,
@@ -329,7 +340,7 @@ function scoreEvaluationCase(evaluationCase, context, threshold) {
       }
 
       if (artifactType === 'release-bundle') {
-        score = preview.preview.releaseBundle.releaseGateChecks.every((gateCheck) => gateCheck.status === 'passed') ? 1 : 0;
+        score = preview.preview.releaseBundle.releaseGateChecks.every((/** @type {{ status: string }} */ gateCheck) => gateCheck.status === 'passed') ? 1 : 0;
         break;
       }
 
@@ -347,13 +358,13 @@ function scoreEvaluationCase(evaluationCase, context, threshold) {
         const sourceEvidencePack = preview.preview.sourceEvidencePack;
         score = typeof sourceEvidencePack.sourceSetHash === 'string'
           && Array.isArray(sourceEvidencePack.evidence)
-          && sourceEvidencePack.evidence.every((evidenceRecord) => evidenceRecord.claimId && evidenceRecord.sourceId)
+          && sourceEvidencePack.evidence.every((/** @type {{ claimId?: string, sourceId?: string }} */ evidenceRecord) => evidenceRecord.claimId && evidenceRecord.sourceId)
           ? 1
           : 0;
         break;
       }
 
-      score = preview.preview.releaseBundle.releaseGateChecks.every((gateCheck) => gateCheck.status === 'passed') ? 1 : 0;
+      score = preview.preview.releaseBundle.releaseGateChecks.every((/** @type {{ status: string }} */ gateCheck) => gateCheck.status === 'passed') ? 1 : 0;
       break;
     }
     default:
@@ -465,7 +476,7 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
     panelPlans,
     renderPrompts,
     letteringMaps,
-    availableArtifactTypes: new Set(workflowRun.artifacts.map((artifactReference) => artifactReference.artifactType)),
+    availableArtifactTypes: new Set(workflowRun.artifacts.map((/** @type {{ artifactType: string }} */ artifactReference) => artifactReference.artifactType)),
     canonicalDiseaseName: normalizeName(diseasePacket?.canonicalDiseaseName ?? workflowRun.input?.diseaseName),
     mysteryReview: storyWorkbook && diseasePacket
       ? reviewMysteryIntegrity(storyWorkbook, diseasePacket)

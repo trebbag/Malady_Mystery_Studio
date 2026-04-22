@@ -1,6 +1,8 @@
 # Needs From You
 
-The current slice implements starter-grade persistence, export, and authn/authz in code, but the following production and pilot decisions are still required before we can call the platform pilotable:
+Nothing new is required from you to run the current local-only slice. The app now runs in open local mode with SQLite plus filesystem object storage.
+
+The following decisions still remain for a real pilot beyond this local batch:
 
 ## Identity and Access
 

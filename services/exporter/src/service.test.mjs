@@ -83,6 +83,17 @@ function createDiseasePacket() {
   };
 }
 
+function createEvaluationSummary() {
+  return {
+    evalRunId: 'evr.demo.001',
+    evaluatedAt: '2026-04-21T00:03:00Z',
+    allThresholdsMet: true,
+    applicableFamilyCount: 6,
+    passedFamilyCount: 6,
+    failedFamilyCount: 0,
+  };
+}
+
 test('exporter assembles a release bundle from an approved run', () => {
   const exporter = createExporterService();
   const artifactManifest = [
@@ -113,6 +124,7 @@ test('exporter assembles a release bundle from an approved run', () => {
     diseasePacket: createDiseasePacket(),
     qaReports: [createQaReport('workflow-run')],
     artifactManifest,
+    evaluationSummary: createEvaluationSummary(),
   });
 
   assert.equal(assembled.releaseBundle.workflowRunId, 'run.demo.001');
@@ -138,6 +150,7 @@ test('exporter blocks release when required artifacts are missing', () => {
       },
       diseasePacket: createDiseasePacket(),
       qaReports: [createQaReport('workflow-run')],
+      evaluationSummary: createEvaluationSummary(),
       artifactManifest: [
         {
           artifactType: 'disease-packet',

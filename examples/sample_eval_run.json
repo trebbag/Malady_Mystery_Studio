@@ -120,8 +120,8 @@
       "threshold": 1,
       "status": "passed",
       "score": 1,
-      "applicableCaseCount": 4,
-      "passedCaseCount": 4,
+      "applicableCaseCount": 5,
+      "passedCaseCount": 5,
       "failedCaseCount": 0,
       "cases": [
         {
@@ -155,6 +155,14 @@
           "score": 1,
           "threshold": 1,
           "message": "Case satisfied governance_release requirements."
+        },
+        {
+          "caseId": "gov.local.001",
+          "artifactType": "workflow-run",
+          "status": "passed",
+          "score": 1,
+          "threshold": 1,
+          "message": "Case satisfied governance_release requirements."
         }
       ]
     }
@@ -163,8 +171,8 @@
     "applicableFamilyCount": 6,
     "passedFamilyCount": 6,
     "failedFamilyCount": 0,
-    "applicableCaseCount": 9,
-    "passedCaseCount": 9,
+    "applicableCaseCount": 10,
+    "passedCaseCount": 10,
     "failedCaseCount": 0,
     "allThresholdsMet": true
   }

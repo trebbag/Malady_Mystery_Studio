@@ -79,7 +79,7 @@ function rowPayload(row) {
  * @returns {string}
  */
 function normalizeTenantId(value) {
-  return value ?? 'tenant.demo';
+  return value ?? 'tenant.local';
 }
 
 /**

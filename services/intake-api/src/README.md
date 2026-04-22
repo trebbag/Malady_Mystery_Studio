@@ -1,10 +1,12 @@
 # intake-api source
 
-Implemented starter modules:
-- `app.mjs` for request routing, intake validation, auth-aware review flows, clinical generation, scene/panel/render planning, export assembly, and schema-backed responses
-- `auth.mjs` for tenant-aware identities, local password login, starter OIDC exchange, secure server-side sessions, and role permissions
-- `review-ui.mjs` for server-rendered sign-in, dashboard, intake, and run review pages
+Implemented local modules:
+- `app.mjs` for request routing, intake validation, workflow execution, local review flows, eval execution, export assembly, and schema-backed responses
+- `auth.mjs` for the default open-local actor and tenant normalization helpers
+- `eval-service.mjs` for deterministic local eval loading, scoring, and stale-eval detection
+- `review-ui.mjs` for the server-rendered intake, dashboard, and run review pages
 - `server.mjs` to run the HTTP service locally
-- `store.mjs` for SQLite-backed metadata, object-backed artifacts/documents, migrations, retention defaults, and session persistence
+- `store.mjs` for SQLite-backed metadata, object-backed artifacts/documents, migrations, and retention defaults
 - `object-storage.mjs` for atomic file-backed object persistence used by artifacts, release bundles, bundle indexes, and evidence packs
-- `app.test.mjs` for end-to-end API smoke coverage
+- `app.test.mjs` for end-to-end local workflow coverage
+- `eval-service.test.mjs` for dataset loading, applicability, and stale-eval coverage

@@ -8,5 +8,5 @@
 | Distinctive story generation | `story-workbook`, `story-memory`, `narrative-review-trace` | mystery quality + novelty | T203 | Gate 3 |
 | Scene planning | `scene-card`, `qa-report` | panelization datasets | T301 | Gate 4 |
 | Panel-by-panel output | `panel-plan`, `render-prompt`, `lettering-map`, `qa-report` | panelization + render datasets | T302, T303 | Gate 4 |
-| Human review, sessions, and approvals | `approval-decision`, `canonicalization-resolution`, `audit-log-entry`, `user-account`, `auth-session`, `narrative-review-trace`, `qa-report`, `release-bundle` | governance rubric | T005, T204, T304, T402 | Gate 6 |
-| Export and release bundles | `release-bundle`, `export-history-entry` | release readiness rubric | T402 | Gate 1, Gate 6 |
+| Local review and approvals | `approval-decision`, `canonicalization-resolution`, `audit-log-entry`, `workflow-run`, `qa-report`, `eval-run` | governance + panelization + render readiness | T005, T304, T401 | Gate 4, Gate 6 |
+| Export and release bundles | `release-bundle`, `export-history-entry`, `eval-run` | governance release rubric | T401, T402 | Gate 5, Gate 6 |

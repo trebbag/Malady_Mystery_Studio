@@ -49,7 +49,7 @@ try {
     tenantId: workflowRun.tenantId,
   });
 
-  const nextArtifacts = workflowRun.artifacts.filter((artifactReference) => !(
+  const nextArtifacts = workflowRun.artifacts.filter((/** @type {{ artifactType: string, artifactId: string }} */ artifactReference) => !(
     artifactReference.artifactType === 'eval-run' && artifactReference.artifactId === evalRun.id
   ));
   nextArtifacts.push({

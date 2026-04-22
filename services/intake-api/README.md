@@ -1,21 +1,20 @@
 # services/intake-api
 
-Thin API entry point for project creation, workflow launch, and artifact retrieval.
+Thin local API entry point for project creation, workflow launch, eval execution, review, and export.
 
-Expected responsibilities:
-- validate input
-- authorize requests
-- hand off to orchestrator
-- return typed responses
-
-Current starter capabilities:
-- serve `/signin`, `/intake`, `/review`, and run-level review pages for starter reviewer workflows
-- create and fetch projects using the `project` contract with tenant tagging
-- persist projects, runs, artifacts, sessions, audit logs, and export history through SQLite-backed metadata plus object storage
+Current local capabilities:
+- serve `/intake`, `/review`, and run-level review pages in open local mode
+- create and fetch projects using the `project` contract with `tenant.local`
+- persist projects, runs, artifacts, audit logs, and export history through SQLite-backed metadata plus filesystem object storage
 - advance a run through intake, canonicalization, disease-packet creation, story-workbook generation, scene planning, panel planning, and render prep
-- pause ambiguous canonicalization for human review, then resume the pipeline after clinical confirmation or override
-- apply workflow events and approval decisions through typed API endpoints with tenant-aware role checks
-- expose generated artifacts, evidence records, source governance records, workbook review traces, separated lettering assets, release bundles, and run-scoped audit logs for reviewer inspection
-- create local-password and starter OIDC-backed server-side sessions and allow tenant-admin role management
-- export approved runs into release bundles with bundle retrieval, human-readable bundle indexes, evidence packs, and export history
+- pause ambiguous canonicalization for reviewer confirmation, then resume the pipeline
+- run deterministic local evals and persist them as `eval-run` artifacts
+- gate export on the latest fresh passing eval run
+- export approved runs into local release bundles with bundle retrieval, human-readable bundle indexes, evidence packs, and export history
 - validate responses against the shared schema registry before returning them
+
+Intentionally not in scope for this batch:
+- sign-in or sessions
+- account or profile management
+- tenant-admin UI or APIs
+- hosted infrastructure or external auth

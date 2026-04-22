@@ -78,7 +78,9 @@ export async function backupLocalStorage(options = {}) {
     const entries = await readdir(paths.objectStoreDir);
 
     if (entries.length > 0) {
-      await cp(paths.objectStoreDir, objectStoreBackupDir, { recursive: true });
+      for (const entry of entries) {
+        await cp(path.join(paths.objectStoreDir, entry), path.join(objectStoreBackupDir, entry), { recursive: true });
+      }
     }
   }
 
@@ -103,6 +105,8 @@ export async function restoreLocalStorage(options) {
   }
 
   if (await exists(sourceObjectStoreDir)) {
-    await cp(sourceObjectStoreDir, paths.objectStoreDir, { recursive: true });
+    for (const entry of await readdir(sourceObjectStoreDir)) {
+      await cp(path.join(sourceObjectStoreDir, entry), path.join(paths.objectStoreDir, entry), { recursive: true });
+    }
   }
 }
