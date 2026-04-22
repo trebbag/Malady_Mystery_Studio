@@ -13,6 +13,8 @@
     "currentStage",
     "stageTimeline",
     "clinicalPackage",
+    "reviewAssignments",
+    "reviewComments",
     "evaluationSummary",
     "exportHistory",
     "availableActions"
@@ -64,6 +66,18 @@
     },
     "clinicalPackage": {
       "$ref": "clinical-package-view.schema.json"
+    },
+    "reviewAssignments": {
+      "type": "array",
+      "items": {
+        "$ref": "review-assignment.schema.json"
+      }
+    },
+    "reviewComments": {
+      "type": "array",
+      "items": {
+        "$ref": "review-comment.schema.json"
+      }
     },
     "evaluationSummary": {
       "$ref": "evaluation-summary-view.schema.json"

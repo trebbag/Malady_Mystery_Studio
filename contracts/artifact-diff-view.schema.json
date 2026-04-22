@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/artifact-diff-view.schema.json",
+  "title": "ArtifactDiffView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "artifactType",
+    "comparisonStatus",
+    "availableArtifacts",
+    "summary",
+    "changes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "artifactType": {
+      "type": "string"
+    },
+    "comparisonStatus": {
+      "type": "string",
+      "enum": [
+        "diff-available",
+        "insufficient-history"
+      ]
+    },
+    "leftArtifactId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "rightArtifactId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "leftCreatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rightCreatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "comparedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "availableArtifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifactId",
+          "createdAt",
+          "status"
+        ],
+        "properties": {
+          "artifactId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "changeCount",
+        "addedCount",
+        "removedCount",
+        "changedCount"
+      ],
+      "properties": {
+        "changeCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "addedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "changedCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "changeType"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "changeType": {
+            "type": "string",
+            "enum": [
+              "added",
+              "removed",
+              "changed"
+            ]
+          },
+          "before": {},
+          "after": {}
+        }
+      }
+    }
+  }
+}

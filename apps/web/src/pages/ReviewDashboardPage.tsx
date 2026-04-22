@@ -33,11 +33,12 @@ export function ReviewDashboardPage() {
     disease: searchParams.get('disease') ?? '',
     state: searchParams.get('state') ?? '',
     stage: searchParams.get('stage') ?? '',
+    assignee: searchParams.get('assignee') ?? '',
     exportStatus: searchParams.get('exportStatus') ?? '',
     evalStatus: searchParams.get('evalStatus') ?? '',
     sort: searchParams.get('sort') ?? 'updated-desc',
   }), [searchParams]);
-  const dashboardState = useRemoteData(() => fetchDashboardView(filters), [filters.disease, filters.state, filters.stage, filters.exportStatus, filters.evalStatus, filters.sort, refreshSignal]);
+  const dashboardState = useRemoteData(() => fetchDashboardView(filters), [filters.disease, filters.state, filters.stage, filters.assignee, filters.exportStatus, filters.evalStatus, filters.sort, refreshSignal]);
 
   const updateFilter = (name: string, value: string) => {
     const nextSearchParams = new URLSearchParams(searchParams);
@@ -78,10 +79,11 @@ export function ReviewDashboardPage() {
         <Card>
           <CardTitle>Run filters</CardTitle>
           <CardDescription>Drive the review queue by disease, stage, export presence, and eval state.</CardDescription>
-          <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="mt-4 grid gap-3 md:grid-cols-4 xl:grid-cols-7">
             <Input value={filters.disease} onChange={(event) => updateFilter('disease', event.target.value)} placeholder="Disease" />
             <Input value={filters.state} onChange={(event) => updateFilter('state', event.target.value)} placeholder="State" />
             <Input value={filters.stage} onChange={(event) => updateFilter('stage', event.target.value)} placeholder="Stage" />
+            <Input value={filters.assignee} onChange={(event) => updateFilter('assignee', event.target.value)} placeholder="Assignee" />
             <Select value={filters.exportStatus} onChange={(event) => updateFilter('exportStatus', event.target.value)}>
               <option value="">Any export state</option>
               <option value="with-exports">With exports</option>
@@ -140,10 +142,12 @@ export function ReviewDashboardPage() {
       {dashboardState.error ? <ErrorPanel message={dashboardState.error.message} /> : null}
       {dashboardState.data ? (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
             <MetricCard label="Visible runs" value={dashboardState.data.stats.visibleRunCount} />
             <MetricCard label="Clinical blockers" value={dashboardState.data.stats.blockedClinicalRunCount} />
             <MetricCard label="Awaiting review" value={dashboardState.data.stats.awaitingReviewCount} />
+            <MetricCard label="Assigned runs" value={dashboardState.data.stats.assignedRunCount} />
+            <MetricCard label="Open comments" value={dashboardState.data.stats.openCommentCount} />
             <MetricCard label="Stale evals" value={dashboardState.data.stats.staleEvalCount} />
             <MetricCard label="Export ready" value={dashboardState.data.stats.exportReadyCount} />
           </div>
@@ -159,6 +163,8 @@ export function ReviewDashboardPage() {
                     <Th>Project</Th>
                     <Th>State</Th>
                     <Th>Stage</Th>
+                    <Th>Assignees</Th>
+                    <Th>Comments</Th>
                     <Th>Eval</Th>
                     <Th>Exports</Th>
                     <Th>Updated</Th>
@@ -172,6 +178,8 @@ export function ReviewDashboardPage() {
                       <Td>{run.projectTitle}</Td>
                       <Td><StatusPill label={run.state} /></Td>
                       <Td>{run.currentStage}</Td>
+                      <Td>{run.assignees.length > 0 ? run.assignees.join(', ') : 'Unassigned'}</Td>
+                      <Td>{run.openCommentCount}</Td>
                       <Td><StatusPill label={run.latestEvalStatus} /></Td>
                       <Td>{run.exportCount}</Td>
                       <Td>{formatDateTime(run.updatedAt)}</Td>

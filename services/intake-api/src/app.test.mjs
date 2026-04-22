@@ -143,8 +143,14 @@ test('local review pages load without sign-in and auth routes are gone', async (
     const reviewResponse = await fetch(`${app.baseUrl}/review`);
     assert.equal(reviewResponse.status, 200);
     const reviewPage = await reviewResponse.text();
-    assert.match(reviewPage, /Local Review Dashboard/);
-    assert.match(reviewPage, /Open local mode/);
+    assert.match(reviewPage, /<div id="root"><\/div>/);
+    assert.match(reviewPage, /Disease Comic Platform/);
+
+    const debugReviewResponse = await fetch(`${app.baseUrl}/debug/review`);
+    assert.equal(debugReviewResponse.status, 200);
+    const debugReviewPage = await debugReviewResponse.text();
+    assert.match(debugReviewPage, /Local Review Dashboard/);
+    assert.match(debugReviewPage, /Open local mode/);
 
     const signInResponse = await fetch(`${app.baseUrl}/signin`);
     assert.equal(signInResponse.status, 404);
@@ -193,13 +199,73 @@ test('starting a workflow run renders local review actions and artifact groups',
     assert.equal(workflowRun.tenantId, 'tenant.local');
     assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'render-prompt'), true);
 
-    const reviewResponse = await fetch(`${app.baseUrl}/review/runs/${encodeURIComponent(workflowRun.id)}`);
+    const reviewResponse = await fetch(`${app.baseUrl}/debug/review/runs/${encodeURIComponent(workflowRun.id)}`);
     assert.equal(reviewResponse.status, 200);
     const reviewPage = await reviewResponse.text();
     assert.match(reviewPage, /Run evaluations/);
     assert.match(reviewPage, /Export bundle/);
     assert.match(reviewPage, /Story workbook and narrative review trace/);
     assert.match(reviewPage, /Governed source records/);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});
+
+test('review comments and assignments persist into read models and dashboard filters', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer(sandbox);
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'community-acquired pneumonia',
+    });
+    const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+
+    const assignmentResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/assignments`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        reviewRole: 'clinical',
+        assigneeDisplayName: 'Local Operator',
+        status: 'in-progress',
+        notes: 'Validate the clue ladder against the disease packet evidence set.',
+      }),
+    });
+    assert.equal(assignmentResponse.status, 201);
+
+    const commentResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/comments`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        scopeType: 'artifact',
+        artifactType: 'panel-plan',
+        severity: 'warning',
+        body: 'Opening panel should link more clearly to the source-backed respiratory clue.',
+      }),
+    });
+    assert.equal(commentResponse.status, 201);
+
+    const reviewRunViewResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/review-run-view`);
+    assert.equal(reviewRunViewResponse.status, 200);
+    const reviewRunView = await reviewRunViewResponse.json();
+
+    assert.equal(reviewRunView.reviewAssignments.length, 1);
+    assert.equal(reviewRunView.reviewAssignments[0].assigneeDisplayName, 'Local Operator');
+    assert.equal(reviewRunView.reviewComments.length, 1);
+    assert.equal(reviewRunView.reviewComments[0].artifactType, 'panel-plan');
+
+    const filteredDashboardResponse = await fetch(`${app.baseUrl}/api/v1/review-dashboard-view?assignee=local`);
+    assert.equal(filteredDashboardResponse.status, 200);
+    const filteredDashboard = await filteredDashboardResponse.json();
+
+    assert.equal(filteredDashboard.runs.length, 1);
+    assert.deepEqual(filteredDashboard.runs[0].assignees, ['Local Operator']);
+    assert.equal(filteredDashboard.runs[0].openCommentCount, 1);
   } finally {
     await app.close();
     await sandbox.cleanup();
@@ -240,6 +306,42 @@ test('canonicalization can be resolved from the local review page', async () => 
     assert.equal(updatedRun.state, 'review');
     assert.equal(updatedRun.currentStage, 'review');
     assert.equal(updatedRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'disease-packet'), true);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});
+
+test('artifact diff endpoint compares stored versions for the same run', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer(sandbox);
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'MG',
+    });
+    const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+
+    const resolutionResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/canonicalization-resolution`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        selectedCanonicalDiseaseName: 'Myasthenia gravis',
+        reason: 'Local reviewer confirmed the intended disease.',
+      }),
+    });
+    assert.equal(resolutionResponse.status, 200);
+
+    const diffResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/artifact-diffs?artifactType=canonical-disease`);
+    assert.equal(diffResponse.status, 200);
+    const diffView = await diffResponse.json();
+
+    assert.equal(diffView.comparisonStatus, 'diff-available');
+    assert.equal(diffView.artifactType, 'canonical-disease');
+    assert.equal(diffView.summary.changeCount > 0, true);
+    assert.equal(diffView.availableArtifacts.length >= 2, true);
   } finally {
     await app.close();
     await sandbox.cleanup();
@@ -382,11 +484,13 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
     assert.equal(exportPayload.releaseBundle.evaluationSummary.evalRunId, evaluationPayload.evaluation.id);
     assert.equal(exportPayload.exportHistoryEntry.evalRunId, evaluationPayload.evaluation.id);
 
-    const reviewResponse = await fetch(`${app.baseUrl}/review/runs/${encodeURIComponent(workflowRun.id)}`);
-    assert.equal(reviewResponse.status, 200);
-    const reviewPage = await reviewResponse.text();
-    assert.match(reviewPage, new RegExp(evaluationPayload.evaluation.id));
-    assert.match(reviewPage, /release-bundles/);
+    const reviewRunViewResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/review-run-view`);
+    assert.equal(reviewRunViewResponse.status, 200);
+    const reviewRunView = await reviewRunViewResponse.json();
+
+    assert.equal(reviewRunView.evaluationSummary.latestEvalRunId, evaluationPayload.evaluation.id);
+    assert.equal(reviewRunView.exportHistory.entries.length, 1);
+    assert.equal(reviewRunView.exportHistory.entries[0].releaseId, exportPayload.releaseBundle.releaseId);
   } finally {
     await app.close();
     await sandbox.cleanup();

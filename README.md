@@ -61,17 +61,17 @@ pnpm local:restore -- --path var/backups/<timestamp>
 - Clinical truth layer: `91%`
 - Workbook and guardrails: `75%`
 - Scene, panel, render-prep: `72%`
-- Local review, eval, and export workflow: `93%`
-- Frontend structure and UX implementation: `88%`
+- Local review, eval, and export workflow: `96%`
+- Frontend structure and UX implementation: `91%`
 - Operational pilot readiness: `40%`
 
 Overall:
-- Local MVP readiness: `89%`
-- Pilot readiness: `50%`
+- Local MVP readiness: `91%`
+- Pilot readiness: `52%`
 
 ## What remains before MVP and pilot
 
-- Add reviewer comments, diffing, assignment, and queueing on top of the current debug-oriented review UI.
+- Add cross-run queueing, reviewer due-date escalation, and richer comment threading beyond the current local review cards.
 - Add live render integration and retry orchestration instead of stopping at render-prompt generation.
 - Expand the governed disease and source library beyond the current twelve-disease local pack set.
 - Deepen contradiction handling, source refresh, and source owner workflows beyond the current local controls.

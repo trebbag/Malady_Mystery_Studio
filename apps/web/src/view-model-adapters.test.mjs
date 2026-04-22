@@ -118,6 +118,9 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
     },
   });
   const latestEvalRun = (await import('../../../examples/sample_eval_run.json', { with: { type: 'json' } })).default;
+  const reviewAssignment = (await import('../../../examples/sample_review_assignment.json', { with: { type: 'json' } })).default;
+  const reviewComment = (await import('../../../examples/sample_review_comment.json', { with: { type: 'json' } })).default;
+  const artifactDiffView = (await import('../../../examples/sample_artifact_diff_view.json', { with: { type: 'json' } })).default;
   const evaluationSummary = createEvaluationSummaryView({
     latestEvalStatus: 'passed',
     latestEvalRun,
@@ -201,11 +204,17 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
         'run.hcc.001',
         {
           exportCount: 1,
+          assignees: ['Local Operator'],
+          openCommentCount: 1,
+          activeAssignmentCount: 1,
           latestEvalStatus: 'passed',
+          reviewAssignments: [reviewAssignment],
         },
       ],
     ]),
-    filters: {},
+    filters: {
+      assignee: '',
+    },
   });
   const reviewRun = createReviewRunView({
     project: {
@@ -237,11 +246,16 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
       contradictionResolutions: [],
       traceCoverage,
     },
+    reviewAssignments: [reviewAssignment],
+    reviewComments: [reviewComment],
     latestEvalRun,
     latestEvalStatus: 'passed',
     exportHistory: exportHistory.entries,
   });
 
+  schemaRegistry.assertValid('contracts/review-assignment.schema.json', reviewAssignment);
+  schemaRegistry.assertValid('contracts/review-comment.schema.json', reviewComment);
+  schemaRegistry.assertValid('contracts/artifact-diff-view.schema.json', artifactDiffView);
   schemaRegistry.assertValid('contracts/trace-coverage-view.schema.json', traceCoverage);
   schemaRegistry.assertValid('contracts/source-governance-view.schema.json', sourceGovernance);
   schemaRegistry.assertValid('contracts/clinical-package-view.schema.json', clinicalPackage);

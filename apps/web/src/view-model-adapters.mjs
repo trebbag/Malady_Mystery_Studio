@@ -132,6 +132,8 @@ export function createReviewDashboardView(options) {
     const summary = options.runSummaries.get(workflowRun.id) ?? {
       exportCount: 0,
       latestEvalStatus: 'missing',
+      assignees: [],
+      openCommentCount: 0,
     };
 
     return {
@@ -140,6 +142,8 @@ export function createReviewDashboardView(options) {
       diseaseName: workflowRun.input?.diseaseName ?? project?.input?.diseaseName ?? 'Unknown disease',
       state: workflowRun.state,
       currentStage: workflowRun.currentStage,
+      assignees: summary.assignees ?? [],
+      openCommentCount: summary.openCommentCount ?? 0,
       pauseReason: workflowRun.pauseReason,
       latestEvalStatus: summary.latestEvalStatus,
       exportCount: summary.exportCount,
@@ -154,6 +158,7 @@ export function createReviewDashboardView(options) {
       disease: options.filters.disease ?? '',
       state: options.filters.state ?? '',
       stage: options.filters.stage ?? '',
+      assignee: options.filters.assignee ?? '',
       exportStatus: options.filters.exportStatus ?? '',
       evalStatus: options.filters.evalStatus ?? '',
       sort: options.filters.sort ?? 'updated-desc',
@@ -162,6 +167,8 @@ export function createReviewDashboardView(options) {
       visibleRunCount: runs.length,
       blockedClinicalRunCount: runs.filter((run) => run.pauseReason === 'clinical-governance-blocked' || run.pauseReason === 'clinical-governance-review-required').length,
       awaitingReviewCount: runs.filter((run) => run.state === 'review').length,
+      assignedRunCount: runs.filter((run) => run.assignees.length > 0).length,
+      openCommentCount: runs.reduce((total, run) => total + run.openCommentCount, 0),
       staleEvalCount: runs.filter((run) => run.latestEvalStatus === 'stale').length,
       exportReadyCount: runs.filter((run) => run.state === 'approved' && run.latestEvalStatus === 'passed').length,
     },
@@ -170,7 +177,7 @@ export function createReviewDashboardView(options) {
 }
 
 /**
- * @param {{ project: any, workflowRun: any, clinicalPackage: any, latestEvalRun?: any | null, latestEvalStatus: string, exportHistory: any[] }} options
+ * @param {{ project: any, workflowRun: any, clinicalPackage: any, reviewAssignments?: any[], reviewComments?: any[], latestEvalRun?: any | null, latestEvalStatus: string, exportHistory: any[] }} options
  * @returns {any}
  */
 export function createReviewRunView(options) {
@@ -191,6 +198,8 @@ export function createReviewRunView(options) {
       runId: options.workflowRun.id,
       clinicalPackage: options.clinicalPackage,
     }),
+    reviewAssignments: options.reviewAssignments ?? [],
+    reviewComments: options.reviewComments ?? [],
     evaluationSummary: createEvaluationSummaryView({
       latestEvalStatus: options.latestEvalStatus,
       latestEvalRun: options.latestEvalRun,
@@ -201,6 +210,9 @@ export function createReviewRunView(options) {
     }),
     availableActions: [
       'resolve-canonicalization',
+      'assign-reviewer',
+      'record-review-comment',
+      'compare-artifacts',
       'record-approval',
       'record-source-decision',
       'record-contradiction-resolution',

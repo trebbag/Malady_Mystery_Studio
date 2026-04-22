@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "asg.hcc.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.hcc.001",
+  "reviewRole": "clinical",
+  "assigneeId": "local-operator",
+  "assigneeDisplayName": "Local Operator",
+  "assigneeRoles": [
+    "Local Operator"
+  ],
+  "status": "in-progress",
+  "dueAt": "2026-04-23T17:00:00Z",
+  "notes": "Confirm the clue ladder still tracks to the approved liver-risk evidence set.",
+  "assignedBy": "local-operator",
+  "assignedByRoles": [
+    "Local Operator"
+  ],
+  "createdAt": "2026-04-22T13:30:00Z",
+  "updatedAt": "2026-04-22T13:30:00Z"
+}

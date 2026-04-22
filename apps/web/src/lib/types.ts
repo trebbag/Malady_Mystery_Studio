@@ -4,6 +4,8 @@ export interface DashboardRun {
   diseaseName: string;
   state: string;
   currentStage: string;
+  assignees: string[];
+  openCommentCount: number;
   pauseReason?: string;
   latestEvalStatus: string;
   exportCount: number;
@@ -17,6 +19,7 @@ export interface ReviewDashboardView {
     disease: string;
     state: string;
     stage: string;
+    assignee: string;
     exportStatus: string;
     evalStatus: string;
     sort: string;
@@ -25,6 +28,8 @@ export interface ReviewDashboardView {
     visibleRunCount: number;
     blockedClinicalRunCount: number;
     awaitingReviewCount: number;
+    assignedRunCount: number;
+    openCommentCount: number;
     staleEvalCount: number;
     exportReadyCount: number;
   };
@@ -140,6 +145,47 @@ export interface ClinicalPackageView {
   traceCoverage: TraceCoverageSummary;
 }
 
+export interface ReviewComment {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  workflowRunId: string;
+  scopeType: 'run' | 'artifact';
+  artifactType?: string;
+  artifactId?: string;
+  fieldPath?: string;
+  status: 'open' | 'resolved' | 'note';
+  severity: 'info' | 'warning' | 'critical';
+  body: string;
+  reviewerId: string;
+  reviewerDisplayName: string;
+  reviewerRoles: string[];
+  tags?: string[];
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ReviewAssignment {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  workflowRunId: string;
+  reviewRole: string;
+  assigneeId: string;
+  assigneeDisplayName: string;
+  assigneeRoles: string[];
+  status: 'queued' | 'in-progress' | 'completed' | 'reassigned';
+  dueAt?: string;
+  completedAt?: string;
+  notes?: string;
+  assignedBy: string;
+  assignedByRoles: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ReviewRunView {
   schemaVersion: string;
   runId: string;
@@ -150,6 +196,8 @@ export interface ReviewRunView {
   pauseReason?: string;
   stageTimeline: WorkflowStage[];
   clinicalPackage: ClinicalPackageView;
+  reviewAssignments: ReviewAssignment[];
+  reviewComments: ReviewComment[];
   evaluationSummary: EvaluationSummaryView;
   exportHistory: ExportHistoryView;
   availableActions: string[];
@@ -167,6 +215,38 @@ export interface WorkflowArtifactListView {
     path?: string;
     payload?: Record<string, unknown>;
   }>;
+}
+
+export interface ArtifactDiffChange {
+  path: string;
+  changeType: 'added' | 'removed' | 'changed';
+  before?: unknown;
+  after?: unknown;
+}
+
+export interface ArtifactDiffView {
+  schemaVersion: string;
+  runId: string;
+  artifactType: string;
+  comparisonStatus: 'diff-available' | 'insufficient-history';
+  leftArtifactId?: string;
+  rightArtifactId?: string;
+  leftCreatedAt?: string;
+  rightCreatedAt?: string;
+  comparedAt?: string;
+  availableArtifacts: Array<{
+    artifactId: string;
+    createdAt: string;
+    status: string;
+    path?: string;
+  }>;
+  summary: {
+    changeCount: number;
+    addedCount: number;
+    removedCount: number;
+    changedCount: number;
+  };
+  changes: ArtifactDiffChange[];
 }
 
 export interface EvalRun {

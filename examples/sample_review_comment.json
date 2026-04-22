@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "cmt.hcc.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.hcc.001",
+  "scopeType": "artifact",
+  "artifactType": "panel-plan",
+  "artifactId": "pnl.hcc.002",
+  "fieldPath": "panels[1].medicalObjective",
+  "status": "open",
+  "severity": "warning",
+  "body": "The second panel needs a clearer link back to the chronic liver injury claim before approval.",
+  "reviewerId": "local-operator",
+  "reviewerDisplayName": "Local Operator",
+  "reviewerRoles": [
+    "Local Operator"
+  ],
+  "tags": [
+    "traceability",
+    "panel"
+  ],
+  "createdAt": "2026-04-22T14:00:00Z",
+  "updatedAt": "2026-04-22T14:00:00Z",
+  "metadata": {
+    "artifactVersion": "pnl.hcc.002"
+  }
+}

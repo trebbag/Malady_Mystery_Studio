@@ -1,10 +1,13 @@
 import type {
+  ArtifactDiffView,
   AuditLogEntry,
   ClinicalPackageView,
   EvalRun,
   ExportHistoryEntry,
   LocalRuntimeView,
   ReleaseBundle,
+  ReviewAssignment,
+  ReviewComment,
   ReviewDashboardView,
   ReviewRunView,
   WorkflowArtifactListView,
@@ -103,6 +106,42 @@ export function fetchWorkflowArtifacts(runId: string, artifactTypes: string[] = 
 
   return request<WorkflowArtifactListView>(
     `/api/v1/workflow-runs/${encodeURIComponent(runId)}/artifacts?${searchParams.toString()}`,
+  );
+}
+
+export function fetchReviewComments(runId: string) {
+  return request<ReviewComment[]>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/comments`);
+}
+
+export function createReviewComment(runId: string, payload: Record<string, unknown>) {
+  return request<ReviewComment>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/comments`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchReviewAssignments(runId: string) {
+  return request<ReviewAssignment[]>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/assignments`);
+}
+
+export function createReviewAssignment(runId: string, payload: Record<string, unknown>) {
+  return request<ReviewAssignment>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/assignments`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchArtifactDiff(
+  runId: string,
+  artifactType: string,
+  options: { leftArtifactId?: string; rightArtifactId?: string } = {},
+) {
+  return request<ArtifactDiffView>(
+    `/api/v1/workflow-runs/${encodeURIComponent(runId)}/artifact-diffs${buildQuery({
+      artifactType,
+      leftArtifactId: options.leftArtifactId,
+      rightArtifactId: options.rightArtifactId,
+    })}`,
   );
 }
 

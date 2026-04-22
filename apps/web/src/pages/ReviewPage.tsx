@@ -1,18 +1,31 @@
 import { useState } from 'react';
 
 import { AgentInspector } from '@/components/AgentInspector';
+import { ReviewAssignmentsCard } from '@/components/ReviewAssignmentsCard';
 import { ApprovalsCard } from '@/components/ApprovalsCard';
 import { ComicPreview } from '@/components/ComicPreview';
 import { EvalBoard } from '@/components/EvalBoard';
 import { PageHeader } from '@/components/PageHeader';
+import { ReviewCommentsCard } from '@/components/ReviewCommentsCard';
 import { ErrorPanel, SectionStack } from '@/components/StatePanel';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { fetchLocalRuntimeView, fetchReviewRunView, fetchWorkflowArtifacts, exportBundle, resolveCanonicalization, runEvaluations, submitApproval } from '@/lib/api';
+import {
+  createReviewAssignment,
+  createReviewComment,
+  exportBundle,
+  fetchLocalRuntimeView,
+  fetchReviewRunView,
+  fetchWorkflowArtifacts,
+  resolveCanonicalization,
+  runEvaluations,
+  submitApproval,
+} from '@/lib/api';
 import { useRefreshSignal } from '@/lib/refresh-context';
 import { useRemoteData } from '@/lib/use-remote-data';
+import { uniqueStrings } from '@/lib/utils';
 import { useRunPageContext } from '@/pages/RunLayout';
 
 export function ReviewPage() {
@@ -29,6 +42,7 @@ export function ReviewPage() {
   const exportDisabledReason = workflowRun.latestEvalStatus !== 'passed'
     ? 'Export requires a fresh passing eval run.'
     : undefined;
+  const artifactTypes = uniqueStrings(workflowRun.artifacts.map((artifact) => artifact.artifactType));
 
   return (
     <SectionStack>
@@ -77,6 +91,48 @@ export function ReviewPage() {
       {reviewRunState.data ? (
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="grid gap-6">
+            <ReviewAssignmentsCard
+              assignments={reviewRunState.data.reviewAssignments}
+              reviewRoles={workflowRun.requiredApprovalRoles}
+              onCreate={async (payload) => {
+                await createReviewAssignment(runId, payload);
+                refreshRun();
+              }}
+              onComplete={async (assignment) => {
+                await createReviewAssignment(runId, {
+                  id: assignment.id,
+                  reviewRole: assignment.reviewRole,
+                  assigneeDisplayName: assignment.assigneeDisplayName,
+                  assigneeId: assignment.assigneeId,
+                  assigneeRoles: assignment.assigneeRoles,
+                  status: 'completed',
+                  notes: assignment.notes,
+                });
+                refreshRun();
+              }}
+            />
+            <ReviewCommentsCard
+              comments={reviewRunState.data.reviewComments}
+              artifactTypes={artifactTypes}
+              onCreate={async (payload) => {
+                await createReviewComment(runId, payload);
+                refreshRun();
+              }}
+              onResolve={async (comment) => {
+                await createReviewComment(runId, {
+                  id: comment.id,
+                  scopeType: comment.scopeType,
+                  artifactType: comment.artifactType,
+                  artifactId: comment.artifactId,
+                  fieldPath: comment.fieldPath,
+                  severity: comment.severity,
+                  status: 'resolved',
+                  body: comment.body,
+                  tags: comment.tags,
+                });
+                refreshRun();
+              }}
+            />
             <ApprovalsCard
               workflowRun={workflowRun}
               onSubmit={async (role, decision, comment) => {

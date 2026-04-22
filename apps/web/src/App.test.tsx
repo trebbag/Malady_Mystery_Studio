@@ -12,6 +12,7 @@ const dashboardView = {
     disease: '',
     state: '',
     stage: '',
+    assignee: '',
     exportStatus: '',
     evalStatus: '',
     sort: 'updated-desc',
@@ -20,6 +21,8 @@ const dashboardView = {
     visibleRunCount: 1,
     blockedClinicalRunCount: 0,
     awaitingReviewCount: 1,
+    assignedRunCount: 1,
+    openCommentCount: 1,
     staleEvalCount: 0,
     exportReadyCount: 0,
   },
@@ -30,6 +33,8 @@ const dashboardView = {
       diseaseName: 'Community-acquired pneumonia',
       state: 'review',
       currentStage: 'review',
+      assignees: ['Local Operator'],
+      openCommentCount: 1,
       latestEvalStatus: 'passed',
       exportCount: 1,
       updatedAt: '2026-04-22T12:00:00Z',
@@ -130,6 +135,41 @@ const reviewRunView = {
   currentStage: 'review',
   stageTimeline: workflowRun.stages,
   clinicalPackage,
+  reviewAssignments: [
+    {
+      schemaVersion: '1.0.0',
+      id: 'asg.local.001',
+      tenantId: 'tenant.local',
+      workflowRunId: 'run.local.001',
+      reviewRole: 'clinical',
+      assigneeId: 'local-operator',
+      assigneeDisplayName: 'Local Operator',
+      assigneeRoles: ['Local Operator'],
+      status: 'in-progress',
+      createdAt: '2026-04-22T12:05:00Z',
+      updatedAt: '2026-04-22T12:05:00Z',
+    },
+  ],
+  reviewComments: [
+    {
+      schemaVersion: '1.0.0',
+      id: 'cmt.local.001',
+      tenantId: 'tenant.local',
+      workflowRunId: 'run.local.001',
+      scopeType: 'artifact',
+      artifactType: 'panel-plan',
+      artifactId: 'pnl.local.001',
+      fieldPath: 'panels[0].medicalObjective',
+      status: 'open',
+      severity: 'warning',
+      body: 'Tie the opening panel more directly to the evidence claim.',
+      reviewerId: 'local-operator',
+      reviewerDisplayName: 'Local Operator',
+      reviewerRoles: ['Local Operator'],
+      createdAt: '2026-04-22T12:06:00Z',
+      updatedAt: '2026-04-22T12:06:00Z',
+    },
+  ],
   evaluationSummary: {
     schemaVersion: '1.0.0',
     latestEvalRunId: 'evl.local.001',
@@ -241,6 +281,43 @@ const localRuntimeView = {
   },
 };
 
+const artifactDiffView = {
+  schemaVersion: '1.0.0',
+  runId: 'run.local.001',
+  artifactType: 'story-workbook',
+  comparisonStatus: 'diff-available',
+  leftArtifactId: 'swb.local.000',
+  rightArtifactId: 'swb.local.001',
+  leftCreatedAt: '2026-04-22T11:30:00Z',
+  rightCreatedAt: '2026-04-22T12:00:00Z',
+  comparedAt: '2026-04-22T12:10:00Z',
+  availableArtifacts: [
+    {
+      artifactId: 'swb.local.001',
+      createdAt: '2026-04-22T12:00:00Z',
+      status: 'generated',
+    },
+    {
+      artifactId: 'swb.local.000',
+      createdAt: '2026-04-22T11:30:00Z',
+      status: 'generated',
+    },
+  ],
+  summary: {
+    changeCount: 1,
+    addedCount: 1,
+    removedCount: 0,
+    changedCount: 0,
+  },
+  changes: [
+    {
+      path: 'sceneOutline[0].linkedClaimIds[1]',
+      changeType: 'added',
+      after: 'claim.local.002',
+    },
+  ],
+};
+
 function mockFetch(url: string) {
   const parsed = new URL(url, 'http://127.0.0.1:3000');
 
@@ -280,6 +357,18 @@ function mockFetch(url: string) {
     return Response.json(artifacts);
   }
 
+  if (parsed.pathname === '/api/v1/workflow-runs/run.local.001/comments') {
+    return Response.json(reviewRunView.reviewComments);
+  }
+
+  if (parsed.pathname === '/api/v1/workflow-runs/run.local.001/assignments') {
+    return Response.json(reviewRunView.reviewAssignments);
+  }
+
+  if (parsed.pathname === '/api/v1/workflow-runs/run.local.001/artifact-diffs') {
+    return Response.json(artifactDiffView);
+  }
+
   if (parsed.pathname === '/api/v1/source-records') {
     return Response.json(clinicalPackage.sourceGovernance.sourceRecords);
   }
@@ -292,7 +381,7 @@ function mockFetch(url: string) {
     });
   }
 
-  if (parsed.pathname.endsWith('/approvals') || parsed.pathname.endsWith('/canonicalization-resolution') || parsed.pathname.endsWith('/rebuild') || parsed.pathname.endsWith('/governance-decisions') || parsed.pathname.endsWith('/contradiction-resolutions') || parsed.pathname.endsWith('/exports')) {
+  if (parsed.pathname.endsWith('/approvals') || parsed.pathname.endsWith('/canonicalization-resolution') || parsed.pathname.endsWith('/rebuild') || parsed.pathname.endsWith('/governance-decisions') || parsed.pathname.endsWith('/contradiction-resolutions') || parsed.pathname.endsWith('/exports') || parsed.pathname.endsWith('/comments') || parsed.pathname.endsWith('/assignments')) {
     return Response.json({});
   }
 
@@ -346,5 +435,14 @@ describe('web app routes', () => {
       expect(await screen.findByText('Bundles Page')).toBeInTheDocument();
     });
     expect(screen.queryByText(/Export is blocked until the latest eval run is fresh and passing/i)).not.toBeInTheDocument();
+  });
+
+  it('shows live reviewer assignments and comments on the review page', async () => {
+    renderRoute('/runs/run.local.001/review');
+    await waitFor(async () => {
+      expect(await screen.findByText('Review assignments')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Tie the opening panel more directly to the evidence claim.')).toBeInTheDocument();
+    expect(screen.getAllByText('Local Operator').length).toBeGreaterThan(0);
   });
 });

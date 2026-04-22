@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "run.hcc.001",
+  "artifactType": "story-workbook",
+  "comparisonStatus": "diff-available",
+  "leftArtifactId": "swb.hcc.001",
+  "rightArtifactId": "swb.hcc.002",
+  "leftCreatedAt": "2026-04-22T12:00:00Z",
+  "rightCreatedAt": "2026-04-22T12:30:00Z",
+  "comparedAt": "2026-04-22T12:45:00Z",
+  "availableArtifacts": [
+    {
+      "artifactId": "swb.hcc.002",
+      "createdAt": "2026-04-22T12:30:00Z",
+      "status": "generated",
+      "path": "tenant.local/story-workbook/swb.hcc.002.json"
+    },
+    {
+      "artifactId": "swb.hcc.001",
+      "createdAt": "2026-04-22T12:00:00Z",
+      "status": "generated",
+      "path": "tenant.local/story-workbook/swb.hcc.001.json"
+    }
+  ],
+  "summary": {
+    "changeCount": 2,
+    "addedCount": 1,
+    "removedCount": 0,
+    "changedCount": 1
+  },
+  "changes": [
+    {
+      "path": "sceneOutline[1].linkedClaimIds[1]",
+      "changeType": "added",
+      "after": "clm.hcc.006"
+    },
+    {
+      "path": "revealPlan.diagnosisTiming",
+      "changeType": "changed",
+      "before": "final page turn",
+      "after": "final reveal spread"
+    }
+  ]
+}

@@ -5,6 +5,7 @@
     "disease": "",
     "state": "",
     "stage": "",
+    "assignee": "",
     "exportStatus": "",
     "evalStatus": "",
     "sort": "updated-desc"
@@ -13,6 +14,8 @@
     "visibleRunCount": 2,
     "blockedClinicalRunCount": 1,
     "awaitingReviewCount": 1,
+    "assignedRunCount": 1,
+    "openCommentCount": 2,
     "staleEvalCount": 0,
     "exportReadyCount": 1
   },
@@ -23,6 +26,10 @@
       "diseaseName": "Community-acquired pneumonia",
       "state": "approved",
       "currentStage": "export",
+      "assignees": [
+        "Local Operator"
+      ],
+      "openCommentCount": 0,
       "latestEvalStatus": "passed",
       "exportCount": 1,
       "updatedAt": "2026-04-22T12:15:00Z"
@@ -33,6 +40,10 @@
       "diseaseName": "Bacterial meningitis",
       "state": "review",
       "currentStage": "disease-packet",
+      "assignees": [
+        "Local Operator"
+      ],
+      "openCommentCount": 2,
       "pauseReason": "clinical-governance-review-required",
       "latestEvalStatus": "missing",
       "exportCount": 0,

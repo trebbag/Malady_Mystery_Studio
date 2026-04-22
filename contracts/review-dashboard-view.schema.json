@@ -25,6 +25,7 @@
         "disease",
         "state",
         "stage",
+        "assignee",
         "exportStatus",
         "evalStatus",
         "sort"
@@ -37,6 +38,9 @@
           "type": "string"
         },
         "stage": {
+          "type": "string"
+        },
+        "assignee": {
           "type": "string"
         },
         "exportStatus": {
@@ -57,6 +61,8 @@
         "visibleRunCount",
         "blockedClinicalRunCount",
         "awaitingReviewCount",
+        "assignedRunCount",
+        "openCommentCount",
         "staleEvalCount",
         "exportReadyCount"
       ],
@@ -70,6 +76,14 @@
           "minimum": 0
         },
         "awaitingReviewCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assignedRunCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "openCommentCount": {
           "type": "integer",
           "minimum": 0
         },
@@ -94,6 +108,8 @@
           "diseaseName",
           "state",
           "currentStage",
+          "assignees",
+          "openCommentCount",
           "latestEvalStatus",
           "exportCount",
           "updatedAt"
@@ -114,6 +130,16 @@
           },
           "currentStage": {
             "type": "string"
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "openCommentCount": {
+            "type": "integer",
+            "minimum": 0
           },
           "pauseReason": {
             "type": "string"

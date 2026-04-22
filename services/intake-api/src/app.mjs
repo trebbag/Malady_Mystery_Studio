@@ -53,6 +53,16 @@ import {
   renderReviewDashboard,
   renderReviewRunPage,
 } from './review-ui.mjs';
+import {
+  countOpenReviewComments,
+  diffJsonValues,
+  isActiveReviewAssignment,
+  listReviewAssignmentsForRun,
+  listReviewCommentsForRun,
+  matchesAssignmentFilter,
+  summarizeAssignmentDisplayNames,
+  summarizeJsonDiff,
+} from './review-service.mjs';
 import { PlatformStore } from './store.mjs';
 
 const SCHEMA_VERSION = '1.0.0';
@@ -81,11 +91,11 @@ const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
     },
     {
       label: 'Local review, eval, and export workflow',
-      percentComplete: 93,
+      percentComplete: 96,
     },
     {
       label: 'Frontend structure and UX implementation',
-      percentComplete: 88,
+      percentComplete: 91,
     },
     {
       label: 'Operational pilot readiness',
@@ -93,11 +103,11 @@ const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
     },
   ],
   overall: {
-    localMvpReadiness: 89,
-    pilotReadiness: 50,
+    localMvpReadiness: 91,
+    pilotReadiness: 52,
   },
   remainingWork: [
-    'Add reviewer comments, diffing, assignment, and queueing.',
+    'Add reviewer queueing, due-date escalation, and cross-run assignment management.',
     'Add live render integration and retry orchestration.',
     'Move from local SQLite and filesystem storage to managed infrastructure for pilot use.',
     'Add deployment, observability, retention execution, backup policy, and recovery drills.',
@@ -117,6 +127,9 @@ const CONTENT_TYPES = new Map([
   ['.woff', 'font/woff'],
   ['.woff2', 'font/woff2'],
 ]);
+const REVIEW_COMMENT_STATUSES = new Set(['open', 'resolved', 'note']);
+const REVIEW_COMMENT_SEVERITIES = new Set(['info', 'warning', 'critical']);
+const REVIEW_ASSIGNMENT_STATUSES = new Set(['queued', 'in-progress', 'completed', 'reassigned']);
 
 /**
  * @typedef {{
@@ -217,6 +230,33 @@ function matchWorkflowRunReviewViewPath(pathname) {
  */
 function matchWorkflowRunArtifactsPath(pathname) {
   const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/artifacts$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunCommentsPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/comments$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunAssignmentsPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/assignments$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunArtifactDiffPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/artifact-diffs$/);
   return match ? { runId: decodeURIComponent(match[1]) } : null;
 }
 
@@ -2251,8 +2291,8 @@ function buildReviewArtifactGroups(store, workflowRun) {
 /**
  * @param {any[]} workflowRuns
  * @param {Map<string, any>} projectsById
- * @param {Map<string, { exportCount: number, latestEvalStatus: string }>} runSummaries
- * @param {{ disease?: string, state?: string, stage?: string, exportStatus?: string, evalStatus?: string, sort?: string }} filters
+ * @param {Map<string, { exportCount: number, latestEvalStatus: string, assignees: string[], openCommentCount: number, activeAssignmentCount: number, reviewAssignments: any[] }>} runSummaries
+ * @param {{ disease?: string, state?: string, stage?: string, assignee?: string, exportStatus?: string, evalStatus?: string, sort?: string }} filters
  * @returns {any[]}
  */
 function filterAndSortWorkflowRuns(workflowRuns, projectsById, runSummaries, filters) {
@@ -2263,6 +2303,10 @@ function filterAndSortWorkflowRuns(workflowRuns, projectsById, runSummaries, fil
     const runSummary = runSummaries.get(workflowRun.id) ?? {
       exportCount: 0,
       latestEvalStatus: 'missing',
+      assignees: [],
+      openCommentCount: 0,
+      activeAssignmentCount: 0,
+      reviewAssignments: [],
     };
 
     if (diseaseFilter && !diseaseName.includes(diseaseFilter)) {
@@ -2274,6 +2318,10 @@ function filterAndSortWorkflowRuns(workflowRuns, projectsById, runSummaries, fil
     }
 
     if (filters.stage && workflowRun.currentStage !== filters.stage) {
+      return false;
+    }
+
+    if (filters.assignee && !matchesAssignmentFilter(runSummary.reviewAssignments ?? [], filters.assignee)) {
       return false;
     }
 
@@ -2324,7 +2372,7 @@ function filterAndSortWorkflowRuns(workflowRuns, projectsById, runSummaries, fil
 
 /**
  * @param {{ store: PlatformStore, schemaRegistry: any, actor: any, requestUrl: URL }} options
- * @returns {{ filters: Record<string, string>, projectsById: Map<string, any>, runSummaries: Map<string, { exportCount: number, latestEvalStatus: string }>, workflowRuns: any[] }}
+ * @returns {{ filters: Record<string, string>, projectsById: Map<string, any>, runSummaries: Map<string, { exportCount: number, latestEvalStatus: string, assignees: string[], openCommentCount: number, activeAssignmentCount: number, reviewAssignments: any[] }>, workflowRuns: any[] }}
  */
 function buildReviewDashboardContext(options) {
   const accessibleProjects = options.store.listProjects().filter((project) => canAccessTenant(options.actor, getTenantId(project)));
@@ -2336,15 +2384,25 @@ function buildReviewDashboardContext(options) {
   ));
   const runSummaries = new Map(syncedWorkflowRuns.map((workflowRun) => [
     workflowRun.id,
-    {
-      exportCount: options.store.listExportHistoryEntries(workflowRun.id).length,
-      latestEvalStatus: getLatestEvalStatus(options.store, workflowRun),
-    },
+    (() => {
+      const reviewAssignments = listReviewAssignmentsForRun(options.store, workflowRun);
+      const reviewComments = listReviewCommentsForRun(options.store, workflowRun);
+
+      return {
+        exportCount: options.store.listExportHistoryEntries(workflowRun.id).length,
+        latestEvalStatus: getLatestEvalStatus(options.store, workflowRun),
+        assignees: summarizeAssignmentDisplayNames(reviewAssignments),
+        openCommentCount: countOpenReviewComments(reviewComments),
+        activeAssignmentCount: reviewAssignments.filter((assignment) => isActiveReviewAssignment(assignment)).length,
+        reviewAssignments,
+      };
+    })(),
   ]));
   const filters = {
     disease: options.requestUrl.searchParams.get('disease') ?? '',
     state: options.requestUrl.searchParams.get('state') ?? '',
     stage: options.requestUrl.searchParams.get('stage') ?? '',
+    assignee: options.requestUrl.searchParams.get('assignee') ?? '',
     exportStatus: options.requestUrl.searchParams.get('exportStatus') ?? '',
     evalStatus: options.requestUrl.searchParams.get('evalStatus') ?? '',
     sort: options.requestUrl.searchParams.get('sort') ?? 'updated-desc',
@@ -2360,7 +2418,7 @@ function buildReviewDashboardContext(options) {
 
 /**
  * @param {{ store: PlatformStore, schemaRegistry: any, clinicalService: any, actor: any, runId: string }} options
- * @returns {{ workflowRun: any, project: any, canonicalDisease: any, clinicalPackage: any, approvableRoles: string[], latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[], auditLogs: any[], artifactGroups: any[] }}
+ * @returns {{ workflowRun: any, project: any, canonicalDisease: any, clinicalPackage: any, approvableRoles: string[], latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[], auditLogs: any[], artifactGroups: any[], reviewAssignments: any[], reviewComments: any[] }}
  */
 function buildReviewRunContext(options) {
   let workflowRun = options.store.getWorkflowRun(options.runId);
@@ -2391,6 +2449,8 @@ function buildReviewRunContext(options) {
     approvableRoles: workflowRun.requiredApprovalRoles.filter(
       (/** @type {string} */ role) => canSubmitApproval(options.actor, role),
     ),
+    reviewAssignments: listReviewAssignmentsForRun(options.store, workflowRun),
+    reviewComments: listReviewCommentsForRun(options.store, workflowRun),
     latestEvalRun: getLatestEvalRun(options.store, workflowRun),
     latestEvalStatus: getLatestEvalStatus(options.store, workflowRun),
     exportHistory: options.store.listExportHistoryEntries(workflowRun.id),
@@ -2427,6 +2487,269 @@ function buildWorkflowArtifactListViewPayload(options) {
       };
     }),
   });
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function slugifyIdentifier(value) {
+  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return normalized || 'local-reviewer';
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+function toStringArray(value) {
+  return Array.isArray(value)
+    ? value.filter((item) => typeof item === 'string' && item.trim().length > 0)
+    : [];
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string | undefined}
+ */
+function normalizeOptionalDateTime(value) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return undefined;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @param {string} artifactType
+ * @returns {Array<{ artifactId: string, createdAt: string, status: string, path?: string }>}
+ */
+function listArtifactHistoryForRun(store, workflowRun, artifactType) {
+  return workflowRun.artifacts
+    .map((/** @type {any} */ artifactReference, /** @type {number} */ index) => ({ artifactReference, index }))
+    .filter((/** @type {{ artifactReference: any, index: number }} */ entry) => entry.artifactReference.artifactType === artifactType)
+    .map((/** @type {{ artifactReference: any, index: number }} */ entry) => {
+      const { artifactReference, index } = entry;
+      const artifactMetadata = store.getArtifactMetadata(artifactReference.artifactType, artifactReference.artifactId);
+
+      return {
+        artifactType: artifactReference.artifactType,
+        artifactId: artifactReference.artifactId,
+        createdAt: artifactMetadata?.createdAt ?? workflowRun.updatedAt,
+        status: artifactReference.status,
+        path: artifactMetadata?.location ?? artifactReference.path,
+        index,
+      };
+    })
+    .sort((/** @type {any} */ left, /** @type {any} */ right) => right.createdAt.localeCompare(left.createdAt) || right.index - left.index);
+}
+
+/**
+ * @param {{ store: PlatformStore, workflowRun: any, artifactType: string, leftArtifactId?: string | null, rightArtifactId?: string | null }} options
+ * @returns {any}
+ */
+function buildArtifactDiffViewPayload(options) {
+  const history = listArtifactHistoryForRun(options.store, options.workflowRun, options.artifactType);
+  const availableArtifacts = history.map((entry) => ({
+    artifactId: entry.artifactId,
+    createdAt: entry.createdAt,
+    status: entry.status,
+    ...(entry.path ? { path: entry.path } : {}),
+  }));
+
+  if (history.length < 2) {
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      runId: options.workflowRun.id,
+      artifactType: options.artifactType,
+      comparisonStatus: 'insufficient-history',
+      availableArtifacts,
+      summary: {
+        changeCount: 0,
+        addedCount: 0,
+        removedCount: 0,
+        changedCount: 0,
+      },
+      changes: [],
+    };
+  }
+
+  const rightEntry = options.rightArtifactId
+    ? history.find((entry) => entry.artifactId === options.rightArtifactId)
+    : history[0];
+  const leftEntry = options.leftArtifactId
+    ? history.find((entry) => entry.artifactId === options.leftArtifactId)
+    : history.find((entry) => entry.artifactId !== rightEntry?.artifactId) ?? history[1];
+
+  if (!leftEntry || !rightEntry) {
+    throw createHttpError(404, `Unable to load artifact history for ${options.artifactType}.`);
+  }
+
+  const leftPayload = options.store.getArtifact(options.artifactType, leftEntry.artifactId);
+  const rightPayload = options.store.getArtifact(options.artifactType, rightEntry.artifactId);
+
+  if (!leftPayload || !rightPayload) {
+    throw createHttpError(404, `Artifact versions for ${options.artifactType} could not be loaded.`);
+  }
+
+  const changes = diffJsonValues(leftPayload, rightPayload);
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    runId: options.workflowRun.id,
+    artifactType: options.artifactType,
+    comparisonStatus: 'diff-available',
+    leftArtifactId: leftEntry.artifactId,
+    rightArtifactId: rightEntry.artifactId,
+    leftCreatedAt: leftEntry.createdAt,
+    rightCreatedAt: rightEntry.createdAt,
+    comparedAt: new Date().toISOString(),
+    availableArtifacts,
+    summary: summarizeJsonDiff(changes),
+    changes,
+  };
+}
+
+/**
+ * @param {{ workflowRun: any, actor: any, payload: Record<string, unknown>, existingComment?: any | null }} options
+ * @returns {any}
+ */
+function buildReviewCommentRecord(options) {
+  const timestamp = new Date().toISOString();
+  const scopeType = options.payload.scopeType === 'artifact' ? 'artifact' : (options.existingComment?.scopeType ?? 'run');
+  let artifactType = typeof options.payload.artifactType === 'string'
+    ? options.payload.artifactType
+    : options.existingComment?.artifactType;
+  let artifactId = typeof options.payload.artifactId === 'string'
+    ? options.payload.artifactId
+    : options.existingComment?.artifactId;
+
+  if (scopeType === 'artifact') {
+    if (!artifactType) {
+      throw createHttpError(400, 'artifactType is required for artifact-scoped comments.');
+    }
+
+    if (!artifactId) {
+      artifactId = findLatestArtifactReference(options.workflowRun, artifactType)?.artifactId;
+    }
+
+    if (!artifactId) {
+      throw createHttpError(404, `No artifact version is available for ${artifactType}.`);
+    }
+  } else {
+    artifactType = undefined;
+    artifactId = undefined;
+  }
+
+  const body = typeof options.payload.body === 'string'
+    ? options.payload.body.trim()
+    : options.existingComment?.body;
+
+  if (!body) {
+    throw createHttpError(400, 'body is required for review comments.');
+  }
+
+  const status = typeof options.payload.status === 'string'
+    ? options.payload.status
+    : options.existingComment?.status ?? 'open';
+  const severity = typeof options.payload.severity === 'string'
+    ? options.payload.severity
+    : options.existingComment?.severity ?? 'warning';
+
+  if (!REVIEW_COMMENT_STATUSES.has(status)) {
+    throw createHttpError(400, 'status must be one of open, resolved, or note.');
+  }
+
+  if (!REVIEW_COMMENT_SEVERITIES.has(severity)) {
+    throw createHttpError(400, 'severity must be one of info, warning, or critical.');
+  }
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: options.existingComment?.id ?? createId('cmt'),
+    tenantId: getTenantId(options.workflowRun),
+    workflowRunId: options.workflowRun.id,
+    scopeType,
+    ...(artifactType ? { artifactType } : {}),
+    ...(artifactId ? { artifactId } : {}),
+    ...(typeof options.payload.fieldPath === 'string'
+      ? { fieldPath: options.payload.fieldPath }
+      : (options.existingComment?.fieldPath ? { fieldPath: options.existingComment.fieldPath } : {})),
+    status,
+    severity,
+    body,
+    reviewerId: options.actor.id,
+    reviewerDisplayName: options.actor.displayName ?? options.actor.id,
+    reviewerRoles: toStringArray(options.actor.roles).length > 0 ? toStringArray(options.actor.roles) : ['Local Operator'],
+    tags: toStringArray(options.payload.tags).length > 0
+      ? toStringArray(options.payload.tags)
+      : (options.existingComment?.tags ?? []),
+    ...(status === 'resolved'
+      ? { resolvedAt: options.existingComment?.resolvedAt ?? timestamp }
+      : {}),
+    createdAt: options.existingComment?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+    ...(isRecord(options.payload.metadata)
+      ? { metadata: options.payload.metadata }
+      : (options.existingComment?.metadata ? { metadata: options.existingComment.metadata } : {})),
+  };
+}
+
+/**
+ * @param {{ workflowRun: any, actor: any, payload: Record<string, unknown>, existingAssignment?: any | null }} options
+ * @returns {any}
+ */
+function buildReviewAssignmentRecord(options) {
+  const timestamp = new Date().toISOString();
+  const assigneeDisplayName = typeof options.payload.assigneeDisplayName === 'string'
+    ? options.payload.assigneeDisplayName.trim()
+    : options.existingAssignment?.assigneeDisplayName;
+  const reviewRole = typeof options.payload.reviewRole === 'string'
+    ? options.payload.reviewRole
+    : options.existingAssignment?.reviewRole;
+
+  if (!assigneeDisplayName || !reviewRole) {
+    throw createHttpError(400, 'reviewRole and assigneeDisplayName are required for review assignments.');
+  }
+
+  const status = typeof options.payload.status === 'string'
+    ? options.payload.status
+    : options.existingAssignment?.status ?? 'queued';
+  const assigneeRoles = toStringArray(options.payload.assigneeRoles).length > 0
+    ? toStringArray(options.payload.assigneeRoles)
+    : (options.existingAssignment?.assigneeRoles ?? (toStringArray(options.actor.roles).length > 0 ? toStringArray(options.actor.roles) : ['Local Operator']));
+
+  if (!REVIEW_ASSIGNMENT_STATUSES.has(status)) {
+    throw createHttpError(400, 'status must be queued, in-progress, completed, or reassigned.');
+  }
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: options.existingAssignment?.id ?? createId('asg'),
+    tenantId: getTenantId(options.workflowRun),
+    workflowRunId: options.workflowRun.id,
+    reviewRole,
+    assigneeId: typeof options.payload.assigneeId === 'string'
+      ? options.payload.assigneeId
+      : (options.existingAssignment?.assigneeId ?? slugifyIdentifier(assigneeDisplayName)),
+    assigneeDisplayName,
+    assigneeRoles,
+    status,
+    ...(normalizeOptionalDateTime(options.payload.dueAt) ? { dueAt: normalizeOptionalDateTime(options.payload.dueAt) } : (options.existingAssignment?.dueAt ? { dueAt: options.existingAssignment.dueAt } : {})),
+    ...(status === 'completed'
+      ? { completedAt: normalizeOptionalDateTime(options.payload.completedAt) ?? options.existingAssignment?.completedAt ?? timestamp }
+      : {}),
+    ...(typeof options.payload.notes === 'string'
+      ? { notes: options.payload.notes }
+      : (options.existingAssignment?.notes ? { notes: options.existingAssignment.notes } : {})),
+    assignedBy: options.existingAssignment?.assignedBy ?? options.actor.id,
+    assignedByRoles: options.existingAssignment?.assignedByRoles ?? (toStringArray(options.actor.roles).length > 0 ? toStringArray(options.actor.roles) : ['Local Operator']),
+    createdAt: options.existingAssignment?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+  };
 }
 
 /**
@@ -3153,6 +3476,8 @@ export async function createApp(options = {}) {
           project: reviewRunContext.project,
           workflowRun: reviewRunContext.workflowRun,
           clinicalPackage: reviewRunContext.clinicalPackage,
+          reviewAssignments: reviewRunContext.reviewAssignments,
+          reviewComments: reviewRunContext.reviewComments,
           latestEvalRun: reviewRunContext.latestEvalRun,
           latestEvalStatus: reviewRunContext.latestEvalStatus,
           exportHistory: reviewRunContext.exportHistory,
@@ -3180,6 +3505,168 @@ export async function createApp(options = {}) {
         });
         assertSchema(schemaRegistry, 'contracts/workflow-artifact-list-view.schema.json', artifactListView);
         sendJson(response, 200, artifactListView);
+        return;
+      }
+
+      const workflowRunCommentsPath = matchWorkflowRunCommentsPath(pathname);
+
+      if (workflowRunCommentsPath && method === 'GET') {
+        const workflowRun = store.getWorkflowRun(workflowRunCommentsPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'review-comments.view', 'workflow-run', workflowRun.id);
+        const reviewComments = listReviewCommentsForRun(store, workflowRun);
+        reviewComments.forEach((reviewComment) => assertSchema(schemaRegistry, 'contracts/review-comment.schema.json', reviewComment));
+        sendJson(response, 200, reviewComments);
+        return;
+      }
+
+      if (workflowRunCommentsPath && method === 'POST') {
+        const workflowRun = store.getWorkflowRun(workflowRunCommentsPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'review-comments.write', 'workflow-run', workflowRun.id);
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body)) {
+          throw createHttpError(400, 'Review comment payload must be an object.');
+        }
+
+        const existingComment = typeof body.id === 'string' ? store.getArtifact('review-comment', body.id) : null;
+
+        if (existingComment && existingComment.workflowRunId !== workflowRun.id) {
+          throw createHttpError(409, 'Review comment does not belong to this workflow run.');
+        }
+
+        const reviewComment = buildReviewCommentRecord({
+          workflowRun,
+          actor,
+          payload: body,
+          existingComment,
+        });
+        assertSchema(schemaRegistry, 'contracts/review-comment.schema.json', reviewComment);
+        store.saveArtifact('review-comment', reviewComment.id, reviewComment, {
+          tenantId: workflowRun.tenantId,
+        });
+        appendAuditLog(
+          store,
+          schemaRegistry,
+          actor,
+          existingComment ? 'review-comment.update' : 'review-comment.create',
+          'workflow-run',
+          workflowRun.id,
+          'success',
+          `${existingComment ? 'Updated' : 'Created'} review comment ${reviewComment.id}.`,
+          {
+            artifactId: reviewComment.artifactId,
+            artifactType: reviewComment.artifactType,
+            commentId: reviewComment.id,
+            scopeType: reviewComment.scopeType,
+            severity: reviewComment.severity,
+            status: reviewComment.status,
+          },
+        );
+        sendJson(response, existingComment ? 200 : 201, reviewComment);
+        return;
+      }
+
+      const workflowRunAssignmentsPath = matchWorkflowRunAssignmentsPath(pathname);
+
+      if (workflowRunAssignmentsPath && method === 'GET') {
+        const workflowRun = store.getWorkflowRun(workflowRunAssignmentsPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'review-assignments.view', 'workflow-run', workflowRun.id);
+        const reviewAssignments = listReviewAssignmentsForRun(store, workflowRun);
+        reviewAssignments.forEach((reviewAssignment) => assertSchema(schemaRegistry, 'contracts/review-assignment.schema.json', reviewAssignment));
+        sendJson(response, 200, reviewAssignments);
+        return;
+      }
+
+      if (workflowRunAssignmentsPath && method === 'POST') {
+        const workflowRun = store.getWorkflowRun(workflowRunAssignmentsPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'review-assignments.write', 'workflow-run', workflowRun.id);
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body)) {
+          throw createHttpError(400, 'Review assignment payload must be an object.');
+        }
+
+        const existingAssignment = typeof body.id === 'string' ? store.getArtifact('review-assignment', body.id) : null;
+
+        if (existingAssignment && existingAssignment.workflowRunId !== workflowRun.id) {
+          throw createHttpError(409, 'Review assignment does not belong to this workflow run.');
+        }
+
+        const reviewAssignment = buildReviewAssignmentRecord({
+          workflowRun,
+          actor,
+          payload: body,
+          existingAssignment,
+        });
+        assertSchema(schemaRegistry, 'contracts/review-assignment.schema.json', reviewAssignment);
+        store.saveArtifact('review-assignment', reviewAssignment.id, reviewAssignment, {
+          tenantId: workflowRun.tenantId,
+        });
+        appendAuditLog(
+          store,
+          schemaRegistry,
+          actor,
+          existingAssignment ? 'review-assignment.update' : 'review-assignment.create',
+          'workflow-run',
+          workflowRun.id,
+          'success',
+          `${existingAssignment ? 'Updated' : 'Created'} review assignment ${reviewAssignment.id}.`,
+          {
+            assigneeDisplayName: reviewAssignment.assigneeDisplayName,
+            assignmentId: reviewAssignment.id,
+            reviewRole: reviewAssignment.reviewRole,
+            status: reviewAssignment.status,
+          },
+        );
+        sendJson(response, existingAssignment ? 200 : 201, reviewAssignment);
+        return;
+      }
+
+      const workflowRunArtifactDiffPath = matchWorkflowRunArtifactDiffPath(pathname);
+
+      if (workflowRunArtifactDiffPath && method === 'GET') {
+        const workflowRun = store.getWorkflowRun(workflowRunArtifactDiffPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'artifact-diff.view', 'workflow-run', workflowRun.id);
+        const artifactType = requestUrl.searchParams.get('artifactType');
+
+        if (!artifactType) {
+          throw createHttpError(400, 'artifactType is required.');
+        }
+
+        const artifactDiffView = buildArtifactDiffViewPayload({
+          store,
+          workflowRun,
+          artifactType,
+          leftArtifactId: requestUrl.searchParams.get('leftArtifactId'),
+          rightArtifactId: requestUrl.searchParams.get('rightArtifactId'),
+        });
+        assertSchema(schemaRegistry, 'contracts/artifact-diff-view.schema.json', artifactDiffView);
+        sendJson(response, 200, artifactDiffView);
         return;
       }
 

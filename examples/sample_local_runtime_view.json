@@ -25,7 +25,7 @@
     "areas": [
       {
         "label": "Foundation and local runtime",
-        "percentComplete": 95
+        "percentComplete": 96
       },
       {
         "label": "Clinical truth layer",
@@ -41,11 +41,11 @@
       },
       {
         "label": "Local review, eval, and export workflow",
-        "percentComplete": 90
+        "percentComplete": 96
       },
       {
-        "label": "Frontend structure and UX prep",
-        "percentComplete": 70
+        "label": "Frontend structure and UX implementation",
+        "percentComplete": 91
       },
       {
         "label": "Operational pilot readiness",
@@ -53,11 +53,11 @@
       }
     ],
     "overall": {
-      "localMvpReadiness": 85,
-      "pilotReadiness": 45
+      "localMvpReadiness": 91,
+      "pilotReadiness": 52
     },
     "remainingWork": [
-      "reviewer comments, diffing, assignment, and queueing",
+      "cross-run queueing, reviewer due-date escalation, and richer comment threading",
       "live render integration and retry orchestration",
       "managed database and object storage for pilot use",
       "deployment, observability, retention execution, backup, and recovery drills",

@@ -111,6 +111,10 @@ paths:
           schema:
             type: string
         - in: query
+          name: assignee
+          schema:
+            type: string
+        - in: query
           name: exportStatus
           schema:
             type: string
@@ -146,6 +150,150 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/review-run-view.schema.json'
+  /api/v1/workflow-runs/{runId}/comments:
+    get:
+      summary: List stored review comments for a workflow run
+      operationId: listReviewComments
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/review-comment.schema.json'
+    post:
+      summary: Create or update a review comment
+      operationId: upsertReviewComment
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                id:
+                  type: string
+                scopeType:
+                  type: string
+                  enum: [run, artifact]
+                artifactType:
+                  type: string
+                artifactId:
+                  type: string
+                fieldPath:
+                  type: string
+                status:
+                  type: string
+                  enum: [open, resolved, note]
+                severity:
+                  type: string
+                  enum: [info, warning, critical]
+                body:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Updated review comment
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-comment.schema.json'
+        '201':
+          description: Created review comment
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-comment.schema.json'
+  /api/v1/workflow-runs/{runId}/assignments:
+    get:
+      summary: List stored review assignments for a workflow run
+      operationId: listReviewAssignments
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/review-assignment.schema.json'
+    post:
+      summary: Create or update a review assignment
+      operationId: upsertReviewAssignment
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                id:
+                  type: string
+                reviewRole:
+                  type: string
+                assigneeId:
+                  type: string
+                assigneeDisplayName:
+                  type: string
+                assigneeRoles:
+                  type: array
+                  items:
+                    type: string
+                status:
+                  type: string
+                  enum: [queued, in-progress, completed, reassigned]
+                dueAt:
+                  type: string
+                  format: date-time
+                completedAt:
+                  type: string
+                  format: date-time
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Updated review assignment
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-assignment.schema.json'
+        '201':
+          description: Created review assignment
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-assignment.schema.json'
   /api/v1/workflow-runs/{runId}/artifacts:
     get:
       summary: List workflow-run artifacts for frontend pages
@@ -174,6 +322,36 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/workflow-artifact-list-view.schema.json'
+  /api/v1/workflow-runs/{runId}/artifact-diffs:
+    get:
+      summary: Compare two stored artifact versions for a workflow run
+      operationId: getWorkflowArtifactDiff
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: artifactType
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: leftArtifactId
+          schema:
+            type: string
+        - in: query
+          name: rightArtifactId
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Artifact diff view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/artifact-diff-view.schema.json'
   /api/v1/local-runtime-view:
     get:
       summary: Get the local runtime read model for the settings page

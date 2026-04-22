@@ -6,6 +6,7 @@ Current status:
 - active React + Vite frontend using the Figma Make shell as the route and component reference
 - local-open runtime only; no sign-in, account, profile, or tenant-admin UX
 - repo contracts and API views remain the source of truth for labels, data shape, and workflow behavior
+- review pages now expose stored reviewer assignments, review comments, and artifact diff views backed by the local API
 
 Key runtime surfaces:
 - [App.tsx](/Users/gregorygabbert/Documents/GitHub/MaladyMysteryStudio/apps/web/src/App.tsx)
