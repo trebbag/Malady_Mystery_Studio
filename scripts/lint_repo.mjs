@@ -8,6 +8,7 @@ import { findRepoRoot } from '../packages/shared-config/src/repo-paths.mjs';
 const execFileAsync = promisify(execFile);
 const rootDir = findRepoRoot(import.meta.url);
 const lintRoots = [
+  'apps',
   'scripts',
   'packages',
   'services',
@@ -33,7 +34,7 @@ async function listModules(directoryPath) {
       continue;
     }
 
-    if (entryPath.endsWith('.mjs')) {
+    if (entryPath.endsWith('.mjs') || entryPath.endsWith('.js')) {
       discoveredFiles.push(entryPath);
     }
   }

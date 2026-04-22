@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -22,13 +22,14 @@ async function createSandbox() {
 }
 
 /**
- * @param {{ dbFilePath: string, objectStoreDir: string }} options
+ * @param {{ dbFilePath: string, objectStoreDir: string, webDistDir?: string }} options
  * @returns {Promise<{ baseUrl: string, close: () => Promise<void>, store: any }>}
  */
 async function startServer(options) {
   const app = await createApp({
     dbFilePath: options.dbFilePath,
     objectStoreDir: options.objectStoreDir,
+    webDistDir: options.webDistDir,
   });
 
   await new Promise((resolve) => {
@@ -58,6 +59,16 @@ async function startServer(options) {
       app.store.close();
     },
   };
+}
+
+/**
+ * @param {string} directory
+ * @returns {Promise<void>}
+ */
+async function writeFakeWebDist(directory) {
+  await mkdir(path.join(directory, 'assets'), { recursive: true });
+  await writeFile(path.join(directory, 'index.html'), '<!doctype html><html><body><div id="root">web-shell</div></body></html>');
+  await writeFile(path.join(directory, 'assets', 'app.js'), 'console.log("web-shell")');
 }
 
 /**
@@ -468,6 +479,85 @@ test('workflow runs and eval state persist across restart', async () => {
       await restartedApp.close();
     }
   } finally {
+    await sandbox.cleanup();
+  }
+});
+
+test('dashboard, review run, artifact list, and local runtime API views return the expected data', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer(sandbox);
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'community-acquired pneumonia',
+    });
+    const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+
+    const dashboardResponse = await fetch(`${app.baseUrl}/api/v1/review-dashboard-view`);
+    assert.equal(dashboardResponse.status, 200);
+    const dashboardView = await dashboardResponse.json();
+    assert.equal(dashboardView.title, 'Local Review Dashboard');
+    assert.equal(dashboardView.runs.some((/** @type {any} */ run) => run.runId === workflowRun.id), true);
+
+    const reviewRunResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/review-run-view`);
+    assert.equal(reviewRunResponse.status, 200);
+    const reviewRunView = await reviewRunResponse.json();
+    assert.equal(reviewRunView.runId, workflowRun.id);
+    assert.equal(reviewRunView.clinicalPackage.diseasePacket.canonicalDiseaseName, 'Community-acquired pneumonia');
+
+    const artifactListResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/artifacts?artifactType=story-workbook,panel-plan&expand=true`);
+    assert.equal(artifactListResponse.status, 200);
+    const artifactListView = await artifactListResponse.json();
+    assert.equal(artifactListView.expand, true);
+    assert.equal(artifactListView.artifacts.some((/** @type {any} */ artifact) => artifact.artifactType === 'story-workbook' && artifact.payload), true);
+    assert.equal(artifactListView.artifacts.some((/** @type {any} */ artifact) => artifact.artifactType === 'panel-plan' && artifact.payload), true);
+
+    const localRuntimeResponse = await fetch(`${app.baseUrl}/api/v1/local-runtime-view`);
+    assert.equal(localRuntimeResponse.status, 200);
+    const localRuntimeView = await localRuntimeResponse.json();
+    assert.equal(localRuntimeView.actor.id, 'local-operator');
+    assert.equal(localRuntimeView.tenantId, 'tenant.local');
+    assert.equal(localRuntimeView.availableCommands.includes('pnpm dev:web'), true);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});
+
+test('built web assets are served while debug pages remain available', async () => {
+  const sandbox = await createSandbox();
+  const webDistDir = path.join(path.dirname(sandbox.dbFilePath), 'web-dist');
+  await writeFakeWebDist(webDistDir);
+  const app = await startServer({
+    ...sandbox,
+    webDistDir,
+  });
+
+  try {
+    const reviewResponse = await fetch(`${app.baseUrl}/review`, {
+      redirect: 'manual',
+    });
+    assert.equal(reviewResponse.status, 200);
+    const reviewPage = await reviewResponse.text();
+    assert.match(reviewPage, /web-shell/);
+
+    const assetResponse = await fetch(`${app.baseUrl}/assets/app.js`);
+    assert.equal(assetResponse.status, 200);
+    const assetContents = await assetResponse.text();
+    assert.match(assetContents, /web-shell/);
+
+    const legacyReviewResponse = await fetch(`${app.baseUrl}/review/runs/run.example.001`, {
+      redirect: 'manual',
+    });
+    assert.equal(legacyReviewResponse.status, 302);
+    assert.equal(legacyReviewResponse.headers.get('location'), '/runs/run.example.001/review');
+
+    const debugReviewResponse = await fetch(`${app.baseUrl}/debug/review`);
+    assert.equal(debugReviewResponse.status, 200);
+    const debugReviewPage = await debugReviewResponse.text();
+    assert.match(debugReviewPage, /Local Review Dashboard/);
+  } finally {
+    await app.close();
     await sandbox.cleanup();
   }
 });

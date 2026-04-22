@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { createId } from '../../../packages/shared-config/src/ids.mjs';
@@ -12,6 +13,12 @@ import {
 } from '../../../packages/shared-config/src/http.mjs';
 import { findRepoRoot } from '../../../packages/shared-config/src/repo-paths.mjs';
 import { createSchemaRegistry, formatValidationErrors } from '../../../packages/shared-config/src/schema-registry.mjs';
+import {
+  createLocalRuntimeView,
+  createReviewDashboardView,
+  createReviewRunView,
+  createWorkflowArtifactListView,
+} from '../../../apps/web/src/view-model-adapters.mjs';
 import { createClinicalRetrievalService } from '../../clinical-retrieval/src/service.mjs';
 import { createExporterService } from '../../exporter/src/service.mjs';
 import {
@@ -49,6 +56,67 @@ import {
 import { PlatformStore } from './store.mjs';
 
 const SCHEMA_VERSION = '1.0.0';
+const WEB_ROUTE_ARTIFACT_GROUPS = Object.freeze({
+  workbooks: ['story-workbook', 'narrative-review-trace', 'qa-report'],
+  scenes: ['scene-card'],
+  panels: ['panel-plan', 'render-prompt', 'lettering-map', 'qa-report'],
+});
+const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
+  areas: [
+    {
+      label: 'Foundation and local runtime',
+      percentComplete: 96,
+    },
+    {
+      label: 'Clinical truth layer',
+      percentComplete: 91,
+    },
+    {
+      label: 'Workbook and guardrails',
+      percentComplete: 75,
+    },
+    {
+      label: 'Scene, panel, render-prep',
+      percentComplete: 72,
+    },
+    {
+      label: 'Local review, eval, and export workflow',
+      percentComplete: 93,
+    },
+    {
+      label: 'Frontend structure and UX implementation',
+      percentComplete: 88,
+    },
+    {
+      label: 'Operational pilot readiness',
+      percentComplete: 40,
+    },
+  ],
+  overall: {
+    localMvpReadiness: 89,
+    pilotReadiness: 50,
+  },
+  remainingWork: [
+    'Add reviewer comments, diffing, assignment, and queueing.',
+    'Add live render integration and retry orchestration.',
+    'Move from local SQLite and filesystem storage to managed infrastructure for pilot use.',
+    'Add deployment, observability, retention execution, backup policy, and recovery drills.',
+    'Integrate external auth at the frontend or gateway layer when the app moves beyond local-open mode.',
+    'Expand governed disease and source coverage beyond the current local starter set.',
+  ],
+});
+const CONTENT_TYPES = new Map([
+  ['.css', 'text/css; charset=utf-8'],
+  ['.html', 'text/html; charset=utf-8'],
+  ['.js', 'application/javascript; charset=utf-8'],
+  ['.json', 'application/json; charset=utf-8'],
+  ['.map', 'application/json; charset=utf-8'],
+  ['.png', 'image/png'],
+  ['.svg', 'image/svg+xml'],
+  ['.txt', 'text/plain; charset=utf-8'],
+  ['.woff', 'font/woff'],
+  ['.woff2', 'font/woff2'],
+]);
 
 /**
  * @typedef {{
@@ -132,6 +200,182 @@ function isRecord(payload) {
  */
 function createRequestUrl(rawUrl) {
   return new URL(rawUrl, 'http://127.0.0.1');
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunReviewViewPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/review-run-view$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunArtifactsPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/artifacts$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isReviewDashboardViewPath(pathname) {
+  return pathname === '/api/v1/review-dashboard-view';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isLocalRuntimeViewPath(pathname) {
+  return pathname === '/api/v1/local-runtime-view';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchDebugReviewRunPath(pathname) {
+  const match = pathname.match(/^\/debug\/review\/runs\/([^/]+)$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchLegacyClinicalPackageReviewPath(pathname) {
+  const match = pathname.match(/^\/review\/runs\/([^/]+)\/clinical-package$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchLegacyEvaluationReviewPath(pathname) {
+  const match = pathname.match(/^\/review\/runs\/([^/]+)\/evaluations$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchLegacyExportReviewPath(pathname) {
+  const match = pathname.match(/^\/review\/runs\/([^/]+)\/exports$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isSpaShellPath(pathname) {
+  return pathname === '/review'
+    || pathname === '/settings'
+    || /^\/runs\/[^/]+\/(pipeline|review|packets|evidence|workbooks|scenes|panels|sources|governance|evals|bundles)$/.test(pathname);
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isWebAssetPath(pathname) {
+  return pathname.startsWith('/assets/')
+    || pathname === '/favicon.svg'
+    || pathname === '/vite.svg';
+}
+
+/**
+ * @param {string} filePath
+ * @returns {string}
+ */
+function getContentTypeForFile(filePath) {
+  return CONTENT_TYPES.get(path.extname(filePath).toLowerCase()) ?? 'application/octet-stream';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {string[]}
+ */
+function normalizeArtifactTypeFilters(pathname) {
+  return pathname
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+/**
+ * @param {URLSearchParams} searchParams
+ * @returns {string[]}
+ */
+function parseArtifactTypeFilters(searchParams) {
+  return [...new Set(
+    searchParams
+      .getAll('artifactType')
+      .flatMap((value) => normalizeArtifactTypeFilters(value)),
+  )];
+}
+
+/**
+ * @param {import('node:http').IncomingMessage} request
+ * @returns {string}
+ */
+function getServerBaseUrl(request) {
+  const host = request.headers.host ?? '127.0.0.1:3000';
+  const protocol = request.headers['x-forwarded-proto'] ?? 'http';
+  return `${protocol}://${host}`;
+}
+
+/**
+ * @returns {any}
+ */
+function getReadinessSnapshot() {
+  return clone(FRONTEND_READINESS_SNAPSHOT);
+}
+
+/**
+ * @param {string} filePath
+ * @returns {Promise<boolean>}
+ */
+async function fileExists(filePath) {
+  try {
+    const entry = await stat(filePath);
+    return entry.isFile();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @param {string} filePath
+ * @returns {Promise<boolean>}
+ */
+async function directoryExists(filePath) {
+  try {
+    const entry = await stat(filePath);
+    return entry.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @param {import('node:http').ServerResponse} response
+ * @param {string} filePath
+ * @returns {Promise<void>}
+ */
+async function sendStaticFile(response, filePath) {
+  const contents = await readFile(filePath);
+  response.statusCode = 200;
+  response.setHeader('content-type', getContentTypeForFile(filePath));
+  response.end(contents);
 }
 
 /**
@@ -2079,6 +2323,113 @@ function filterAndSortWorkflowRuns(workflowRuns, projectsById, runSummaries, fil
 }
 
 /**
+ * @param {{ store: PlatformStore, schemaRegistry: any, actor: any, requestUrl: URL }} options
+ * @returns {{ filters: Record<string, string>, projectsById: Map<string, any>, runSummaries: Map<string, { exportCount: number, latestEvalStatus: string }>, workflowRuns: any[] }}
+ */
+function buildReviewDashboardContext(options) {
+  const accessibleProjects = options.store.listProjects().filter((project) => canAccessTenant(options.actor, getTenantId(project)));
+  const accessibleWorkflowRuns = options.store.listWorkflowRuns()
+    .filter((workflowRun) => canAccessTenant(options.actor, getTenantId(workflowRun)));
+  const projectsById = new Map(accessibleProjects.map((project) => [project.id, project]));
+  const syncedWorkflowRuns = accessibleWorkflowRuns.map((workflowRun) => (
+    syncLatestEvalMetadata(options.store, options.schemaRegistry, workflowRun)
+  ));
+  const runSummaries = new Map(syncedWorkflowRuns.map((workflowRun) => [
+    workflowRun.id,
+    {
+      exportCount: options.store.listExportHistoryEntries(workflowRun.id).length,
+      latestEvalStatus: getLatestEvalStatus(options.store, workflowRun),
+    },
+  ]));
+  const filters = {
+    disease: options.requestUrl.searchParams.get('disease') ?? '',
+    state: options.requestUrl.searchParams.get('state') ?? '',
+    stage: options.requestUrl.searchParams.get('stage') ?? '',
+    exportStatus: options.requestUrl.searchParams.get('exportStatus') ?? '',
+    evalStatus: options.requestUrl.searchParams.get('evalStatus') ?? '',
+    sort: options.requestUrl.searchParams.get('sort') ?? 'updated-desc',
+  };
+
+  return {
+    filters,
+    projectsById,
+    runSummaries,
+    workflowRuns: filterAndSortWorkflowRuns(syncedWorkflowRuns, projectsById, runSummaries, filters),
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, clinicalService: any, actor: any, runId: string }} options
+ * @returns {{ workflowRun: any, project: any, canonicalDisease: any, clinicalPackage: any, approvableRoles: string[], latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[], auditLogs: any[], artifactGroups: any[] }}
+ */
+function buildReviewRunContext(options) {
+  let workflowRun = options.store.getWorkflowRun(options.runId);
+
+  if (!workflowRun) {
+    throw createHttpError(404, 'Workflow run not found.');
+  }
+
+  workflowRun = syncLatestEvalMetadata(options.store, options.schemaRegistry, workflowRun);
+  assertTenantAccess(options.actor, getTenantId(workflowRun), options.store, options.schemaRegistry, 'review.view', 'workflow-run', workflowRun.id);
+
+  const project = getProjectForRun(options.store, workflowRun);
+  const canonicalArtifactReference = findLatestArtifactReference(workflowRun, 'canonical-disease');
+  const canonicalDisease = canonicalArtifactReference
+    ? options.store.getArtifact('canonical-disease', canonicalArtifactReference.artifactId)
+    : null;
+  const clinicalPackage = loadClinicalPackageForRun({
+    store: options.store,
+    workflowRun,
+    clinicalService: options.clinicalService,
+  });
+
+  return {
+    workflowRun,
+    project,
+    canonicalDisease,
+    clinicalPackage,
+    approvableRoles: workflowRun.requiredApprovalRoles.filter(
+      (/** @type {string} */ role) => canSubmitApproval(options.actor, role),
+    ),
+    latestEvalRun: getLatestEvalRun(options.store, workflowRun),
+    latestEvalStatus: getLatestEvalStatus(options.store, workflowRun),
+    exportHistory: options.store.listExportHistoryEntries(workflowRun.id),
+    auditLogs: options.store.listAuditLogEntries({ subjectId: workflowRun.id, subjectType: 'workflow-run' }),
+    artifactGroups: buildReviewArtifactGroups(options.store, workflowRun),
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, workflowRun: any, artifactTypeFilters: string[], expand: boolean }} options
+ * @returns {any}
+ */
+function buildWorkflowArtifactListViewPayload(options) {
+  const filteredReferences = options.workflowRun.artifacts.filter((/** @type {any} */ artifactReference) => (
+    options.artifactTypeFilters.length === 0 || options.artifactTypeFilters.includes(artifactReference.artifactType)
+  ));
+
+  return createWorkflowArtifactListView({
+    runId: options.workflowRun.id,
+    artifactTypeFilters: options.artifactTypeFilters,
+    expand: options.expand,
+    artifacts: filteredReferences.map((/** @type {any} */ artifactReference) => {
+      const artifactMetadata = options.store.getArtifactMetadata(artifactReference.artifactType, artifactReference.artifactId);
+      const artifactPayload = options.expand
+        ? loadArtifactByReference(options.store, artifactReference)
+        : undefined;
+
+      return {
+        artifactType: artifactReference.artifactType,
+        artifactId: artifactReference.artifactId,
+        status: artifactReference.status,
+        path: artifactMetadata?.location ?? artifactReference.path,
+        ...(artifactPayload ? { payload: artifactPayload } : {}),
+      };
+    }),
+  });
+}
+
+/**
  * @param {{ store: PlatformStore, schemaRegistry: any, evalService: any, workflowRun: any, actor: any }} options
  * @returns {any}
  */
@@ -2327,13 +2678,14 @@ function syncLatestEvalMetadata(store, schemaRegistry, workflowRun) {
 }
 
 /**
- * @param {{ rootDir?: string, store?: PlatformStore, dbFilePath?: string, objectStoreDir?: string }} [options]
+ * @param {{ rootDir?: string, store?: PlatformStore, dbFilePath?: string, objectStoreDir?: string, webDistDir?: string }} [options]
  * @returns {Promise<{ server: import('node:http').Server, store: PlatformStore }>}
  */
 export async function createApp(options = {}) {
   const rootDir = options.rootDir ?? findRepoRoot(import.meta.url);
   const dbFilePath = options.dbFilePath ?? process.env.PLATFORM_DB_FILE ?? path.join(rootDir, 'var', 'db', 'platform.sqlite');
   const objectStoreDir = options.objectStoreDir ?? process.env.OBJECT_STORE_DIR ?? path.join(rootDir, 'var', 'object-store');
+  const webDistDir = options.webDistDir ?? path.join(rootDir, 'apps', 'web', 'dist');
   const store = options.store ?? new PlatformStore({
     rootDir,
     dbFilePath,
@@ -2348,6 +2700,43 @@ export async function createApp(options = {}) {
     rootDir,
     exporterService,
   });
+  const webIndexPath = path.join(webDistDir, 'index.html');
+
+  /**
+   * @returns {Promise<boolean>}
+   */
+  const hasBuiltWebApp = async () => (await directoryExists(webDistDir)) && (await fileExists(webIndexPath));
+
+  /**
+   * @param {string} pathname
+   * @returns {string | null}
+   */
+  const resolveWebAssetPath = (pathname) => {
+    const candidatePath = path.normalize(path.join(webDistDir, pathname.replace(/^\/+/, '')));
+    const relativePath = path.relative(webDistDir, candidatePath);
+
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+      return null;
+    }
+
+    return candidatePath;
+  };
+
+  /**
+   * @param {string} pathname
+   * @param {import('node:http').ServerResponse} response
+   * @returns {Promise<boolean>}
+   */
+  const tryServeWebAsset = async (pathname, response) => {
+    const candidatePath = resolveWebAssetPath(pathname);
+
+    if (!candidatePath || !(await fileExists(candidatePath))) {
+      return false;
+    }
+
+    await sendStaticFile(response, candidatePath);
+    return true;
+  };
 
   const server = createServer(async (request, response) => {
     try {
@@ -2365,6 +2754,106 @@ export async function createApp(options = {}) {
         return;
       }
 
+      const builtWebAppAvailable = method === 'GET'
+        ? await hasBuiltWebApp()
+        : false;
+
+      if (method === 'GET' && pathname === '/debug/intake') {
+        sendHtml(response, 200, renderIntakePage({ actor }));
+        return;
+      }
+
+      if (method === 'GET' && pathname === '/debug/review') {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot open review pages.');
+        }
+
+        const dashboardContext = buildReviewDashboardContext({
+          store,
+          schemaRegistry,
+          actor,
+          requestUrl,
+        });
+
+        sendHtml(response, 200, renderReviewDashboard({
+          actor,
+          workflowRuns: dashboardContext.workflowRuns,
+          projectsById: dashboardContext.projectsById,
+          filters: dashboardContext.filters,
+          runSummaries: dashboardContext.runSummaries,
+        }));
+        return;
+      }
+
+      const debugReviewRunPath = matchDebugReviewRunPath(pathname);
+
+      if (method === 'GET' && debugReviewRunPath) {
+        const reviewRunContext = buildReviewRunContext({
+          store,
+          schemaRegistry,
+          clinicalService,
+          actor,
+          runId: debugReviewRunPath.runId,
+        });
+
+        sendHtml(response, 200, renderReviewRunPage({
+          actor,
+          project: reviewRunContext.project,
+          workflowRun: reviewRunContext.workflowRun,
+          artifactGroups: reviewRunContext.artifactGroups,
+          auditLogs: reviewRunContext.auditLogs,
+          canonicalDisease: reviewRunContext.canonicalDisease,
+          canResolveCanonicalization: canResolveCanonicalization(actor),
+          approvableRoles: reviewRunContext.approvableRoles,
+          clinicalPackage: reviewRunContext.clinicalPackage,
+          latestEvalRun: reviewRunContext.latestEvalRun,
+          latestEvalStatus: reviewRunContext.latestEvalStatus,
+          exportHistory: reviewRunContext.exportHistory,
+        }));
+        return;
+      }
+
+      if (method === 'GET' && builtWebAppAvailable) {
+        if (pathname === '/intake') {
+          redirect(response, '/review', 302);
+          return;
+        }
+
+        if (isWebAssetPath(pathname) && await tryServeWebAsset(pathname, response)) {
+          return;
+        }
+
+        const legacyReviewRunPath = matchReviewRunPath(pathname);
+        const legacyClinicalPackagePath = matchLegacyClinicalPackageReviewPath(pathname);
+        const legacyEvaluationPath = matchLegacyEvaluationReviewPath(pathname);
+        const legacyExportPath = matchLegacyExportReviewPath(pathname);
+
+        if (legacyReviewRunPath) {
+          redirect(response, `/runs/${encodeURIComponent(legacyReviewRunPath.runId)}/review`, 302);
+          return;
+        }
+
+        if (legacyClinicalPackagePath) {
+          redirect(response, `/runs/${encodeURIComponent(legacyClinicalPackagePath.runId)}/evidence`, 302);
+          return;
+        }
+
+        if (legacyEvaluationPath) {
+          redirect(response, `/runs/${encodeURIComponent(legacyEvaluationPath.runId)}/evals`, 302);
+          return;
+        }
+
+        if (legacyExportPath) {
+          redirect(response, `/runs/${encodeURIComponent(legacyExportPath.runId)}/bundles`, 302);
+          return;
+        }
+
+        if (pathname === '/review' || isSpaShellPath(pathname)) {
+          await sendStaticFile(response, webIndexPath);
+          return;
+        }
+      }
+
       if (method === 'GET' && pathname === '/intake') {
         sendHtml(response, 200, renderIntakePage({ actor }));
         return;
@@ -2375,32 +2864,19 @@ export async function createApp(options = {}) {
           throw createHttpError(403, 'Actor cannot open review pages.');
         }
 
-        const accessibleProjects = store.listProjects().filter((project) => canAccessTenant(actor, getTenantId(project)));
-        const accessibleWorkflowRuns = store.listWorkflowRuns()
-          .filter((workflowRun) => canAccessTenant(actor, getTenantId(workflowRun)))
-        const projectsById = new Map(accessibleProjects.map((project) => [project.id, project]));
-        const runSummaries = new Map(accessibleWorkflowRuns.map((workflowRun) => {
-          const syncedWorkflowRun = syncLatestEvalMetadata(store, schemaRegistry, workflowRun);
-          return [syncedWorkflowRun.id, {
-            exportCount: store.listExportHistoryEntries(syncedWorkflowRun.id).length,
-            latestEvalStatus: getLatestEvalStatus(store, syncedWorkflowRun),
-          }];
-        }));
-        const filters = {
-          disease: requestUrl.searchParams.get('disease') ?? '',
-          state: requestUrl.searchParams.get('state') ?? '',
-          stage: requestUrl.searchParams.get('stage') ?? '',
-          exportStatus: requestUrl.searchParams.get('exportStatus') ?? '',
-          evalStatus: requestUrl.searchParams.get('evalStatus') ?? '',
-          sort: requestUrl.searchParams.get('sort') ?? 'updated-desc',
-        };
+        const dashboardContext = buildReviewDashboardContext({
+          store,
+          schemaRegistry,
+          actor,
+          requestUrl,
+        });
 
         sendHtml(response, 200, renderReviewDashboard({
           actor,
-          workflowRuns: filterAndSortWorkflowRuns(accessibleWorkflowRuns, projectsById, runSummaries, filters),
-          projectsById,
-          filters,
-          runSummaries,
+          workflowRuns: dashboardContext.workflowRuns,
+          projectsById: dashboardContext.projectsById,
+          filters: dashboardContext.filters,
+          runSummaries: dashboardContext.runSummaries,
         }));
         return;
       }
@@ -2408,42 +2884,27 @@ export async function createApp(options = {}) {
       const reviewRunPath = matchReviewRunPath(pathname);
 
       if (method === 'GET' && reviewRunPath) {
-        let workflowRun = store.getWorkflowRun(reviewRunPath.runId);
-
-        if (!workflowRun) {
-          throw createHttpError(404, 'Workflow run not found.');
-        }
-
-        workflowRun = syncLatestEvalMetadata(store, schemaRegistry, workflowRun);
-        const project = getProjectForRun(store, workflowRun);
-        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'review.view', 'workflow-run', workflowRun.id);
-
-        const canonicalArtifactReference = findLatestArtifactReference(workflowRun, 'canonical-disease');
-        const canonicalDisease = canonicalArtifactReference
-          ? store.getArtifact('canonical-disease', canonicalArtifactReference.artifactId)
-          : null;
-        const clinicalPackage = loadClinicalPackageForRun({
+        const reviewRunContext = buildReviewRunContext({
           store,
-          workflowRun,
+          schemaRegistry,
           clinicalService,
+          actor,
+          runId: reviewRunPath.runId,
         });
-        const approvableRoles = workflowRun.requiredApprovalRoles.filter(
-          (/** @type {string} */ role) => canSubmitApproval(actor, role),
-        );
 
         sendHtml(response, 200, renderReviewRunPage({
           actor,
-          project,
-          workflowRun,
-          artifactGroups: buildReviewArtifactGroups(store, workflowRun),
-          auditLogs: store.listAuditLogEntries({ subjectId: workflowRun.id, subjectType: 'workflow-run' }),
-          canonicalDisease,
+          project: reviewRunContext.project,
+          workflowRun: reviewRunContext.workflowRun,
+          artifactGroups: reviewRunContext.artifactGroups,
+          auditLogs: reviewRunContext.auditLogs,
+          canonicalDisease: reviewRunContext.canonicalDisease,
           canResolveCanonicalization: canResolveCanonicalization(actor),
-          approvableRoles,
-          clinicalPackage,
-          latestEvalRun: getLatestEvalRun(store, workflowRun),
-          latestEvalStatus: getLatestEvalStatus(store, workflowRun),
-          exportHistory: store.listExportHistoryEntries(workflowRun.id),
+          approvableRoles: reviewRunContext.approvableRoles,
+          clinicalPackage: reviewRunContext.clinicalPackage,
+          latestEvalRun: reviewRunContext.latestEvalRun,
+          latestEvalStatus: reviewRunContext.latestEvalStatus,
+          exportHistory: reviewRunContext.exportHistory,
         }));
         return;
       }
@@ -2654,6 +3115,100 @@ export async function createApp(options = {}) {
           version: body.version || undefined,
         });
         redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
+        return;
+      }
+
+      if (method === 'GET' && isReviewDashboardViewPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot read review dashboard data.');
+        }
+
+        const dashboardView = createReviewDashboardView(buildReviewDashboardContext({
+          store,
+          schemaRegistry,
+          actor,
+          requestUrl,
+        }));
+        assertSchema(schemaRegistry, 'contracts/review-dashboard-view.schema.json', dashboardView);
+        sendJson(response, 200, dashboardView);
+        return;
+      }
+
+      const workflowRunReviewViewPath = matchWorkflowRunReviewViewPath(pathname);
+
+      if (method === 'GET' && workflowRunReviewViewPath) {
+        const reviewRunContext = buildReviewRunContext({
+          store,
+          schemaRegistry,
+          clinicalService,
+          actor,
+          runId: workflowRunReviewViewPath.runId,
+        });
+
+        if (!reviewRunContext.clinicalPackage) {
+          throw createHttpError(409, 'No clinical package is available for this workflow run yet.');
+        }
+
+        const reviewRunView = createReviewRunView({
+          project: reviewRunContext.project,
+          workflowRun: reviewRunContext.workflowRun,
+          clinicalPackage: reviewRunContext.clinicalPackage,
+          latestEvalRun: reviewRunContext.latestEvalRun,
+          latestEvalStatus: reviewRunContext.latestEvalStatus,
+          exportHistory: reviewRunContext.exportHistory,
+        });
+        assertSchema(schemaRegistry, 'contracts/review-run-view.schema.json', reviewRunView);
+        sendJson(response, 200, reviewRunView);
+        return;
+      }
+
+      const workflowRunArtifactsPath = matchWorkflowRunArtifactsPath(pathname);
+
+      if (method === 'GET' && workflowRunArtifactsPath) {
+        const workflowRun = store.getWorkflowRun(workflowRunArtifactsPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'artifact.view', 'workflow-run', workflowRun.id);
+        const artifactListView = buildWorkflowArtifactListViewPayload({
+          store,
+          workflowRun,
+          artifactTypeFilters: parseArtifactTypeFilters(requestUrl.searchParams),
+          expand: requestUrl.searchParams.get('expand') === 'true',
+        });
+        assertSchema(schemaRegistry, 'contracts/workflow-artifact-list-view.schema.json', artifactListView);
+        sendJson(response, 200, artifactListView);
+        return;
+      }
+
+      if (method === 'GET' && isLocalRuntimeViewPath(pathname)) {
+        const runtimeView = createLocalRuntimeView({
+          actor,
+          tenantId: actor.tenantId,
+          serverBaseUrl: getServerBaseUrl(request),
+          storage: {
+            dbFilePath: store.dbFilePath,
+            objectStoreDir: store.objectStoreDir,
+          },
+          availableCommands: [
+            'pnpm dev:api',
+            'pnpm dev:web',
+            'pnpm lint',
+            'pnpm typecheck',
+            'pnpm test',
+            'pnpm validate:pack',
+            'pnpm build',
+            'pnpm eval:run -- --run-id <runId>',
+            'pnpm local:backup',
+            'pnpm local:reset',
+            'pnpm local:restore -- --path var/backups/<timestamp>',
+          ],
+          readiness: getReadinessSnapshot(),
+        });
+        assertSchema(schemaRegistry, 'contracts/local-runtime-view.schema.json', runtimeView);
+        sendJson(response, 200, runtimeView);
         return;
       }
 

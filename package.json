@@ -4,15 +4,17 @@
   "version": "0.1.0",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "build": "node scripts/build_workspaces.mjs",
+    "build": "pnpm build:web && node scripts/build_workspaces.mjs",
+    "build:web": "pnpm --filter @dcp/web build",
     "dev:api": "node services/intake-api/src/server.mjs",
+    "dev:web": "pnpm --filter @dcp/web dev",
     "eval:run": "node scripts/run_eval.mjs",
-    "lint": "node scripts/lint_repo.mjs",
+    "lint": "node scripts/lint_repo.mjs && pnpm --filter @dcp/web lint",
     "local:backup": "node scripts/local_storage.mjs backup",
     "local:reset": "node scripts/local_storage.mjs reset",
     "local:restore": "node scripts/local_storage.mjs restore",
-    "test": "node --test",
-    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "node --test ./scripts/*.test.mjs ./services/*/src/*.test.mjs ./apps/web/src/*.test.mjs && pnpm --filter @dcp/web test",
+    "typecheck": "tsc --project tsconfig.json --noEmit && pnpm --filter @dcp/web typecheck",
     "validate:pack": "node scripts/validate_repo_pack.mjs"
   },
   "devDependencies": {

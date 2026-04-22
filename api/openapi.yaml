@@ -93,6 +93,98 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/workflow-run.schema.json'
+  /api/v1/review-dashboard-view:
+    get:
+      summary: Get the frontend review dashboard read model
+      operationId: getReviewDashboardView
+      parameters:
+        - in: query
+          name: disease
+          schema:
+            type: string
+        - in: query
+          name: state
+          schema:
+            type: string
+        - in: query
+          name: stage
+          schema:
+            type: string
+        - in: query
+          name: exportStatus
+          schema:
+            type: string
+        - in: query
+          name: evalStatus
+          schema:
+            type: string
+        - in: query
+          name: sort
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review dashboard view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-dashboard-view.schema.json'
+  /api/v1/workflow-runs/{runId}/review-run-view:
+    get:
+      summary: Get the frontend review-run read model
+      operationId: getReviewRunView
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review run view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-run-view.schema.json'
+  /api/v1/workflow-runs/{runId}/artifacts:
+    get:
+      summary: List workflow-run artifacts for frontend pages
+      operationId: listWorkflowRunArtifacts
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: artifactType
+          description: >
+            Optional repeatable or comma-separated artifact type filter.
+          schema:
+            type: string
+        - in: query
+          name: expand
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Workflow artifact list view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/workflow-artifact-list-view.schema.json'
+  /api/v1/local-runtime-view:
+    get:
+      summary: Get the local runtime read model for the settings page
+      operationId: getLocalRuntimeView
+      responses:
+        '200':
+          description: Local runtime view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/local-runtime-view.schema.json'
   /api/v1/workflow-runs/{runId}/approvals:
     post:
       summary: Submit an approval decision

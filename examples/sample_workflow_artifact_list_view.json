@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "run.hcc.001",
+  "artifactTypeFilters": [
+    "story-workbook",
+    "qa-report"
+  ],
+  "expand": true,
+  "artifacts": [
+    {
+      "artifactType": "story-workbook",
+      "artifactId": "swb.hcc.001",
+      "status": "generated",
+      "path": "tenant.local/story-workbook/swb.hcc.001.json",
+      "payload": {
+        "schemaVersion": "1.0.0",
+        "id": "swb.hcc.001"
+      }
+    },
+    {
+      "artifactType": "qa-report",
+      "artifactId": "qar.hcc.001",
+      "status": "approved",
+      "path": "tenant.local/qa-report/qar.hcc.001.json",
+      "payload": {
+        "schemaVersion": "1.0.0",
+        "id": "qar.hcc.001"
+      }
+    }
+  ]
+}

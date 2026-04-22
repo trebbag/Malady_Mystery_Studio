@@ -66,7 +66,7 @@ export function createEvaluationSummaryView(options) {
     latestEvalStatus: options.latestEvalStatus,
     evaluatedAt: options.latestEvalRun?.evaluatedAt,
     allThresholdsMet: options.latestEvalRun?.summary?.allThresholdsMet,
-    familyStatuses: (options.latestEvalRun?.familyResults ?? []).map((familyResult) => ({
+    familyStatuses: (options.latestEvalRun?.familyResults ?? []).map((/** @type {any} */ familyResult) => ({
       family: familyResult.family,
       status: familyResult.status,
       score: familyResult.score,
@@ -85,6 +85,40 @@ export function createExportHistoryView(options) {
     schemaVersion: SCHEMA_VERSION,
     runId: options.runId,
     entries: options.entries ?? [],
+  };
+}
+
+/**
+ * @param {{ runId: string, artifactTypeFilters?: string[], expand: boolean, artifacts: any[] }} options
+ * @returns {any}
+ */
+export function createWorkflowArtifactListView(options) {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    runId: options.runId,
+    artifactTypeFilters: options.artifactTypeFilters ?? [],
+    expand: options.expand,
+    artifacts: options.artifacts ?? [],
+  };
+}
+
+/**
+ * @param {{ actor: any, tenantId: string, serverBaseUrl: string, storage: { dbFilePath: string, objectStoreDir: string }, availableCommands: string[], readiness: any }} options
+ * @returns {any}
+ */
+export function createLocalRuntimeView(options) {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    actor: {
+      id: options.actor.id,
+      displayName: options.actor.displayName,
+      roles: options.actor.roles ?? [],
+    },
+    tenantId: options.tenantId,
+    serverBaseUrl: options.serverBaseUrl,
+    storage: options.storage,
+    availableCommands: options.availableCommands,
+    readiness: options.readiness,
   };
 }
 
@@ -148,7 +182,7 @@ export function createReviewRunView(options) {
     state: options.workflowRun.state,
     currentStage: options.workflowRun.currentStage,
     pauseReason: options.workflowRun.pauseReason,
-    stageTimeline: options.workflowRun.stages.map((stage) => ({
+    stageTimeline: options.workflowRun.stages.map((/** @type {any} */ stage) => ({
       name: stage.name,
       status: stage.status,
       notes: stage.notes,

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0.0",
+  "actor": {
+    "id": "local-operator",
+    "displayName": "Local Operator",
+    "roles": [
+      "Local Operator"
+    ]
+  },
+  "tenantId": "tenant.local",
+  "serverBaseUrl": "http://127.0.0.1:3000",
+  "storage": {
+    "dbFilePath": "var/db/platform.sqlite",
+    "objectStoreDir": "var/object-store"
+  },
+  "availableCommands": [
+    "pnpm dev:api",
+    "pnpm dev:web",
+    "pnpm eval:run -- --run-id <runId>",
+    "pnpm local:backup",
+    "pnpm local:reset",
+    "pnpm local:restore -- --path var/backups/<timestamp>"
+  ],
+  "readiness": {
+    "areas": [
+      {
+        "label": "Foundation and local runtime",
+        "percentComplete": 95
+      },
+      {
+        "label": "Clinical truth layer",
+        "percentComplete": 91
+      },
+      {
+        "label": "Workbook and guardrails",
+        "percentComplete": 75
+      },
+      {
+        "label": "Scene, panel, render-prep",
+        "percentComplete": 72
+      },
+      {
+        "label": "Local review, eval, and export workflow",
+        "percentComplete": 90
+      },
+      {
+        "label": "Frontend structure and UX prep",
+        "percentComplete": 70
+      },
+      {
+        "label": "Operational pilot readiness",
+        "percentComplete": 38
+      }
+    ],
+    "overall": {
+      "localMvpReadiness": 85,
+      "pilotReadiness": 45
+    },
+    "remainingWork": [
+      "reviewer comments, diffing, assignment, and queueing",
+      "live render integration and retry orchestration",
+      "managed database and object storage for pilot use",
+      "deployment, observability, retention execution, backup, and recovery drills",
+      "external auth when the app stops being local-open",
+      "further expansion of governed disease and source coverage"
+    ]
+  }
+}

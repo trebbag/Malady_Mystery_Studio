@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/local-runtime-view.schema.json",
+  "title": "LocalRuntimeView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "actor",
+    "tenantId",
+    "serverBaseUrl",
+    "storage",
+    "availableCommands",
+    "readiness"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "displayName", "roles"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tenantId": {
+      "type": "string"
+    },
+    "serverBaseUrl": {
+      "type": "string"
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dbFilePath", "objectStoreDir"],
+      "properties": {
+        "dbFilePath": {
+          "type": "string"
+        },
+        "objectStoreDir": {
+          "type": "string"
+        }
+      }
+    },
+    "availableCommands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["areas", "overall", "remainingWork"],
+      "properties": {
+        "areas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "percentComplete"],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "percentComplete": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        },
+        "overall": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["localMvpReadiness", "pilotReadiness"],
+          "properties": {
+            "localMvpReadiness": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "pilotReadiness": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "remainingWork": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

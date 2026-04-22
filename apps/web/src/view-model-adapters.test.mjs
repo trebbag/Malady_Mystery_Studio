@@ -7,10 +7,12 @@ import {
   createClinicalPackageView,
   createEvaluationSummaryView,
   createExportHistoryView,
+  createLocalRuntimeView,
   createReviewDashboardView,
   createReviewRunView,
   createSourceGovernanceView,
   createTraceCoverageView,
+  createWorkflowArtifactListView,
 } from './view-model-adapters.mjs';
 import { webRouteManifest } from './route-manifest.mjs';
 
@@ -126,6 +128,50 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
       (await import('../../../examples/sample_export_history_entry.json', { with: { type: 'json' } })).default,
     ],
   });
+  const artifactListView = createWorkflowArtifactListView({
+    runId: 'run.hcc.001',
+    artifactTypeFilters: ['story-workbook'],
+    expand: true,
+    artifacts: [
+      {
+        artifactType: 'story-workbook',
+        artifactId: 'swb.hcc.001',
+        status: 'generated',
+        path: 'tenant.local/story-workbook/swb.hcc.001.json',
+        payload: {
+          schemaVersion: '1.0.0',
+          id: 'swb.hcc.001',
+        },
+      },
+    ],
+  });
+  const localRuntimeView = createLocalRuntimeView({
+    actor: {
+      id: 'local-operator',
+      displayName: 'Local Operator',
+      roles: ['Local Operator'],
+    },
+    tenantId: 'tenant.local',
+    serverBaseUrl: 'http://127.0.0.1:3000',
+    storage: {
+      dbFilePath: 'var/db/platform.sqlite',
+      objectStoreDir: 'var/object-store',
+    },
+    availableCommands: ['pnpm dev:api', 'pnpm dev:web'],
+    readiness: {
+      areas: [
+        {
+          label: 'Foundation and local runtime',
+          percentComplete: 95,
+        },
+      ],
+      overall: {
+        localMvpReadiness: 85,
+        pilotReadiness: 45,
+      },
+      remainingWork: ['live render integration'],
+    },
+  });
   const dashboard = createReviewDashboardView({
     workflowRuns: [
       {
@@ -201,6 +247,8 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
   schemaRegistry.assertValid('contracts/clinical-package-view.schema.json', clinicalPackage);
   schemaRegistry.assertValid('contracts/evaluation-summary-view.schema.json', evaluationSummary);
   schemaRegistry.assertValid('contracts/export-history-view.schema.json', exportHistory);
+  schemaRegistry.assertValid('contracts/workflow-artifact-list-view.schema.json', artifactListView);
+  schemaRegistry.assertValid('contracts/local-runtime-view.schema.json', localRuntimeView);
   schemaRegistry.assertValid('contracts/review-dashboard-view.schema.json', dashboard);
   schemaRegistry.assertValid('contracts/review-run-view.schema.json', reviewRun);
 });

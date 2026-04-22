@@ -35,11 +35,16 @@ const filterBuildFile = (source) => {
     return true;
   }
 
-  if (relativePath.startsWith(`dist${path.sep}`) || relativePath.startsWith(`node_modules${path.sep}`)) {
+  if (
+    relativePath.startsWith(`dist${path.sep}`)
+    || relativePath.includes(`${path.sep}dist${path.sep}`)
+    || relativePath.startsWith(`node_modules${path.sep}`)
+    || relativePath.includes(`${path.sep}node_modules${path.sep}`)
+  ) {
     return false;
   }
 
-  return !relativePath.endsWith('.test.mjs');
+  return !relativePath.endsWith('.test.mjs') && !relativePath.endsWith('.test.ts') && !relativePath.endsWith('.test.tsx');
 };
 
 await rm(distDir, { force: true, recursive: true });

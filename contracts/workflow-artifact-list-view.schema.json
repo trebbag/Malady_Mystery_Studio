@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/workflow-artifact-list-view.schema.json",
+  "title": "WorkflowArtifactListView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "expand",
+    "artifacts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "artifactTypeFilters": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "expand": {
+      "type": "boolean"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifactType",
+          "artifactId",
+          "status"
+        ],
+        "properties": {
+          "artifactType": {
+            "type": "string"
+          },
+          "artifactId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "status": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}
