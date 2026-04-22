@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "qar.hcc.001",
+  "subjectType": "story-workbook",
+  "subjectId": "swb.hcc.001",
+  "scores": {
+    "medicalAccuracy": 0.97,
+    "mysteryIntegrity": 0.91,
+    "educationalSequencing": 0.93,
+    "panelization": 0.9,
+    "renderReadiness": 0.94
+  },
+  "blockingIssues": [],
+  "warnings": [
+    "Systemic therapy wording remains intentionally generic and should become regimen-specific only with disease-context rules and clinical review."
+  ],
+  "verdict": "conditional-pass",
+  "reviewers": [
+    {
+      "role": "clinical",
+      "reviewerId": "clinician-01",
+      "decision": "approved",
+      "comment": "Conceptually sound; preserve stage-aware caveat."
+    },
+    {
+      "role": "editorial",
+      "reviewerId": "editor-01",
+      "decision": "approved",
+      "comment": "Strong opener and callback."
+    }
+  ],
+  "createdAt": "2026-04-21T00:00:00Z"
+}

@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/scene-card.schema.json",
+  "title": "SceneCard",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "storyWorkbookId",
+    "sceneOrder",
+    "act",
+    "title",
+    "sceneType",
+    "goal",
+    "location",
+    "bodyScale",
+    "dramaticQuestion",
+    "beats",
+    "requiredMedicalTruths",
+    "outputs"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "storyWorkbookId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "sceneOrder": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "act": {
+      "type": "string",
+      "enum": [
+        "opener",
+        "case-intake",
+        "planning",
+        "entry",
+        "investigation",
+        "reveal",
+        "treatment",
+        "wrap-up"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "sceneType": {
+      "type": "string"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "bodyScale": {
+      "type": "string",
+      "enum": [
+        "external-world",
+        "whole-body",
+        "organ",
+        "tissue",
+        "cellular",
+        "molecular"
+      ]
+    },
+    "dramaticQuestion": {
+      "type": "string"
+    },
+    "beats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "order",
+          "beatGoal",
+          "storyFunction"
+        ],
+        "properties": {
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "beatGoal": {
+            "type": "string"
+          },
+          "storyFunction": {
+            "type": "string"
+          },
+          "clueRevealed": {
+            "type": "string"
+          },
+          "linkedClaimIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          }
+        }
+      }
+    },
+    "requiredMedicalTruths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

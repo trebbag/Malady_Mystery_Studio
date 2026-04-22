@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/canonical-disease.schema.json",
+  "title": "CanonicalDisease",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "rawInput",
+    "normalizedInput",
+    "resolutionStatus",
+    "confidence",
+    "candidateMatches"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "rawInput": {
+      "type": "string"
+    },
+    "normalizedInput": {
+      "type": "string"
+    },
+    "resolutionStatus": {
+      "type": "string",
+      "enum": [
+        "resolved",
+        "ambiguous",
+        "unresolved"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ontologyId": {
+      "type": "string"
+    },
+    "diseaseCategory": {
+      "type": "string"
+    },
+    "candidateMatches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "canonicalDiseaseName",
+          "matchType"
+        ],
+        "properties": {
+          "canonicalDiseaseName": {
+            "type": "string"
+          },
+          "ontologyId": {
+            "type": "string"
+          },
+          "matchType": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "alias",
+              "ambiguous-suggestion"
+            ]
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/qa-report.schema.json",
+  "title": "QAReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "subjectType",
+    "subjectId",
+    "scores",
+    "blockingIssues",
+    "warnings",
+    "verdict",
+    "reviewers"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "subjectType": {
+      "type": "string",
+      "enum": [
+        "disease-packet",
+        "story-workbook",
+        "scene-card",
+        "panel-plan",
+        "render-prompt",
+        "workflow-run",
+        "release-bundle"
+      ]
+    },
+    "subjectId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "medicalAccuracy",
+        "mysteryIntegrity",
+        "educationalSequencing",
+        "panelization",
+        "renderReadiness"
+      ],
+      "properties": {
+        "medicalAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "mysteryIntegrity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "educationalSequencing": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "panelization": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "renderReadiness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "blockingIssues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "conditional-pass",
+        "fail"
+      ]
+    },
+    "reviewers": {
+      "type": "array",
+      "items": {
+        "$ref": "approval-decision.schema.json"
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

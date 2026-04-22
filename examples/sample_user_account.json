@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "usr.owner.001",
+  "tenantId": "tenant.demo",
+  "email": "owner@studio-demo.local",
+  "displayName": "Studio Owner",
+  "roles": [
+    "Org Owner",
+    "Clinical Reviewer",
+    "Story Editor",
+    "Product Editor"
+  ],
+  "status": "active",
+  "authProvider": "local-password",
+  "createdAt": "2026-04-21T00:00:00Z",
+  "updatedAt": "2026-04-21T00:00:00Z"
+}

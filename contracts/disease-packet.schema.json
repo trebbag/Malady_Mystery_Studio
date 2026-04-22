@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/disease-packet.schema.json",
+  "title": "DiseasePacket",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "diseaseInput",
+    "canonicalDiseaseName",
+    "diseaseCategory",
+    "sourceSetHash",
+    "evidenceSummary",
+    "clinicalSummary",
+    "physiologyPrerequisites",
+    "pathophysiology",
+    "presentation",
+    "diagnostics",
+    "management",
+    "evidence"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "diseaseInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rawInput",
+        "normalizedInput"
+      ],
+      "properties": {
+        "rawInput": {
+          "type": "string"
+        },
+        "normalizedInput": {
+          "type": "string"
+        },
+        "resolutionStatus": {
+          "type": "string",
+          "enum": [
+            "resolved",
+            "ambiguous",
+            "unresolved"
+          ]
+        },
+        "ontologyId": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "diseaseCategory": {
+      "type": "string"
+    },
+    "sourceSetHash": {
+      "type": "string"
+    },
+    "evidenceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceIds",
+        "freshnessScore",
+        "freshnessStatus",
+        "contradictionCount",
+        "blockingContradictions",
+        "governanceVerdict"
+      ],
+      "properties": {
+        "sourceIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          }
+        },
+        "freshnessScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "freshnessStatus": {
+          "type": "string",
+          "enum": [
+            "current",
+            "aging",
+            "stale"
+          ]
+        },
+        "contradictionCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blockingContradictions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "governanceVerdict": {
+          "type": "string",
+          "enum": [
+            "approved",
+            "review-required",
+            "blocked"
+          ]
+        }
+      }
+    },
+    "educationalFocus": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "clinicalSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "oneSentence",
+        "keyMechanism",
+        "timeScale",
+        "patientExperienceSummary"
+      ],
+      "properties": {
+        "oneSentence": {
+          "type": "string"
+        },
+        "keyMechanism": {
+          "type": "string"
+        },
+        "timeScale": {
+          "type": "string"
+        },
+        "patientExperienceSummary": {
+          "type": "string"
+        }
+      }
+    },
+    "physiologyPrerequisites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "topic",
+          "whyItMatters"
+        ],
+        "properties": {
+          "topic": {
+            "type": "string"
+          },
+          "whyItMatters": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "pathophysiology": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "order",
+          "event",
+          "mechanism",
+          "scale"
+        ],
+        "properties": {
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "event": {
+            "type": "string"
+          },
+          "mechanism": {
+            "type": "string"
+          },
+          "scale": {
+            "type": "string",
+            "enum": [
+              "whole-body",
+              "organ",
+              "tissue",
+              "cellular",
+              "molecular"
+            ]
+          },
+          "linkedClaimIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          }
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commonSymptoms",
+        "commonSigns",
+        "historyClues",
+        "physicalExamClues",
+        "complications"
+      ],
+      "properties": {
+        "commonSymptoms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commonSigns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "historyClues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "physicalExamClues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "complications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "typicalTimecourse": {
+          "type": "string"
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "labs",
+        "imaging",
+        "pathology",
+        "diagnosticLogic",
+        "differentials"
+      ],
+      "properties": {
+        "labs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "purpose",
+              "expectedFinding"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "expectedFinding": {
+                "type": "string"
+              },
+              "claimIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                }
+              }
+            }
+          }
+        },
+        "imaging": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "purpose",
+              "expectedFinding"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "expectedFinding": {
+                "type": "string"
+              },
+              "claimIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                }
+              }
+            }
+          }
+        },
+        "pathology": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "expectedFinding"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "expectedFinding": {
+                "type": "string"
+              },
+              "claimIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                }
+              }
+            }
+          }
+        },
+        "diagnosticLogic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "differentials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "disease",
+              "whyConsidered",
+              "whyLessLikely"
+            ],
+            "properties": {
+              "disease": {
+                "type": "string"
+              },
+              "whyConsidered": {
+                "type": "string"
+              },
+              "whyLessLikely": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "management": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "acuteStabilization",
+        "definitiveTherapies",
+        "monitoring",
+        "notes"
+      ],
+      "properties": {
+        "acuteStabilization": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "definitiveTherapies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "mechanismOfAction",
+              "whenUsed"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "mechanismOfAction": {
+                "type": "string"
+              },
+              "whenUsed": {
+                "type": "string"
+              },
+              "claimIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                }
+              }
+            }
+          }
+        },
+        "monitoring": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "evidence-record.schema.json"
+      }
+    }
+  }
+}

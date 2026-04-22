@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "tenant.demo",
+  "slug": "studio-demo",
+  "displayName": "Studio Demo Tenant",
+  "status": "active",
+  "ssoMode": "oidc-hs256",
+  "retentionDefaults": {
+    "artifactRetentionDays": 365,
+    "auditRetentionDays": 2555,
+    "sessionTtlHours": 12
+  },
+  "createdAt": "2026-04-21T00:00:00Z",
+  "updatedAt": "2026-04-21T00:00:00Z"
+}

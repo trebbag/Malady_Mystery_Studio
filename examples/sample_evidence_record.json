@@ -1,0 +1,20 @@
+{
+  "claimId": "clm.hcc.001",
+  "claimText": "Chronic liver injury increases HCC risk.",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "sourceId": "src.approved-hepatology-source",
+  "sourceType": "guideline",
+  "sourceLabel": "Approved hepatology source",
+  "sourceLocator": "section risk and pathogenesis",
+  "confidence": 0.98,
+  "sourceTier": "tier-1",
+  "lastReviewedAt": "2026-04-21T00:00:00Z",
+  "freshnessScore": 0.98,
+  "freshnessStatus": "current",
+  "contradictionStatus": "none",
+  "approvalStatus": "approved",
+  "applicability": "Adult hepatology education baseline",
+  "reviewNotes": [
+    "Preferred guideline source for hepatobiliary education."
+  ]
+}

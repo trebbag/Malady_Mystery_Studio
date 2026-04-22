@@ -1,0 +1,80 @@
+name: disease-comic-workflow
+schemaVersion: 1.0.0
+initialState: draft
+initialStage: intake
+requiredApprovalRoles:
+  - clinical
+  - editorial
+  - product
+stageOrder:
+  - intake
+  - canonicalization
+  - disease-packet
+  - story-workbook
+  - scene-planning
+  - panel-planning
+  - render-prep
+  - review
+  - export
+states:
+  draft:
+    on:
+      - START_RUN
+      - CANCEL_RUN
+  running:
+    on:
+      - STAGE_PASSED
+      - STAGE_FAILED
+      - CANCEL_RUN
+  review:
+    on:
+      - RECORD_APPROVAL
+      - APPROVALS_COMPLETED
+      - REJECT_TO_STAGE
+      - CANCEL_RUN
+  approved:
+    on:
+      - START_EXPORT
+      - EXPORT_COMPLETED
+      - REOPEN_REVIEW
+  exported:
+    on: []
+  failed:
+    on:
+      - RETRY_STAGE
+      - CANCEL_RUN
+  cancelled:
+    on: []
+events:
+  START_RUN:
+    targetState: running
+    targetStage: intake
+  STAGE_PASSED:
+    usesNextStage: true
+  STAGE_FAILED:
+    targetState: failed
+    keepCurrentStage: true
+  RECORD_APPROVAL:
+    targetState: review
+    targetStage: review
+  APPROVALS_COMPLETED:
+    targetState: approved
+    targetStage: export
+  REJECT_TO_STAGE:
+    targetState: running
+    targetStageFromPayload: true
+  START_EXPORT:
+    targetState: approved
+    targetStage: export
+  EXPORT_COMPLETED:
+    targetState: exported
+    targetStage: export
+  RETRY_STAGE:
+    targetState: running
+    keepCurrentStage: true
+  CANCEL_RUN:
+    targetState: cancelled
+    keepCurrentStage: true
+  REOPEN_REVIEW:
+    targetState: review
+    targetStage: review

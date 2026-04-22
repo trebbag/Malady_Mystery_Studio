@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/evidence-record.schema.json",
+  "title": "EvidenceRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claimId",
+    "claimText",
+    "sourceId",
+    "sourceType",
+    "sourceLabel",
+    "sourceLocator",
+    "confidence",
+    "freshnessScore",
+    "freshnessStatus",
+    "contradictionStatus",
+    "approvalStatus"
+  ],
+  "properties": {
+    "claimId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "claimText": {
+      "type": "string"
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "sourceId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "sourceType": {
+      "type": "string",
+      "enum": [
+        "guideline",
+        "review",
+        "trial",
+        "textbook",
+        "reference"
+      ]
+    },
+    "sourceLabel": {
+      "type": "string"
+    },
+    "sourceLocator": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "sourceTier": {
+      "type": "string",
+      "enum": [
+        "tier-1",
+        "tier-2",
+        "tier-3",
+        "tenant-pack"
+      ]
+    },
+    "lastReviewedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "freshnessScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "freshnessStatus": {
+      "type": "string",
+      "enum": [
+        "current",
+        "aging",
+        "stale"
+      ]
+    },
+    "contradictionStatus": {
+      "type": "string",
+      "enum": [
+        "none",
+        "monitor",
+        "blocking"
+      ]
+    },
+    "approvalStatus": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "conditional",
+        "suspended"
+      ]
+    },
+    "applicability": {
+      "type": "string"
+    },
+    "reviewNotes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

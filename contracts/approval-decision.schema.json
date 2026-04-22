@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/approval-decision.schema.json",
+  "title": "ApprovalDecision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "role",
+    "decision"
+  ],
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "clinical",
+        "editorial",
+        "product",
+        "security"
+      ]
+    },
+    "reviewerId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "commented"
+      ]
+    },
+    "comment": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

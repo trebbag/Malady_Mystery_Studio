@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/release-bundle.schema.json",
+  "title": "ReleaseBundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "releaseId",
+    "workflowRunId",
+    "tenantId",
+    "version",
+    "artifactManifest",
+    "qualitySummary",
+    "approvals",
+    "exportTargets",
+    "exportedAt",
+    "exportedBy",
+    "bundleIndexLocation",
+    "sourceEvidencePackLocation",
+    "releaseGateChecks"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "releaseId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflowRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "tenantId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "version": {
+      "type": "string"
+    },
+    "artifactManifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifactType",
+          "artifactId",
+          "location",
+          "contentType",
+          "retentionClass"
+        ],
+        "properties": {
+          "artifactType": {
+            "type": "string"
+          },
+          "artifactId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "location": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "retentionClass": {
+            "type": "string"
+          },
+          "checksum": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "qualitySummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "medicalAccuracy",
+        "mysteryIntegrity",
+        "educationalSequencing",
+        "panelization",
+        "renderReadiness",
+        "releaseVerdict"
+      ],
+      "properties": {
+        "medicalAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "mysteryIntegrity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "educationalSequencing": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "panelization": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "renderReadiness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sourceFreshness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "contradictionStatus": {
+          "type": "string",
+          "enum": [
+            "none",
+            "monitor",
+            "blocking"
+          ]
+        },
+        "releaseVerdict": {
+          "type": "string",
+          "enum": [
+            "approved",
+            "conditional",
+            "rejected"
+          ]
+        }
+      }
+    },
+    "releaseGateChecks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "status"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ]
+          },
+          "details": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "approval-decision.schema.json"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "reviewerId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._:-]+$"
+              }
+            },
+            "required": [
+              "reviewerId",
+              "timestamp"
+            ]
+          }
+        ]
+      }
+    },
+    "exportTargets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "exportedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "exportedBy": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "bundleIndexLocation": {
+      "type": "string"
+    },
+    "sourceEvidencePackLocation": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "rpr.hcc.004.03",
+  "panelId": "pnl.hcc.004.03",
+  "modelFamily": "nano-banana-2",
+  "aspectRatio": "4:3",
+  "positivePrompt": "Comic-book panel art, dynamic science-fantasy mystery tone. Two tiny alien detectives hover with miniature jet packs beside a suspicious focal region inside the liver. Surrounding liver tissue appears more orderly, but the target region shows distorted architecture and ominous self-contained growth. Medium shot with slight push-in, slightly canted angle, warm reds and golds turning uneasy, no visible text, clean composition, cinematic lighting, highly readable anatomy-inspired environment.",
+  "negativePrompt": "no speech bubbles, no captions, no labels, no medical chart overlays, no gore, no photoreal pathology slide, no extra detectives, no duplicate limbs, no illegible background text",
+  "continuityAnchors": [
+    "same two recurring alien detectives",
+    "miniature jet packs",
+    "case tablet hologram",
+    "red-gold liver environment"
+  ],
+  "characterLocks": [
+    "Detective A is shorter and more impulsive",
+    "Detective B is taller and more analytical"
+  ],
+  "anatomyLocks": [
+    "liver-inspired tissue geometry",
+    "focal abnormal district contrasts with surrounding tissue",
+    "avoid generic intestine-like visuals"
+  ],
+  "styleLocks": [
+    "action-packed whimsical comic mystery",
+    "high clarity",
+    "panel composition optimized for later lettering"
+  ],
+  "textLayerPolicy": {
+    "renderVisibleText": false,
+    "letteringHandledSeparately": true,
+    "notes": "All dialogue and teaching captions should be applied in post-layout."
+  }
+}

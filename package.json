@@ -1,0 +1,20 @@
+{
+  "name": "disease-comic-platform",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "node scripts/build_workspaces.mjs",
+    "dev:api": "node services/intake-api/src/server.mjs",
+    "lint": "node scripts/lint_repo.mjs",
+    "test": "node --test",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "validate:pack": "node scripts/validate_repo_pack.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "ajv": "^8.17.1",
+    "typescript": "^5.8.3",
+    "yaml": "^2.8.1"
+  }
+}

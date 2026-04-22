@@ -1,0 +1,7 @@
+{
+  "role": "clinical",
+  "reviewerId": "clinician-01",
+  "decision": "approved",
+  "comment": "Packet and workbook are medically grounded.",
+  "timestamp": "2026-04-21T00:05:00Z"
+}

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "scn.hcc.004",
+  "storyWorkbookId": "swb.hcc.001",
+  "sceneOrder": 4,
+  "act": "entry",
+  "title": "Through the Portal into the Hepatic Maze",
+  "sceneType": "signature entry sequence",
+  "goal": "Shift the story from clinical uncertainty into embodied investigation.",
+  "location": "portal bay to hepatic circulation",
+  "bodyScale": "organ",
+  "dramaticQuestion": "What will the detectives notice first once they enter the patient’s liver environment?",
+  "beats": [
+    {
+      "order": 1,
+      "beatGoal": "Activate the shrinking portal and set the mission stakes.",
+      "storyFunction": "transition",
+      "clueRevealed": "",
+      "linkedClaimIds": [
+        "clm.hcc.004"
+      ]
+    },
+    {
+      "order": 2,
+      "beatGoal": "Orient the audience to the liver landscape.",
+      "storyFunction": "worldbuilding",
+      "clueRevealed": "The tissue does not look uniformly healthy.",
+      "linkedClaimIds": [
+        "clm.hcc.001"
+      ]
+    },
+    {
+      "order": 3,
+      "beatGoal": "Introduce the first anomaly worth pursuing.",
+      "storyFunction": "clue",
+      "clueRevealed": "A suspicious region shows altered architecture.",
+      "linkedClaimIds": [
+        "clm.hcc.002",
+        "clm.hcc.003"
+      ]
+    }
+  ],
+  "requiredMedicalTruths": [
+    "The liver can show background chronic damage before the main tumor is understood.",
+    "The first meaningful anomaly should suggest a focal process rather than explain the full diagnosis immediately."
+  ],
+  "outputs": [
+    "panel-plan",
+    "render-prompt",
+    "lettering-map"
+  ]
+}

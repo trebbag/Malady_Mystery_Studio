@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/canonicalization-resolution.schema.json",
+  "title": "CanonicalizationResolution",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "workflowRunId",
+    "originalCanonicalDiseaseId",
+    "resolvedCanonicalDiseaseId",
+    "selectedCanonicalDiseaseName",
+    "selectedOntologyId",
+    "resolutionMode",
+    "reviewerId",
+    "reviewerRoles",
+    "reason",
+    "occurredAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflowRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "originalCanonicalDiseaseId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "resolvedCanonicalDiseaseId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "selectedCanonicalDiseaseName": {
+      "type": "string"
+    },
+    "selectedOntologyId": {
+      "type": "string"
+    },
+    "resolutionMode": {
+      "type": "string",
+      "enum": [
+        "candidate-confirmation",
+        "reviewer-override"
+      ]
+    },
+    "reviewerId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "reviewerRoles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 8
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "aud.run.001",
+  "actorId": "clinical-01",
+  "actorRoles": [
+    "Clinical Reviewer",
+    "Viewer"
+  ],
+  "action": "canonicalization.resolve",
+  "subjectType": "workflow-run",
+  "subjectId": "run.mg.001",
+  "tenantId": "tenant.demo",
+  "outcome": "success",
+  "reason": "Clinician confirmed the intended disease after ambiguity review.",
+  "metadata": {
+    "originalCanonicalDiseaseId": "can.mg.ambiguous.001",
+    "resolvedCanonicalDiseaseId": "can.mg.resolved.001"
+  },
+  "occurredAt": "2026-04-21T00:00:00Z"
+}

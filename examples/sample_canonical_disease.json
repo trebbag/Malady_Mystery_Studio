@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "can.hcc.001",
+  "rawInput": "HCC",
+  "normalizedInput": "hcc",
+  "resolutionStatus": "resolved",
+  "confidence": 0.96,
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "aliases": [
+    "HCC",
+    "primary liver cancer (hepatocellular type)"
+  ],
+  "ontologyId": "ICD-10-CM:C22.0",
+  "diseaseCategory": "solid tumor / hepatobiliary oncology",
+  "candidateMatches": [
+    {
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "ontologyId": "ICD-10-CM:C22.0",
+      "matchType": "alias"
+    }
+  ],
+  "notes": "Alias expansion resolved HCC to the canonical oncology disease entry."
+}

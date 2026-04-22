@@ -1,0 +1,16 @@
+{
+  "caseId": "sample.eval.001",
+  "evalFamily": "medical_accuracy",
+  "input": {
+    "disease": "hepatocellular carcinoma",
+    "artifact": "disease-packet"
+  },
+  "expected": [
+    "Claims map to evidence objects."
+  ],
+  "forbidden": [
+    "Unsupported clinical certainty."
+  ],
+  "graderNotes": "Starter example that demonstrates schema shape.",
+  "thresholdHint": 0.97
+}

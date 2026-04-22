@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "prj.demo.001",
+  "tenantId": "tenant.demo",
+  "title": "Hepatocellular carcinoma starter project",
+  "status": "active",
+  "input": {
+    "diseaseName": "hepatocellular carcinoma",
+    "audienceTier": "provider-education",
+    "lengthProfile": "standard-issue",
+    "qualityProfile": "pilot",
+    "styleProfile": "whimsical-mystery"
+  },
+  "activeWorkflowRunId": "run.hcc.001",
+  "workflowRunIds": [
+    "run.hcc.001"
+  ],
+  "createdAt": "2026-04-21T00:00:00Z",
+  "updatedAt": "2026-04-21T00:05:00Z"
+}

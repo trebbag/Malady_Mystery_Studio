@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "swb.hcc.001",
+  "diseasePacketId": "dpk.hcc.001",
+  "storyTitle": "The Hidden Signal Beneath the Lantern Market",
+  "logline": "Two alien detectives investigate a vague case of fatigue and abdominal discomfort, descend into a troubled liver, and discover that a quiet biomarker trail and a hidden architectural takeover are steering the whole mystery.",
+  "toneProfile": [
+    "whimsical",
+    "mystery",
+    "action",
+    "clinical wonder"
+  ],
+  "openingHook": {
+    "setup": "The detectives argue over a counterfeit star-map at a flea market for intergalactic curiosities.",
+    "sideJokeSeed": "The fake map glows whenever somebody pretends to know where they are going.",
+    "whyItWorks": "It foreshadows the later problem of following misleading signals inside the body."
+  },
+  "sidePlot": "The fake star-map keeps misdirecting them whenever one detective acts overly confident.",
+  "caseQuestion": "What is quietly driving the patient’s progressive fatigue, weight loss, and liver-region discomfort?",
+  "detectivePlan": {
+    "initialHypotheses": [
+      "Is this primarily inflammation?",
+      "Is there a vascular problem creating secondary injury?",
+      "Is a hidden growth distorting the liver’s normal function?"
+    ],
+    "entryPlan": "Enter through the circulation, survey the liver environment, and follow any anomalous molecular or architectural clues.",
+    "firstInvestigationSite": "hepatic circulation and the liver surface"
+  },
+  "clueLadder": [
+    {
+      "order": 1,
+      "clue": "The liver landscape looks patchy and chronically weathered before the main culprit is even visible.",
+      "whyItMatters": "It suggests the story does not begin with a pristine organ.",
+      "discoveryMode": "inside-body",
+      "linkedClaimIds": [
+        "clm.hcc.001",
+        "clm.hcc.004"
+      ]
+    },
+    {
+      "order": 2,
+      "clue": "A hidden district of cells is multiplying with its own warped logic.",
+      "whyItMatters": "This raises the possibility of malignancy.",
+      "discoveryMode": "inside-body",
+      "linkedClaimIds": [
+        "clm.hcc.002"
+      ]
+    },
+    {
+      "order": 3,
+      "clue": "A mysterious signal molecule appears again and again around the suspicious territory.",
+      "whyItMatters": "The detectives realize it may be a named clinical marker only after investigating it.",
+      "discoveryMode": "lab",
+      "linkedClaimIds": [
+        "clm.hcc.006"
+      ]
+    },
+    {
+      "order": 4,
+      "clue": "The vascular behavior of the lesion differs from the surrounding liver.",
+      "whyItMatters": "This helps the reveal cohere diagnostically.",
+      "discoveryMode": "imaging",
+      "linkedClaimIds": [
+        "clm.hcc.007"
+      ]
+    }
+  ],
+  "redHerrings": [
+    {
+      "misleadingInterpretation": "The entire case is just worsening chronic liver inflammation.",
+      "whyItSeemsPlausible": "The background tissue is already abnormal.",
+      "whyItFallsApart": "A focal autonomous growth and its marker trail are not explained by inflammation alone."
+    },
+    {
+      "misleadingInterpretation": "The odd signal molecule is the primary cause.",
+      "whyItSeemsPlausible": "It is striking and memorable when first discovered.",
+      "whyItFallsApart": "It is a clue to the culprit, not the culprit itself."
+    }
+  ],
+  "midpointReversal": "The detectives stop treating the strange molecular signal as the villain and realize it is evidence pointing toward a much larger hidden takeover.",
+  "grandReveal": {
+    "diagnosisName": "Hepatocellular carcinoma",
+    "revealLogic": "A malignant hepatocyte population growing within chronically damaged liver tissue best explains the patient’s progressive symptoms, the suspicious tissue architecture, the biomarker clue, and the imaging behavior.",
+    "recapPoints": [
+      "Background liver injury made the environment vulnerable.",
+      "The lesion behaved like an autonomous tumor rather than diffuse inflammation.",
+      "The discovered marker fit the tumor context without acting as a universal rule.",
+      "Imaging logic and clinical context sealed the case."
+    ]
+  },
+  "treatmentShowdown": {
+    "clinicalAction": "Deploy a stage-appropriate anti-tumor intervention chosen for the case context.",
+    "mechanisticVisualization": "The detectives use a precisely targeted strategy to isolate and dismantle the tumor stronghold while preserving as much functioning liver city as possible.",
+    "whyItResolvesTheConflict": "The treatment attacks the malignant process itself rather than merely soothing the surrounding chaos."
+  },
+  "wrapUp": {
+    "closingScene": "Back at the curiosities market, the detectives return the fake map and explain that clues are only useful when you know what they are pointing to.",
+    "callbackToOpener": "The map glows one last time when the overconfident detective claims he solved the case instantly.",
+    "finalImage": "The detectives laugh under a lantern shaped like a tiny liver lobe while the real clinical answer hangs clearly in the air."
+  },
+  "teachingObjectives": [
+    "Understand why HCC often emerges in chronically injured liver tissue.",
+    "Understand why symptoms can be nonspecific early.",
+    "Understand how biomarker clues, imaging, and context work together.",
+    "Understand why treatment choice depends on disease context and stage."
+  ],
+  "forbiddenShortcuts": [
+    "Do not name AFP before the detectives discover and investigate the mysterious signal.",
+    "Do not imply every patient with HCC has the same lab profile.",
+    "Do not collapse staging and liver-function context into a single generic treatment statement."
+  ]
+}

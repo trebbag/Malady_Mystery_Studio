@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/source-record.schema.json",
+  "title": "SourceRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "sourceLabel",
+    "sourceType",
+    "sourceTier",
+    "approvalStatus",
+    "freshnessScore",
+    "freshnessStatus",
+    "contradictionStatus",
+    "lastReviewedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "sourceLabel": {
+      "type": "string"
+    },
+    "sourceType": {
+      "type": "string",
+      "enum": [
+        "guideline",
+        "review",
+        "trial",
+        "textbook",
+        "reference"
+      ]
+    },
+    "sourceTier": {
+      "type": "string",
+      "enum": [
+        "tier-1",
+        "tier-2",
+        "tier-3",
+        "tenant-pack"
+      ]
+    },
+    "approvalStatus": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "conditional",
+        "suspended"
+      ]
+    },
+    "freshnessScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "freshnessStatus": {
+      "type": "string",
+      "enum": [
+        "current",
+        "aging",
+        "stale"
+      ]
+    },
+    "contradictionStatus": {
+      "type": "string",
+      "enum": [
+        "none",
+        "monitor",
+        "blocking"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "governanceNotes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "lastReviewedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

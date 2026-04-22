@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "stm.hcc.001",
+  "storyWorkbookId": "swb.hcc.001",
+  "workflowRunId": "run.hcc.001",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "storyTitle": "The Hidden Signal Beneath the Lantern Market",
+  "openingSignature": "detectives chase a false signal from a glowing map before entering a troubled liver district",
+  "twistSignature": "the suspicious marker turns out to be evidence of a hidden structural takeover rather than the culprit itself",
+  "endingSignature": "the detectives return to the lantern market and reinterpret the false map as a lesson about clues",
+  "clueSignatures": [
+    "chronically weathered tissue appears before the culprit",
+    "a hidden district of cells follows its own logic",
+    "a recurring marker signal points toward the real culprit",
+    "vascular behavior reveals the pattern"
+  ],
+  "motifTags": [
+    "lantern-market",
+    "false-map",
+    "hidden-signal",
+    "liver-city"
+  ],
+  "generatedAt": "2026-04-21T00:00:00Z"
+}

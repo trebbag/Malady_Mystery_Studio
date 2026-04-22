@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "ltm.hcc.004",
+  "panelPlanId": "ppl.hcc.004",
+  "entries": [
+    {
+      "entryId": "lte.hcc.004.01",
+      "panelId": "pnl.hcc.004.01",
+      "order": 1,
+      "layerType": "dialogue",
+      "speaker": "Detective A",
+      "text": "Tell me this portal has a better sense of direction than our fake map.",
+      "placement": "upper-left balloon cluster",
+      "purpose": "Launch the entry beat with character voice.",
+      "spoilerLevel": "safe"
+    },
+    {
+      "entryId": "lte.hcc.004.02",
+      "panelId": "pnl.hcc.004.02",
+      "order": 2,
+      "layerType": "caption",
+      "text": "Even before the culprit appears, the liver landscape carries signs of chronic strain.",
+      "placement": "lower-third caption",
+      "purpose": "Teach background liver damage without embedding visible text in art.",
+      "spoilerLevel": "guarded"
+    },
+    {
+      "entryId": "lte.hcc.004.03",
+      "panelId": "pnl.hcc.004.03",
+      "order": 3,
+      "layerType": "dialogue",
+      "speaker": "Detective B",
+      "text": "That district is rewriting the neighborhood. Follow it, but do not name it yet.",
+      "placement": "right-side stacked balloons",
+      "purpose": "Land the first major clue while preserving reveal timing.",
+      "spoilerLevel": "guarded"
+    }
+  ]
+}

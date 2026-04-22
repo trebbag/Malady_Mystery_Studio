@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/workflow-event.schema.json",
+  "title": "WorkflowEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "workflowRunId",
+    "eventType",
+    "actor",
+    "stateTransition",
+    "occurredAt",
+    "payload"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflowRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "START_RUN",
+        "STAGE_PASSED",
+        "STAGE_FAILED",
+        "RECORD_APPROVAL",
+        "APPROVALS_COMPLETED",
+        "REJECT_TO_STAGE",
+        "START_EXPORT",
+        "EXPORT_COMPLETED",
+        "RETRY_STAGE",
+        "CANCEL_RUN",
+        "REOPEN_REVIEW"
+      ]
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "system",
+            "user"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]+$"
+        }
+      }
+    },
+    "stateTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fromState",
+        "toState",
+        "fromStage",
+        "toStage"
+      ],
+      "properties": {
+        "fromState": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "running",
+            "review",
+            "approved",
+            "exported",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "toState": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "running",
+            "review",
+            "approved",
+            "exported",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "fromStage": {
+          "type": "string",
+          "enum": [
+            "intake",
+            "canonicalization",
+            "disease-packet",
+            "story-workbook",
+            "scene-planning",
+            "panel-planning",
+            "render-prep",
+            "review",
+            "export"
+          ]
+        },
+        "toStage": {
+          "type": "string",
+          "enum": [
+            "intake",
+            "canonicalization",
+            "disease-packet",
+            "story-workbook",
+            "scene-planning",
+            "panel-planning",
+            "render-prep",
+            "review",
+            "export"
+          ]
+        }
+      }
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

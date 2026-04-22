@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "evt.run.hcc.001.009",
+  "workflowRunId": "run.hcc.001",
+  "eventType": "APPROVALS_COMPLETED",
+  "actor": {
+    "type": "system",
+    "id": "approval-gate"
+  },
+  "stateTransition": {
+    "fromState": "review",
+    "toState": "approved",
+    "fromStage": "review",
+    "toStage": "export"
+  },
+  "occurredAt": "2026-04-21T00:07:00Z",
+  "payload": {
+    "rolesApproved": [
+      "clinical",
+      "editorial",
+      "product"
+    ]
+  },
+  "notes": "All required approvals recorded."
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@dcp/exporter",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "echo 'Scaffold in T402'",
+    "test": "echo 'Tests pending'"
+  }
+}

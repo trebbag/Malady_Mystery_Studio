@@ -1,0 +1,9 @@
+{
+  "name": "@dcp/admin",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "echo 'Scaffold in future ticket'",
+    "build": "echo 'Scaffold in future ticket'"
+  }
+}

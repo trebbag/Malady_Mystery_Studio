@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/story-workbook.schema.json",
+  "title": "StoryWorkbook",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "diseasePacketId",
+    "storyTitle",
+    "logline",
+    "openingHook",
+    "sidePlot",
+    "caseQuestion",
+    "detectivePlan",
+    "clueLadder",
+    "redHerrings",
+    "midpointReversal",
+    "grandReveal",
+    "treatmentShowdown",
+    "wrapUp",
+    "teachingObjectives",
+    "forbiddenShortcuts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "diseasePacketId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "storyTitle": {
+      "type": "string"
+    },
+    "logline": {
+      "type": "string"
+    },
+    "toneProfile": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "openingHook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "setup",
+        "sideJokeSeed",
+        "whyItWorks"
+      ],
+      "properties": {
+        "setup": {
+          "type": "string"
+        },
+        "sideJokeSeed": {
+          "type": "string"
+        },
+        "whyItWorks": {
+          "type": "string"
+        }
+      }
+    },
+    "sidePlot": {
+      "type": "string"
+    },
+    "caseQuestion": {
+      "type": "string"
+    },
+    "detectivePlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "initialHypotheses",
+        "entryPlan",
+        "firstInvestigationSite"
+      ],
+      "properties": {
+        "initialHypotheses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "entryPlan": {
+          "type": "string"
+        },
+        "firstInvestigationSite": {
+          "type": "string"
+        }
+      }
+    },
+    "clueLadder": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "order",
+          "clue",
+          "whyItMatters",
+          "discoveryMode"
+        ],
+        "properties": {
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "clue": {
+            "type": "string"
+          },
+          "whyItMatters": {
+            "type": "string"
+          },
+          "discoveryMode": {
+            "type": "string",
+            "enum": [
+              "patient-history",
+              "exam",
+              "inside-body",
+              "lab",
+              "imaging",
+              "pathology",
+              "treatment-response"
+            ]
+          },
+          "linkedClaimIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          }
+        }
+      }
+    },
+    "redHerrings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "misleadingInterpretation",
+          "whyItSeemsPlausible",
+          "whyItFallsApart"
+        ],
+        "properties": {
+          "misleadingInterpretation": {
+            "type": "string"
+          },
+          "whyItSeemsPlausible": {
+            "type": "string"
+          },
+          "whyItFallsApart": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "midpointReversal": {
+      "type": "string"
+    },
+    "grandReveal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "diagnosisName",
+        "revealLogic",
+        "recapPoints"
+      ],
+      "properties": {
+        "diagnosisName": {
+          "type": "string"
+        },
+        "revealLogic": {
+          "type": "string"
+        },
+        "recapPoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "treatmentShowdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clinicalAction",
+        "mechanisticVisualization",
+        "whyItResolvesTheConflict"
+      ],
+      "properties": {
+        "clinicalAction": {
+          "type": "string"
+        },
+        "mechanisticVisualization": {
+          "type": "string"
+        },
+        "whyItResolvesTheConflict": {
+          "type": "string"
+        }
+      }
+    },
+    "wrapUp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "closingScene",
+        "callbackToOpener",
+        "finalImage"
+      ],
+      "properties": {
+        "closingScene": {
+          "type": "string"
+        },
+        "callbackToOpener": {
+          "type": "string"
+        },
+        "finalImage": {
+          "type": "string"
+        }
+      }
+    },
+    "teachingObjectives": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbiddenShortcuts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

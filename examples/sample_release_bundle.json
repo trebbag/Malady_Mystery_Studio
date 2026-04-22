@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "1.0.0",
+  "releaseId": "rel.hcc.001",
+  "workflowRunId": "run.hcc.001",
+  "tenantId": "tenant.demo",
+  "version": "0.1.0-demo",
+  "artifactManifest": [
+    {
+      "artifactType": "disease-packet",
+      "artifactId": "dpk.hcc.001",
+      "location": "examples/sample_disease_packet.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
+    },
+    {
+      "artifactType": "story-workbook",
+      "artifactId": "swb.hcc.001",
+      "location": "examples/sample_story_workbook.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
+    },
+    {
+      "artifactType": "scene-card",
+      "artifactId": "scn.hcc.004",
+      "location": "examples/sample_scene_card.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
+    },
+    {
+      "artifactType": "panel-plan",
+      "artifactId": "ppl.hcc.004",
+      "location": "examples/sample_panel_plan.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
+    },
+    {
+      "artifactType": "render-prompt",
+      "artifactId": "rpr.hcc.004.03",
+      "location": "examples/sample_render_prompt.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
+    },
+    {
+      "artifactType": "lettering-map",
+      "artifactId": "ltm.hcc.004",
+      "location": "examples/sample_lettering_map.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
+    },
+    {
+      "artifactType": "qa-report",
+      "artifactId": "qar.hcc.001",
+      "location": "examples/sample_qa_report.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
+    }
+  ],
+  "qualitySummary": {
+    "medicalAccuracy": 0.97,
+    "mysteryIntegrity": 0.91,
+    "educationalSequencing": 0.93,
+    "panelization": 0.9,
+    "renderReadiness": 0.94,
+    "sourceFreshness": 0.98,
+    "contradictionStatus": "none",
+    "releaseVerdict": "approved"
+  },
+  "releaseGateChecks": [
+    {
+      "name": "required-approvals",
+      "status": "passed",
+      "details": "Clinical, editorial, and product approvals were recorded."
+    },
+    {
+      "name": "artifact-completeness",
+      "status": "passed",
+      "details": "All required workbook, scene, panel, render, and QA artifacts are present."
+    },
+    {
+      "name": "quality-blockers",
+      "status": "passed",
+      "details": "No blocking QA verdicts remained at export time."
+    }
+  ],
+  "approvals": [
+    {
+      "role": "clinical",
+      "reviewerId": "clinician-01",
+      "decision": "approved",
+      "timestamp": "2026-04-21T00:05:00Z"
+    },
+    {
+      "role": "editorial",
+      "reviewerId": "editor-01",
+      "decision": "approved",
+      "timestamp": "2026-04-21T00:06:00Z"
+    },
+    {
+      "role": "product",
+      "reviewerId": "product-01",
+      "decision": "approved",
+      "timestamp": "2026-04-21T00:07:00Z"
+    }
+  ],
+  "exportTargets": [
+    "json",
+    "human-readable-bundle"
+  ],
+  "exportedAt": "2026-04-21T00:10:00Z",
+  "exportedBy": "usr.owner.001",
+  "bundleIndexLocation": "examples/release_bundle_index.md",
+  "sourceEvidencePackLocation": "examples/evidence_sources.json",
+  "notes": [
+    "Demo-only example release bundle."
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "ppl.hcc.004",
+  "sceneId": "scn.hcc.004",
+  "pageRange": {
+    "startPage": 8,
+    "endPage": 9
+  },
+  "panels": [
+    {
+      "panelId": "pnl.hcc.004.01",
+      "order": 1,
+      "pageNumber": 8,
+      "storyFunction": "signature transition",
+      "beatGoal": "Launch the detectives into the body.",
+      "medicalObjective": "Bridge bedside context to internal anatomy.",
+      "location": "portal bay",
+      "bodyScale": "external-world",
+      "charactersPresent": [
+        "Detective A",
+        "Detective B",
+        "doctor"
+      ],
+      "actionSummary": "The doctor activates the shrinking portal while the detectives leap toward the luminous gateway.",
+      "clueRevealed": "",
+      "continuityAnchors": [
+        "portal device",
+        "detective uniforms",
+        "case tablet"
+      ],
+      "cameraFraming": "wide shot",
+      "cameraAngle": "slightly low angle",
+      "compositionNotes": "Portal centered with strong forward motion toward the page turn.",
+      "lightingMood": "electric and anticipatory",
+      "humorOrTensionNote": "One detective insists the fake star-map can help navigate.",
+      "renderIntent": "big energetic franchise shot that marks entry into the body",
+      "acceptanceChecks": [
+        "clear portal device",
+        "three characters readable",
+        "strong movement direction"
+      ]
+    },
+    {
+      "panelId": "pnl.hcc.004.02",
+      "order": 2,
+      "pageNumber": 8,
+      "storyFunction": "orientation",
+      "beatGoal": "Show the liver environment from the detectives' new scale.",
+      "medicalObjective": "Introduce a liver landscape that already hints at chronic damage.",
+      "location": "hepatic circulation",
+      "bodyScale": "organ",
+      "charactersPresent": [
+        "Detective A",
+        "Detective B"
+      ],
+      "actionSummary": "The detectives ride a current past weathered liver terrain and stare at an uneven horizon of tissue.",
+      "clueRevealed": "The tissue environment looks chronically abnormal before the main lesion is identified.",
+      "continuityAnchors": [
+        "miniature jet packs",
+        "case tablet hologram",
+        "red-gold liver palette"
+      ],
+      "cameraFraming": "establishing shot",
+      "cameraAngle": "over-the-shoulder",
+      "compositionNotes": "Use flowing vessels as leading lines toward the tissue landscape.",
+      "lightingMood": "warm but uneasy",
+      "humorOrTensionNote": "The fake map points in the wrong direction again.",
+      "renderIntent": "visually beautiful anatomical wonder shot with subtle menace",
+      "acceptanceChecks": [
+        "liver environment readable",
+        "detectives visible but small",
+        "background damage hinted not over-explained"
+      ]
+    },
+    {
+      "panelId": "pnl.hcc.004.03",
+      "order": 3,
+      "pageNumber": 9,
+      "storyFunction": "first major clue",
+      "beatGoal": "Reveal a suspicious focal region worth investigating.",
+      "medicalObjective": "Suggest autonomous abnormal growth without naming the diagnosis.",
+      "location": "adjacent to suspicious liver region",
+      "bodyScale": "tissue",
+      "charactersPresent": [
+        "Detective A",
+        "Detective B"
+      ],
+      "actionSummary": "They hover near a district of cells whose architecture breaks the surrounding pattern.",
+      "clueRevealed": "A focal abnormal region behaves like a hidden stronghold within the liver.",
+      "continuityAnchors": [
+        "case tablet hologram",
+        "jet pack glow",
+        "distorted tissue geometry"
+      ],
+      "cameraFraming": "medium shot with focal push-in",
+      "cameraAngle": "slightly canted",
+      "compositionNotes": "Contrast the suspicious region against more orderly surrounding tissue.",
+      "lightingMood": "ominous discovery",
+      "humorOrTensionNote": "Humor drops out to let the clue land.",
+      "renderIntent": "turning-point discovery panel",
+      "acceptanceChecks": [
+        "focal lesion implied",
+        "no explicit diagnosis label in art",
+        "clear contrast between normal and abnormal tissue"
+      ]
+    }
+  ]
+}

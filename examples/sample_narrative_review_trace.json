@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "nrt.hcc.001",
+  "subjectType": "story-workbook",
+  "subjectId": "swb.hcc.001",
+  "rubricVersion": "story-engine.v1",
+  "scores": {
+    "mysteryIntegrity": 0.93,
+    "educationalSequencing": 0.94,
+    "novelty": 0.89,
+    "franchiseCompliance": 0.96
+  },
+  "findings": [
+    {
+      "category": "novelty",
+      "severity": "warning",
+      "ruleId": "novelty-opening-overlap",
+      "message": "Opening motif overlaps with an earlier lantern-market case and should diversify before flagship release.",
+      "evidence": "Opening signature shares the same false-map framing as a previous record.",
+      "recommendation": "Swap the opener prop while preserving the clue-following metaphor."
+    }
+  ],
+  "verdict": "conditional-pass",
+  "createdAt": "2026-04-21T00:00:00Z"
+}

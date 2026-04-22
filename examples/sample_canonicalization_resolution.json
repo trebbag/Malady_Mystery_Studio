@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "crs.mg.001",
+  "workflowRunId": "run.mg.001",
+  "originalCanonicalDiseaseId": "can.mg.ambiguous.001",
+  "resolvedCanonicalDiseaseId": "can.mg.resolved.001",
+  "selectedCanonicalDiseaseName": "Myasthenia gravis",
+  "selectedOntologyId": "ICD-10-CM:G70.00",
+  "resolutionMode": "candidate-confirmation",
+  "reviewerId": "clinical-01",
+  "reviewerRoles": [
+    "Clinical Reviewer",
+    "Viewer"
+  ],
+  "reason": "Clinician confirmed the intended disease from the ambiguous candidate list.",
+  "occurredAt": "2026-04-21T00:00:00Z"
+}

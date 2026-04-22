@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/render-prompt.schema.json",
+  "title": "RenderPrompt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "panelId",
+    "modelFamily",
+    "aspectRatio",
+    "positivePrompt",
+    "negativePrompt",
+    "continuityAnchors",
+    "characterLocks",
+    "anatomyLocks",
+    "textLayerPolicy"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "panelId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "modelFamily": {
+      "type": "string"
+    },
+    "aspectRatio": {
+      "type": "string"
+    },
+    "positivePrompt": {
+      "type": "string"
+    },
+    "negativePrompt": {
+      "type": "string"
+    },
+    "continuityAnchors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "characterLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "anatomyLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "styleLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "textLayerPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "renderVisibleText",
+        "letteringHandledSeparately"
+      ],
+      "properties": {
+        "renderVisibleText": {
+          "type": "boolean"
+        },
+        "letteringHandledSeparately": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

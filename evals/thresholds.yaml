@@ -1,0 +1,19 @@
+medical_accuracy:
+  minimum: 0.97
+  release_gate: Gate 2
+mystery_integrity:
+  minimum: 0.88
+  release_gate: Gate 3
+educational_sequencing:
+  minimum: 0.9
+  release_gate: Gate 3
+panelization:
+  minimum: 0.9
+  release_gate: Gate 4
+render_readiness:
+  minimum: 0.92
+  release_gate: Gate 4
+governance_release:
+  minimum: 1.0
+  release_gate: Gate 5 and Gate 6
+  mode: pass-fail

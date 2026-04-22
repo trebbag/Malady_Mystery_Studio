@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "run.hcc.001",
+  "projectId": "prj.demo.001",
+  "tenantId": "tenant.demo",
+  "input": {
+    "diseaseName": "hepatocellular carcinoma",
+    "audienceTier": "provider-education",
+    "lengthProfile": "standard-issue",
+    "qualityProfile": "pilot",
+    "styleProfile": "whimsical-mystery"
+  },
+  "state": "review",
+  "currentStage": "review",
+  "requiredApprovalRoles": [
+    "clinical",
+    "editorial",
+    "product"
+  ],
+  "stages": [
+    {
+      "name": "intake",
+      "status": "passed",
+      "startedAt": "2026-04-21T00:00:00Z",
+      "endedAt": "2026-04-21T00:01:00Z",
+      "notes": "Input accepted."
+    },
+    {
+      "name": "canonicalization",
+      "status": "passed",
+      "startedAt": "2026-04-21T00:01:00Z",
+      "endedAt": "2026-04-21T00:02:00Z",
+      "notes": "Canonical disease resolved."
+    },
+    {
+      "name": "disease-packet",
+      "status": "passed",
+      "startedAt": "2026-04-21T00:02:00Z",
+      "endedAt": "2026-04-21T00:04:00Z",
+      "notes": "Disease packet generated."
+    },
+    {
+      "name": "story-workbook",
+      "status": "passed",
+      "startedAt": "2026-04-21T00:04:00Z",
+      "endedAt": "2026-04-21T00:06:00Z",
+      "notes": "Workbook approved for downstream planning."
+    },
+    {
+      "name": "scene-planning",
+      "status": "passed",
+      "startedAt": "2026-04-21T00:06:00Z",
+      "endedAt": "2026-04-21T00:07:00Z",
+      "notes": "Scene cards generated."
+    },
+    {
+      "name": "panel-planning",
+      "status": "passed",
+      "startedAt": "2026-04-21T00:07:00Z",
+      "endedAt": "2026-04-21T00:08:00Z",
+      "notes": "Panel plans generated."
+    },
+    {
+      "name": "render-prep",
+      "status": "passed",
+      "startedAt": "2026-04-21T00:08:00Z",
+      "endedAt": "2026-04-21T00:09:00Z",
+      "notes": "Render prompts prepared with lettering separation."
+    },
+    {
+      "name": "review",
+      "status": "running",
+      "startedAt": "2026-04-21T00:09:00Z",
+      "notes": "Awaiting minimum release approvals."
+    },
+    {
+      "name": "export",
+      "status": "pending"
+    }
+  ],
+  "artifacts": [
+    {
+      "artifactType": "project",
+      "artifactId": "prj.demo.001",
+      "status": "approved",
+      "path": "examples/sample_project.json"
+    },
+    {
+      "artifactType": "canonical-disease",
+      "artifactId": "can.hcc.001",
+      "status": "generated",
+      "path": "examples/sample_canonical_disease.json"
+    },
+    {
+      "artifactType": "disease-packet",
+      "artifactId": "dpk.hcc.001",
+      "status": "approved",
+      "path": "examples/sample_disease_packet.json"
+    },
+    {
+      "artifactType": "story-workbook",
+      "artifactId": "swb.hcc.001",
+      "status": "generated",
+      "path": "examples/sample_story_workbook.json"
+    },
+    {
+      "artifactType": "story-memory",
+      "artifactId": "stm.hcc.001",
+      "status": "generated",
+      "path": "examples/sample_story_memory.json"
+    },
+    {
+      "artifactType": "narrative-review-trace",
+      "artifactId": "nrt.hcc.001",
+      "status": "generated",
+      "path": "examples/sample_narrative_review_trace.json"
+    },
+    {
+      "artifactType": "qa-report",
+      "artifactId": "qar.hcc.001",
+      "status": "generated",
+      "path": "examples/sample_qa_report.json"
+    },
+    {
+      "artifactType": "scene-card",
+      "artifactId": "scn.hcc.004",
+      "status": "generated",
+      "path": "examples/sample_scene_card.json"
+    },
+    {
+      "artifactType": "panel-plan",
+      "artifactId": "ppl.hcc.004",
+      "status": "generated",
+      "path": "examples/sample_panel_plan.json"
+    },
+    {
+      "artifactType": "render-prompt",
+      "artifactId": "rpr.hcc.004.03",
+      "status": "generated",
+      "path": "examples/sample_render_prompt.json"
+    },
+    {
+      "artifactType": "lettering-map",
+      "artifactId": "ltm.hcc.004",
+      "status": "generated",
+      "path": "examples/sample_lettering_map.json"
+    }
+  ],
+  "approvals": [
+    {
+      "role": "clinical",
+      "reviewerId": "clinician-01",
+      "decision": "approved",
+      "comment": "packet approved",
+      "timestamp": "2026-04-21T00:05:00Z"
+    },
+    {
+      "role": "editorial",
+      "reviewerId": "editor-01",
+      "decision": "approved",
+      "comment": "Workbook sequencing works for release review.",
+      "timestamp": "2026-04-21T00:09:30Z"
+    },
+    {
+      "role": "product",
+      "decision": "pending"
+    }
+  ],
+  "lastEventId": "evt.run.hcc.001.008",
+  "createdAt": "2026-04-21T00:00:00Z",
+  "updatedAt": "2026-04-21T00:09:30Z"
+}

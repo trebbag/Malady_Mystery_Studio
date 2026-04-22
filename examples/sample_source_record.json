@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "src.approved-hepatology-source",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "sourceLabel": "Approved hepatology source",
+  "sourceType": "guideline",
+  "sourceTier": "tier-1",
+  "approvalStatus": "approved",
+  "freshnessScore": 0.98,
+  "freshnessStatus": "current",
+  "contradictionStatus": "none",
+  "owner": "clinical-governance",
+  "governanceNotes": [
+    "Preferred for liver oncology baseline claims.",
+    "Review annually or on major guideline update."
+  ],
+  "lastReviewedAt": "2026-04-21T00:00:00Z"
+}

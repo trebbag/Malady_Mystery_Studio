@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/tenant.schema.json",
+  "title": "Tenant",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "slug",
+    "displayName",
+    "status",
+    "ssoMode",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended"
+      ]
+    },
+    "ssoMode": {
+      "type": "string",
+      "enum": [
+        "local-password",
+        "oidc-hs256"
+      ]
+    },
+    "retentionDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "artifactRetentionDays": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "auditRetentionDays": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sessionTtlHours": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

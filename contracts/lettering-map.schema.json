@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/lettering-map.schema.json",
+  "title": "LetteringMap",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "panelPlanId",
+    "entries"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "panelPlanId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "entryId",
+          "panelId",
+          "order",
+          "layerType",
+          "text",
+          "placement",
+          "purpose"
+        ],
+        "properties": {
+          "entryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "panelId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "layerType": {
+            "type": "string",
+            "enum": [
+              "dialogue",
+              "caption",
+              "label",
+              "sound-effect"
+            ]
+          },
+          "speaker": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "placement": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "spoilerLevel": {
+            "type": "string",
+            "enum": [
+              "safe",
+              "guarded",
+              "reveal-only"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

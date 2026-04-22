@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/workflow-run.schema.json",
+  "title": "WorkflowRun",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "projectId",
+    "input",
+    "state",
+    "currentStage",
+    "requiredApprovalRoles",
+    "stages",
+    "artifacts",
+    "approvals",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "projectId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "tenantId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "diseaseName"
+      ],
+      "properties": {
+        "diseaseName": {
+          "type": "string"
+        },
+        "audienceTier": {
+          "type": "string"
+        },
+        "lengthProfile": {
+          "type": "string"
+        },
+        "qualityProfile": {
+          "type": "string"
+        },
+        "styleProfile": {
+          "type": "string"
+        }
+      }
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "running",
+        "review",
+        "approved",
+        "exported",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "currentStage": {
+      "type": "string",
+      "enum": [
+        "intake",
+        "canonicalization",
+        "disease-packet",
+        "story-workbook",
+        "scene-planning",
+        "panel-planning",
+        "render-prep",
+        "review",
+        "export"
+      ]
+    },
+    "requiredApprovalRoles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "clinical",
+          "editorial",
+          "product",
+          "security"
+        ]
+      }
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "status"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "intake",
+              "canonicalization",
+              "disease-packet",
+              "story-workbook",
+              "scene-planning",
+              "panel-planning",
+              "render-prep",
+              "review",
+              "export"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "passed",
+              "failed",
+              "blocked"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifactType",
+          "artifactId",
+          "status"
+        ],
+        "properties": {
+          "artifactType": {
+            "type": "string",
+            "enum": [
+              "project",
+              "canonical-disease",
+              "canonicalization-resolution",
+              "disease-packet",
+              "story-workbook",
+              "story-memory",
+              "narrative-review-trace",
+              "scene-card",
+              "panel-plan",
+              "render-prompt",
+              "lettering-map",
+              "qa-report",
+              "release-bundle"
+            ]
+          },
+          "artifactId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "generated",
+              "approved",
+              "rejected",
+              "exported"
+            ]
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "$ref": "approval-decision.schema.json"
+      }
+    },
+    "lastEventId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

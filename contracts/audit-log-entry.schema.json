@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/audit-log-entry.schema.json",
+  "title": "AuditLogEntry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "actorId",
+    "actorRoles",
+    "action",
+    "subjectType",
+    "subjectId",
+    "tenantId",
+    "outcome",
+    "occurredAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "actorId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "actorRoles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "action": {
+      "type": "string"
+    },
+    "subjectType": {
+      "type": "string",
+      "enum": [
+        "project",
+        "workflow-run",
+        "artifact",
+        "session"
+      ]
+    },
+    "subjectId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "tenantId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "success",
+        "denied",
+        "error"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

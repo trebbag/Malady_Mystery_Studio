@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/disease-intake-request.schema.json",
+  "title": "DiseaseIntakeRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "diseaseName"
+  ],
+  "properties": {
+    "diseaseName": {
+      "type": "string",
+      "minLength": 2
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "audienceTier": {
+      "type": "string",
+      "enum": [
+        "patient-friendly",
+        "student-education",
+        "provider-education"
+      ]
+    },
+    "lengthProfile": {
+      "type": "string",
+      "enum": [
+        "short-case",
+        "standard-issue",
+        "double-issue"
+      ]
+    },
+    "qualityProfile": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pilot",
+        "flagship"
+      ]
+    },
+    "styleProfile": {
+      "type": "string",
+      "enum": [
+        "whimsical-mystery",
+        "cinematic-sci-fi",
+        "playful-detective"
+      ]
+    }
+  }
+}

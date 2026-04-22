@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/story-memory.schema.json",
+  "title": "StoryMemory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "storyWorkbookId",
+    "canonicalDiseaseName",
+    "openingSignature",
+    "twistSignature",
+    "endingSignature",
+    "clueSignatures",
+    "generatedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "storyWorkbookId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflowRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "storyTitle": {
+      "type": "string"
+    },
+    "openingSignature": {
+      "type": "string"
+    },
+    "twistSignature": {
+      "type": "string"
+    },
+    "endingSignature": {
+      "type": "string"
+    },
+    "clueSignatures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "motifTags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
