@@ -22,35 +22,28 @@ import {
 } from '../../orchestrator/src/workflow-machine.mjs';
 import { createStoryEngineService } from '../../story-engine/src/service.mjs';
 import {
+  createEvalService,
+  deriveEvalStatus,
+  listEvaluationReferences,
+  summarizeEvalRun,
+} from './eval-service.mjs';
+import {
   canAccessTenant,
   canApplyManualWorkflowEvent,
   canCreateProject,
   canExportRun,
-  canManageTenantUsers,
   canResolveCanonicalization,
   canStartWorkflow,
   canSubmitApproval,
   canViewTenantData,
-  clearSessionCookie,
-  createSessionCookie,
-  exchangeOidcAssertion,
-  getDefaultTenantSlug,
-  getDemoPassword,
   getActorFromRequest,
   getDefaultTenantId,
-  listDemoAccounts,
-  listTenantUsers as listTenantUsersForAuth,
   normalizeTenantId,
-  revokeSessionFromRequest,
-  seedIdentityData,
-  updateTenantUserRoles,
-  authenticateLocalPassword,
 } from './auth.mjs';
 import {
   renderIntakePage,
   renderReviewDashboard,
   renderReviewRunPage,
-  renderSignInPage,
 } from './review-ui.mjs';
 import { PlatformStore } from './store.mjs';
 
@@ -205,6 +198,24 @@ function matchWorkflowRunExportPath(pathname) {
 
 /**
  * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunEvaluationPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/evaluations$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ evalRunId: string } | null}
+ */
+function matchEvaluationPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/evaluations\/([^/]+)$/);
+  return match ? { evalRunId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
  * @returns {{ artifactType: string, artifactId: string } | null}
  */
 function matchArtifactPath(pathname) {
@@ -264,29 +275,6 @@ function matchReleaseEvidencePackPath(pathname) {
 
 /**
  * @param {string} pathname
- * @returns {{ tenantId: string } | null}
- */
-function matchTenantUsersPath(pathname) {
-  const match = pathname.match(/^\/api\/v1\/tenants\/([^/]+)\/users$/);
-  return match ? { tenantId: decodeURIComponent(match[1]) } : null;
-}
-
-/**
- * @param {string} pathname
- * @returns {{ tenantId: string, userId: string } | null}
- */
-function matchTenantUserRolesPath(pathname) {
-  const match = pathname.match(/^\/api\/v1\/tenants\/([^/]+)\/users\/([^/]+)\/roles$/);
-  return match
-    ? {
-      tenantId: decodeURIComponent(match[1]),
-      userId: decodeURIComponent(match[2]),
-    }
-    : null;
-}
-
-/**
- * @param {string} pathname
  * @returns {{ runId: string } | null}
  */
 function matchReviewRunPath(pathname) {
@@ -309,6 +297,24 @@ function matchReviewRunApprovalActionPath(pathname) {
  */
 function matchReviewRunCanonicalizationActionPath(pathname) {
   const match = pathname.match(/^\/review\/runs\/([^/]+)\/canonicalization-resolution$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchReviewRunEvaluationActionPath(pathname) {
+  const match = pathname.match(/^\/review\/runs\/([^/]+)\/evaluations$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchReviewRunExportActionPath(pathname) {
+  const match = pathname.match(/^\/review\/runs\/([^/]+)\/exports$/);
   return match ? { runId: decodeURIComponent(match[1]) } : null;
 }
 
@@ -449,27 +455,12 @@ function persistTransition(store, schemaRegistry, transition) {
  * @param {import('node:http').ServerResponse} response
  * @returns {actor is any}
  */
-function requireApiActor(actor, response) {
+function requireLocalActor(actor, response) {
   if (actor) {
     return true;
   }
 
-  sendError(response, 401, 'Authentication required.', 'Use /api/v1/auth/login, /api/v1/auth/sso/exchange, or sign in through /signin.');
-  return false;
-}
-
-/**
- * @param {any | null} actor
- * @param {import('node:http').ServerResponse} response
- * @param {URL} requestUrl
- * @returns {actor is any}
- */
-function requireUiActor(actor, response, requestUrl) {
-  if (actor) {
-    return true;
-  }
-
-  redirect(response, `/signin?redirectTo=${encodeURIComponent(`${requestUrl.pathname}${requestUrl.search}` || '/review')}`);
+  sendError(response, 500, 'Local operator is unavailable.', 'Open local mode should always provide a default actor.');
   return false;
 }
 
@@ -688,11 +679,11 @@ function persistArtifact(store, schemaRegistry, workflowRun, artifactType, schem
   store.saveArtifact(artifactType, artifactId, artifact, {
     tenantId: workflowRun.tenantId,
   });
-  return upsertArtifactReference(workflowRun, {
+  return markLatestEvalPossiblyStale(upsertArtifactReference(workflowRun, {
     artifactType,
     artifactId,
     status,
-  });
+  }), artifactType);
 }
 
 /**
@@ -1228,7 +1219,463 @@ function resolveCanonicalizationForRun(options) {
 }
 
 /**
- * @param {{ rootDir?: string, store?: PlatformStore, dbFilePath?: string, objectStoreDir?: string, allowHeaderAuthBypass?: boolean }} [options]
+ * @param {any} workflowRun
+ * @param {string} artifactType
+ * @returns {any}
+ */
+function markLatestEvalPossiblyStale(workflowRun, artifactType) {
+  if (!workflowRun.latestEvalRunId) {
+    return workflowRun;
+  }
+
+  if (artifactType === 'eval-run' || artifactType === 'release-bundle') {
+    return workflowRun;
+  }
+
+  return {
+    ...workflowRun,
+    latestEvalStatus: 'stale',
+  };
+}
+
+/**
+ * @param {any} workflowRun
+ * @param {any} evalRun
+ * @param {'passed' | 'failed' | 'stale' | 'missing'} status
+ * @returns {any}
+ */
+function applyLatestEvalMetadata(workflowRun, evalRun, status) {
+  return {
+    ...workflowRun,
+    latestEvalRunId: evalRun?.id ?? null,
+    latestEvalStatus: status,
+    latestEvalAt: evalRun?.evaluatedAt ?? null,
+  };
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {any | null}
+ */
+function getLatestEvalRun(store, workflowRun) {
+  const latestEvaluationReference = listEvaluationReferences(workflowRun).at(-1);
+
+  return latestEvaluationReference
+    ? store.getArtifact('eval-run', latestEvaluationReference.artifactId)
+    : null;
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {string}
+ */
+function getLatestEvalStatus(store, workflowRun) {
+  return deriveEvalStatus(getLatestEvalRun(store, workflowRun), store, workflowRun);
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {Map<string, Array<{ artifactType: string, artifactId: string, artifact: any }>>}
+ */
+function groupArtifactsForRun(store, workflowRun) {
+  const groupedArtifacts = new Map();
+
+  for (const artifactReference of workflowRun.artifacts) {
+    const artifact = loadArtifactByReference(store, artifactReference);
+
+    if (!artifact) {
+      continue;
+    }
+
+    const entries = groupedArtifacts.get(artifactReference.artifactType) ?? [];
+    entries.push({
+      artifactType: artifactReference.artifactType,
+      artifactId: artifactReference.artifactId,
+      artifact,
+    });
+    groupedArtifacts.set(artifactReference.artifactType, entries);
+  }
+
+  return groupedArtifacts;
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {Array<{ title: string, description?: string, artifacts: Array<{ artifactType: string, artifactId: string, artifact: any }> }>}
+ */
+function buildReviewArtifactGroups(store, workflowRun) {
+  const groupedArtifacts = groupArtifactsForRun(store, workflowRun);
+
+  return [
+    {
+      title: 'Disease packet and governed evidence',
+      description: 'Canonical disease context plus the clinical evidence packet.',
+      artifacts: [
+        ...(groupedArtifacts.get('canonical-disease') ?? []),
+        ...(groupedArtifacts.get('canonicalization-resolution') ?? []),
+        ...(groupedArtifacts.get('disease-packet') ?? []),
+      ],
+    },
+    {
+      title: 'Story workbook and narrative review trace',
+      description: 'Workbook logic, novelty memory, and automated narrative review.',
+      artifacts: [
+        ...(groupedArtifacts.get('story-workbook') ?? []),
+        ...(groupedArtifacts.get('story-memory') ?? []),
+        ...(groupedArtifacts.get('narrative-review-trace') ?? []),
+      ],
+    },
+    {
+      title: 'Scene cards',
+      artifacts: groupedArtifacts.get('scene-card') ?? [],
+    },
+    {
+      title: 'Panel plans',
+      artifacts: groupedArtifacts.get('panel-plan') ?? [],
+    },
+    {
+      title: 'Render prompts',
+      artifacts: groupedArtifacts.get('render-prompt') ?? [],
+    },
+    {
+      title: 'Lettering maps',
+      artifacts: groupedArtifacts.get('lettering-map') ?? [],
+    },
+    {
+      title: 'QA reports',
+      artifacts: groupedArtifacts.get('qa-report') ?? [],
+    },
+  ];
+}
+
+/**
+ * @param {any[]} workflowRuns
+ * @param {Map<string, any>} projectsById
+ * @param {Map<string, { exportCount: number, latestEvalStatus: string }>} runSummaries
+ * @param {{ disease?: string, state?: string, stage?: string, exportStatus?: string, evalStatus?: string, sort?: string }} filters
+ * @returns {any[]}
+ */
+function filterAndSortWorkflowRuns(workflowRuns, projectsById, runSummaries, filters) {
+  const diseaseFilter = filters.disease?.trim().toLowerCase() ?? '';
+  const filteredRuns = workflowRuns.filter((workflowRun) => {
+    const project = projectsById.get(workflowRun.projectId);
+    const diseaseName = (workflowRun.input?.diseaseName ?? project?.input?.diseaseName ?? '').toLowerCase();
+    const runSummary = runSummaries.get(workflowRun.id) ?? {
+      exportCount: 0,
+      latestEvalStatus: 'missing',
+    };
+
+    if (diseaseFilter && !diseaseName.includes(diseaseFilter)) {
+      return false;
+    }
+
+    if (filters.state && workflowRun.state !== filters.state) {
+      return false;
+    }
+
+    if (filters.stage && workflowRun.currentStage !== filters.stage) {
+      return false;
+    }
+
+    if (filters.exportStatus === 'with-exports' && runSummary.exportCount === 0) {
+      return false;
+    }
+
+    if (filters.exportStatus === 'without-exports' && runSummary.exportCount > 0) {
+      return false;
+    }
+
+    if (filters.evalStatus && runSummary.latestEvalStatus !== filters.evalStatus) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const sortKey = filters.sort ?? 'updated-desc';
+  const sortedRuns = [...filteredRuns];
+
+  sortedRuns.sort((left, right) => {
+    const leftProject = projectsById.get(left.projectId);
+    const rightProject = projectsById.get(right.projectId);
+    const leftSummary = runSummaries.get(left.id) ?? { exportCount: 0, latestEvalStatus: 'missing' };
+    const rightSummary = runSummaries.get(right.id) ?? { exportCount: 0, latestEvalStatus: 'missing' };
+
+    switch (sortKey) {
+      case 'disease-asc':
+        return (left.input?.diseaseName ?? leftProject?.input?.diseaseName ?? '').localeCompare(
+          right.input?.diseaseName ?? rightProject?.input?.diseaseName ?? '',
+        );
+      case 'state-asc':
+        return left.state.localeCompare(right.state);
+      case 'stage-asc':
+        return left.currentStage.localeCompare(right.currentStage);
+      case 'exports-desc':
+        return rightSummary.exportCount - leftSummary.exportCount;
+      case 'eval-status':
+        return leftSummary.latestEvalStatus.localeCompare(rightSummary.latestEvalStatus);
+      default:
+        return right.updatedAt.localeCompare(left.updatedAt);
+    }
+  });
+
+  return sortedRuns;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, evalService: any, workflowRun: any, actor: any }} options
+ * @returns {any}
+ */
+function evaluateWorkflowRun(options) {
+  const evalRun = options.evalService.runForWorkflowRun({
+    store: options.store,
+    workflowRun: options.workflowRun,
+    actor: options.actor,
+  });
+
+  assertSchema(options.schemaRegistry, 'contracts/eval-run.schema.json', evalRun);
+  let workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    options.workflowRun,
+    'eval-run',
+    'contracts/eval-run.schema.json',
+    evalRun,
+    evalRun.summary.allThresholdsMet ? 'approved' : 'rejected',
+  );
+  const latestEvalStatus = deriveEvalStatus(evalRun, options.store, workflowRun);
+
+  workflowRun = applyLatestEvalMetadata(workflowRun, evalRun, latestEvalStatus);
+  workflowRun = {
+    ...workflowRun,
+    updatedAt: new Date().toISOString(),
+  };
+  assertSchema(options.schemaRegistry, 'contracts/workflow-run.schema.json', workflowRun);
+  options.store.saveWorkflowRun(workflowRun);
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'workflow-run.evaluate',
+    'workflow-run',
+    workflowRun.id,
+    'success',
+    `Executed eval run ${evalRun.id}.`,
+    {
+      allThresholdsMet: evalRun.summary.allThresholdsMet,
+      evalRunId: evalRun.id,
+    },
+  );
+
+  return workflowRun;
+}
+
+/**
+ * @param {{
+ *   store: PlatformStore,
+ *   schemaRegistry: any,
+ *   workflowSpec: any,
+ *   exporterService: any,
+ *   workflowRun: any,
+ *   actor: any,
+ *   project: any,
+ *   version?: string,
+ *   exportTargets?: string[],
+ * }} options
+ * @returns {{ workflowRun: any, releaseBundle: any, exportHistoryEntry: any }}
+ */
+function exportWorkflowRun(options) {
+  if (!canExportRun(options.actor)) {
+    denyWithAudit(
+      options.store,
+      options.schemaRegistry,
+      options.actor,
+      'workflow-run.export',
+      'workflow-run',
+      options.workflowRun.id,
+      'Actor cannot export workflow runs.',
+    );
+  }
+
+  const diseasePacketReference = findLatestArtifactReference(options.workflowRun, 'disease-packet');
+
+  if (!diseasePacketReference) {
+    throw createHttpError(409, 'Workflow run is missing a disease packet required for export.');
+  }
+
+  const diseasePacket = options.store.getArtifact('disease-packet', diseasePacketReference.artifactId);
+
+  if (!diseasePacket) {
+    throw createHttpError(404, 'Disease packet artifact could not be loaded.');
+  }
+
+  const latestEvalRun = getLatestEvalRun(options.store, options.workflowRun);
+  const latestEvalStatus = deriveEvalStatus(latestEvalRun, options.store, options.workflowRun);
+
+  if (!latestEvalRun) {
+    throw createHttpError(409, 'Export requires a persisted eval run for this workflow run.');
+  }
+
+  if (latestEvalStatus === 'stale') {
+    throw createHttpError(409, 'Export requires a fresh eval run created after the latest artifact update.');
+  }
+
+  if (latestEvalStatus !== 'passed') {
+    throw createHttpError(409, 'Export requires the latest eval run to pass all applicable thresholds.');
+  }
+
+  const qaReports = options.workflowRun.artifacts
+    .filter((artifact) => artifact.artifactType === 'qa-report')
+    .map((artifact) => options.store.getArtifact(artifact.artifactType, artifact.artifactId))
+    .filter(Boolean);
+  const releasePackage = options.exporterService.assembleRelease({
+    workflowRun: options.workflowRun,
+    project: options.project,
+    actor: options.actor,
+    diseasePacket,
+    qaReports,
+    artifactManifest: collectReleaseArtifactManifest(options.store, options.workflowRun),
+    evaluationSummary: summarizeEvalRun(latestEvalRun),
+    exportTargets: options.exportTargets,
+    version: options.version,
+  });
+
+  const sourceEvidencePackDocument = options.store.saveDocument(
+    'source-evidence-pack',
+    releasePackage.releaseBundle.releaseId,
+    JSON.stringify(releasePackage.sourceEvidencePack, null, 2),
+    {
+      tenantId: options.workflowRun.tenantId,
+      contentType: 'application/json',
+      extension: 'json',
+      retentionClass: 'release-bundle',
+    },
+  );
+  const bundleIndexDocument = options.store.saveDocument(
+    'release-index',
+    releasePackage.releaseBundle.releaseId,
+    releasePackage.bundleIndexMarkdown,
+    {
+      tenantId: options.workflowRun.tenantId,
+      contentType: 'text/markdown',
+      extension: 'md',
+      retentionClass: 'release-bundle',
+    },
+  );
+
+  releasePackage.releaseBundle.bundleIndexLocation = bundleIndexDocument.location;
+  releasePackage.releaseBundle.sourceEvidencePackLocation = sourceEvidencePackDocument.location;
+  let workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    options.workflowRun,
+    'release-bundle',
+    'contracts/release-bundle.schema.json',
+    releasePackage.releaseBundle,
+    'exported',
+  );
+  const releaseBundleMetadata = options.store.getArtifactMetadata('release-bundle', releasePackage.releaseBundle.releaseId);
+
+  if (!releaseBundleMetadata) {
+    throw createHttpError(500, 'Release bundle metadata was not stored.');
+  }
+
+  const exportHistoryEntry = {
+    ...releasePackage.exportHistoryEntry,
+    evalRunId: latestEvalRun.id,
+    bundleLocation: releaseBundleMetadata.location,
+    bundleIndexLocation: bundleIndexDocument.location,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/export-history-entry.schema.json', exportHistoryEntry);
+  options.store.saveExportHistoryEntry(exportHistoryEntry);
+
+  workflowRun = transitionWorkflow(options.store, options.schemaRegistry, options.workflowSpec, workflowRun, {
+    eventType: 'START_EXPORT',
+    actor: {
+      type: 'user',
+      id: options.actor.id,
+    },
+    payload: {
+      releaseId: releasePackage.releaseBundle.releaseId,
+    },
+    notes: 'Release bundle assembly started.',
+  });
+
+  workflowRun = transitionWorkflow(options.store, options.schemaRegistry, options.workflowSpec, workflowRun, {
+    eventType: 'EXPORT_COMPLETED',
+    actor: {
+      type: 'system',
+      id: 'export-service',
+    },
+    payload: {
+      releaseId: releasePackage.releaseBundle.releaseId,
+      exportHistoryEntryId: exportHistoryEntry.id,
+    },
+    notes: 'Release bundle exported and stored in local object storage.',
+  });
+
+  workflowRun = applyLatestEvalMetadata(workflowRun, latestEvalRun, latestEvalStatus);
+  workflowRun = {
+    ...workflowRun,
+    updatedAt: new Date().toISOString(),
+  };
+  assertSchema(options.schemaRegistry, 'contracts/workflow-run.schema.json', workflowRun);
+  options.store.saveWorkflowRun(workflowRun);
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'workflow-run.export',
+    'workflow-run',
+    workflowRun.id,
+    'success',
+    `Exported release bundle ${releasePackage.releaseBundle.releaseId}.`,
+    {
+      evalRunId: latestEvalRun.id,
+      exportHistoryEntryId: exportHistoryEntry.id,
+      releaseId: releasePackage.releaseBundle.releaseId,
+    },
+  );
+
+  return {
+    workflowRun,
+    releaseBundle: releasePackage.releaseBundle,
+    exportHistoryEntry,
+  };
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} schemaRegistry
+ * @param {any} workflowRun
+ * @returns {any}
+ */
+function syncLatestEvalMetadata(store, schemaRegistry, workflowRun) {
+  const latestEvalRun = getLatestEvalRun(store, workflowRun);
+  const latestEvalStatus = deriveEvalStatus(latestEvalRun, store, workflowRun);
+  const nextWorkflowRun = latestEvalRun
+    ? applyLatestEvalMetadata(workflowRun, latestEvalRun, latestEvalStatus)
+    : workflowRun;
+
+  if (
+    nextWorkflowRun.latestEvalRunId !== workflowRun.latestEvalRunId
+    || nextWorkflowRun.latestEvalStatus !== workflowRun.latestEvalStatus
+    || nextWorkflowRun.latestEvalAt !== workflowRun.latestEvalAt
+  ) {
+    assertSchema(schemaRegistry, 'contracts/workflow-run.schema.json', nextWorkflowRun);
+    store.saveWorkflowRun(nextWorkflowRun);
+    return nextWorkflowRun;
+  }
+
+  return workflowRun;
+}
+
+/**
+ * @param {{ rootDir?: string, store?: PlatformStore, dbFilePath?: string, objectStoreDir?: string }} [options]
  * @returns {Promise<{ server: import('node:http').Server, store: PlatformStore }>}
  */
 export async function createApp(options = {}) {
@@ -1245,15 +1692,9 @@ export async function createApp(options = {}) {
   const clinicalService = createClinicalRetrievalService();
   const storyEngineService = createStoryEngineService();
   const exporterService = createExporterService();
-  const authConfig = {
-    demoPassword: getDemoPassword(),
-    oidcIssuer: process.env.OIDC_ISSUER ?? 'https://starter-idp.local',
-    oidcAudience: process.env.OIDC_AUDIENCE ?? 'malady-mystery-studio',
-    oidcSharedSecret: process.env.OIDC_SHARED_SECRET ?? 'starter-oidc-shared-secret',
-  };
-
-  seedIdentityData(store, {
-    demoPassword: authConfig.demoPassword,
+  const evalService = createEvalService({
+    rootDir,
+    exporterService,
   });
 
   const server = createServer(async (request, response) => {
@@ -1261,177 +1702,14 @@ export async function createApp(options = {}) {
       const method = request.method ?? 'GET';
       const requestUrl = createRequestUrl(request.url ?? '/');
       const { pathname } = requestUrl;
-      const actor = getActorFromRequest(request, store, {
-        allowHeaderAuthBypass: options.allowHeaderAuthBypass ?? false,
-      });
+      const actor = getActorFromRequest(request);
+
+      if (!requireLocalActor(actor, response)) {
+        return;
+      }
 
       if (method === 'GET' && pathname === '/') {
-        redirect(response, actor ? '/review' : '/intake');
-        return;
-      }
-
-      if (method === 'GET' && pathname === '/signin') {
-        const redirectTo = requestUrl.searchParams.get('redirectTo') ?? '/review';
-        sendHtml(response, 200, renderSignInPage({
-          demoUsers: listDemoAccounts(store),
-          redirectTo,
-          demoPassword: authConfig.demoPassword,
-        }));
-        return;
-      }
-
-      if (method === 'POST' && pathname === '/session/login') {
-        const body = await readFormBody(request);
-        const authResult = authenticateLocalPassword(store, {
-          tenantSlug: body.tenantSlug || getDefaultTenantSlug(),
-          email: body.email,
-          password: body.password,
-        });
-
-        response.setHeader('set-cookie', createSessionCookie(authResult.sessionToken, authResult.session.expiresAt));
-        redirect(response, body.redirectTo || '/review');
-        return;
-      }
-
-      if (method === 'POST' && pathname === '/session/oidc-exchange') {
-        const body = await readFormBody(request);
-        const authResult = exchangeOidcAssertion(store, {
-          idToken: body.idToken,
-          issuer: authConfig.oidcIssuer,
-          audience: authConfig.oidcAudience,
-          sharedSecret: authConfig.oidcSharedSecret,
-        });
-
-        response.setHeader('set-cookie', createSessionCookie(authResult.sessionToken, authResult.session.expiresAt));
-        redirect(response, body.redirectTo || '/review');
-        return;
-      }
-
-      if (method === 'GET' && pathname === '/session/logout') {
-        revokeSessionFromRequest(store, request);
-        response.setHeader('set-cookie', clearSessionCookie());
-        redirect(response, '/signin');
-        return;
-      }
-
-      if (method === 'POST' && pathname === '/api/v1/auth/login') {
-        const body = await readJsonBody(request);
-
-        if (!isRecord(body) || typeof body.email !== 'string' || typeof body.password !== 'string') {
-          throw createHttpError(400, 'email and password are required.');
-        }
-
-        const authResult = authenticateLocalPassword(store, {
-          tenantSlug: typeof body.tenantSlug === 'string' ? body.tenantSlug : getDefaultTenantSlug(),
-          email: body.email,
-          password: body.password,
-        });
-
-        assertSchema(schemaRegistry, 'contracts/auth-session.schema.json', authResult.session);
-        assertSchema(schemaRegistry, 'contracts/user-account.schema.json', authResult.actor);
-        response.setHeader('set-cookie', createSessionCookie(authResult.sessionToken, authResult.session.expiresAt));
-        sendJson(response, 200, {
-          actor: authResult.actor,
-          session: authResult.session,
-        });
-        return;
-      }
-
-      if (method === 'POST' && pathname === '/api/v1/auth/sso/exchange') {
-        const body = await readJsonBody(request);
-
-        if (!isRecord(body) || typeof body.idToken !== 'string') {
-          throw createHttpError(400, 'idToken is required.');
-        }
-
-        const authResult = exchangeOidcAssertion(store, {
-          idToken: body.idToken,
-          issuer: authConfig.oidcIssuer,
-          audience: authConfig.oidcAudience,
-          sharedSecret: authConfig.oidcSharedSecret,
-        });
-
-        assertSchema(schemaRegistry, 'contracts/auth-session.schema.json', authResult.session);
-        assertSchema(schemaRegistry, 'contracts/user-account.schema.json', authResult.actor);
-        response.setHeader('set-cookie', createSessionCookie(authResult.sessionToken, authResult.session.expiresAt));
-        sendJson(response, 200, {
-          actor: authResult.actor,
-          session: authResult.session,
-        });
-        return;
-      }
-
-      if (method === 'GET' && pathname === '/api/v1/auth/me') {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
-        assertSchema(schemaRegistry, 'contracts/user-account.schema.json', actor);
-        sendJson(response, 200, actor);
-        return;
-      }
-
-      const tenantUsersPath = matchTenantUsersPath(pathname);
-
-      if (method === 'GET' && tenantUsersPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
-        assertTenantAccess(actor, tenantUsersPath.tenantId, store, schemaRegistry, 'tenant.users.list', 'session', tenantUsersPath.tenantId);
-
-        if (!canManageTenantUsers(actor)) {
-          denyWithAudit(store, schemaRegistry, actor, 'tenant.users.list', 'session', tenantUsersPath.tenantId, 'Actor cannot list tenant users.');
-        }
-
-        const users = listTenantUsersForAuth(store, tenantUsersPath.tenantId);
-        users.forEach((user) => assertSchema(schemaRegistry, 'contracts/user-account.schema.json', user));
-        sendJson(response, 200, users);
-        return;
-      }
-
-      const tenantUserRolesPath = matchTenantUserRolesPath(pathname);
-
-      if (method === 'POST' && tenantUserRolesPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
-        assertTenantAccess(actor, tenantUserRolesPath.tenantId, store, schemaRegistry, 'tenant.user.roles.update', 'session', tenantUserRolesPath.userId);
-
-        if (!canManageTenantUsers(actor)) {
-          denyWithAudit(store, schemaRegistry, actor, 'tenant.user.roles.update', 'session', tenantUserRolesPath.userId, 'Actor cannot manage tenant users.');
-        }
-
-        const body = await readJsonBody(request);
-
-        if (!isRecord(body) || !Array.isArray(body.roles) || body.roles.some((role) => typeof role !== 'string')) {
-          throw createHttpError(400, 'roles must be an array of strings.');
-        }
-
-        const updatedUser = updateTenantUserRoles(store, {
-          tenantId: tenantUserRolesPath.tenantId,
-          userId: tenantUserRolesPath.userId,
-          roles: body.roles,
-        });
-
-        appendAuditLog(
-          store,
-          schemaRegistry,
-          actor,
-          'tenant.user.roles.update',
-          'session',
-          updatedUser.id,
-          'success',
-          `Updated server-side role membership for ${updatedUser.email}.`,
-          {
-            roles: updatedUser.roles,
-            tenantId: updatedUser.tenantId,
-          },
-        );
-
-        assertSchema(schemaRegistry, 'contracts/user-account.schema.json', updatedUser);
-        sendJson(response, 200, updatedUser);
+        redirect(response, '/review');
         return;
       }
 
@@ -1441,10 +1719,6 @@ export async function createApp(options = {}) {
       }
 
       if (method === 'GET' && pathname === '/review') {
-        if (!requireUiActor(actor, response, requestUrl)) {
-          return;
-        }
-
         if (!canViewTenantData(actor)) {
           throw createHttpError(403, 'Actor cannot open review pages.');
         }
@@ -1452,13 +1726,29 @@ export async function createApp(options = {}) {
         const accessibleProjects = store.listProjects().filter((project) => canAccessTenant(actor, getTenantId(project)));
         const accessibleWorkflowRuns = store.listWorkflowRuns()
           .filter((workflowRun) => canAccessTenant(actor, getTenantId(workflowRun)))
-          .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
         const projectsById = new Map(accessibleProjects.map((project) => [project.id, project]));
+        const runSummaries = new Map(accessibleWorkflowRuns.map((workflowRun) => {
+          const syncedWorkflowRun = syncLatestEvalMetadata(store, schemaRegistry, workflowRun);
+          return [syncedWorkflowRun.id, {
+            exportCount: store.listExportHistoryEntries(syncedWorkflowRun.id).length,
+            latestEvalStatus: getLatestEvalStatus(store, syncedWorkflowRun),
+          }];
+        }));
+        const filters = {
+          disease: requestUrl.searchParams.get('disease') ?? '',
+          state: requestUrl.searchParams.get('state') ?? '',
+          stage: requestUrl.searchParams.get('stage') ?? '',
+          exportStatus: requestUrl.searchParams.get('exportStatus') ?? '',
+          evalStatus: requestUrl.searchParams.get('evalStatus') ?? '',
+          sort: requestUrl.searchParams.get('sort') ?? 'updated-desc',
+        };
 
         sendHtml(response, 200, renderReviewDashboard({
           actor,
-          workflowRuns: accessibleWorkflowRuns,
+          workflowRuns: filterAndSortWorkflowRuns(accessibleWorkflowRuns, projectsById, runSummaries, filters),
           projectsById,
+          filters,
+          runSummaries,
         }));
         return;
       }
@@ -1466,16 +1756,13 @@ export async function createApp(options = {}) {
       const reviewRunPath = matchReviewRunPath(pathname);
 
       if (method === 'GET' && reviewRunPath) {
-        if (!requireUiActor(actor, response, requestUrl)) {
-          return;
-        }
-
-        const workflowRun = store.getWorkflowRun(reviewRunPath.runId);
+        let workflowRun = store.getWorkflowRun(reviewRunPath.runId);
 
         if (!workflowRun) {
           throw createHttpError(404, 'Workflow run not found.');
         }
 
+        workflowRun = syncLatestEvalMetadata(store, schemaRegistry, workflowRun);
         const project = getProjectForRun(store, workflowRun);
         assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'review.view', 'workflow-run', workflowRun.id);
 
@@ -1486,16 +1773,24 @@ export async function createApp(options = {}) {
         const approvableRoles = workflowRun.requiredApprovalRoles.filter(
           (/** @type {string} */ role) => canSubmitApproval(actor, role),
         );
+        const diseasePacketReference = findLatestArtifactReference(workflowRun, 'disease-packet');
+        const diseasePacket = diseasePacketReference
+          ? store.getArtifact('disease-packet', diseasePacketReference.artifactId)
+          : null;
 
         sendHtml(response, 200, renderReviewRunPage({
           actor,
           project,
           workflowRun,
-          artifacts: collectArtifactsForRun(store, workflowRun),
+          artifactGroups: buildReviewArtifactGroups(store, workflowRun),
           auditLogs: store.listAuditLogEntries({ subjectId: workflowRun.id, subjectType: 'workflow-run' }),
           canonicalDisease,
           canResolveCanonicalization: canResolveCanonicalization(actor),
           approvableRoles,
+          latestEvalRun: getLatestEvalRun(store, workflowRun),
+          latestEvalStatus: getLatestEvalStatus(store, workflowRun),
+          exportHistory: store.listExportHistoryEntries(workflowRun.id),
+          sourceRecords: diseasePacket ? clinicalService.listSourceRecords(diseasePacket.canonicalDiseaseName) : [],
         }));
         return;
       }
@@ -1503,10 +1798,6 @@ export async function createApp(options = {}) {
       const reviewRunApprovalActionPath = matchReviewRunApprovalActionPath(pathname);
 
       if (method === 'POST' && reviewRunApprovalActionPath) {
-        if (!requireUiActor(actor, response, requestUrl)) {
-          return;
-        }
-
         const workflowRun = store.getWorkflowRun(reviewRunApprovalActionPath.runId);
 
         if (!workflowRun) {
@@ -1532,10 +1823,6 @@ export async function createApp(options = {}) {
       const reviewRunCanonicalizationActionPath = matchReviewRunCanonicalizationActionPath(pathname);
 
       if (method === 'POST' && reviewRunCanonicalizationActionPath) {
-        if (!requireUiActor(actor, response, requestUrl)) {
-          return;
-        }
-
         const workflowRun = store.getWorkflowRun(reviewRunCanonicalizationActionPath.runId);
 
         if (!workflowRun) {
@@ -1560,11 +1847,54 @@ export async function createApp(options = {}) {
         return;
       }
 
-      if (method === 'POST' && pathname === '/api/v1/projects') {
-        if (!requireApiActor(actor, response)) {
-          return;
+      const reviewRunEvaluationActionPath = matchReviewRunEvaluationActionPath(pathname);
+
+      if (method === 'POST' && reviewRunEvaluationActionPath) {
+        const workflowRun = store.getWorkflowRun(reviewRunEvaluationActionPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
         }
 
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'workflow-run.evaluate', 'workflow-run', workflowRun.id);
+        evaluateWorkflowRun({
+          store,
+          schemaRegistry,
+          evalService,
+          workflowRun,
+          actor,
+        });
+        redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
+        return;
+      }
+
+      const reviewRunExportActionPath = matchReviewRunExportActionPath(pathname);
+
+      if (method === 'POST' && reviewRunExportActionPath) {
+        const workflowRun = store.getWorkflowRun(reviewRunExportActionPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'workflow-run.export', 'workflow-run', workflowRun.id);
+        const project = getProjectForRun(store, workflowRun);
+        const body = await readFormBody(request);
+        exportWorkflowRun({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          exporterService,
+          workflowRun,
+          actor,
+          project,
+          version: body.version || undefined,
+        });
+        redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
+        return;
+      }
+
+      if (method === 'POST' && pathname === '/api/v1/projects') {
         if (!canCreateProject(actor)) {
           denyWithAudit(store, schemaRegistry, actor, 'project.create', 'project', 'unknown', 'Actor cannot create projects.');
         }
@@ -1614,10 +1944,6 @@ export async function createApp(options = {}) {
       const projectPath = matchProjectPath(pathname);
 
       if (method === 'GET' && projectPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         const project = store.getProject(projectPath.projectId);
 
         if (!project) {
@@ -1631,10 +1957,6 @@ export async function createApp(options = {}) {
       }
 
       if (method === 'POST' && pathname === '/api/v1/workflow-runs') {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         if (!canStartWorkflow(actor)) {
           denyWithAudit(store, schemaRegistry, actor, 'workflow-run.start', 'workflow-run', 'unknown', 'Actor cannot start workflow runs.');
         }
@@ -1769,16 +2091,13 @@ export async function createApp(options = {}) {
       const workflowRunPath = matchWorkflowRunPath(pathname);
 
       if (method === 'GET' && workflowRunPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
-        const workflowRun = store.getWorkflowRun(workflowRunPath.runId);
+        let workflowRun = store.getWorkflowRun(workflowRunPath.runId);
 
         if (!workflowRun) {
           throw createHttpError(404, 'Workflow run not found.');
         }
 
+        workflowRun = syncLatestEvalMetadata(store, schemaRegistry, workflowRun);
         assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'workflow-run.view', 'workflow-run', workflowRun.id);
         assertSchema(schemaRegistry, 'contracts/workflow-run.schema.json', workflowRun);
         sendJson(response, 200, workflowRun);
@@ -1788,10 +2107,6 @@ export async function createApp(options = {}) {
       const workflowEventPath = matchWorkflowRunEventPath(pathname);
 
       if (method === 'POST' && workflowEventPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         const workflowRun = store.getWorkflowRun(workflowEventPath.runId);
 
         if (!workflowRun) {
@@ -1840,10 +2155,6 @@ export async function createApp(options = {}) {
       const workflowApprovalPath = matchWorkflowRunApprovalPath(pathname);
 
       if (method === 'POST' && workflowApprovalPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         const workflowRun = store.getWorkflowRun(workflowApprovalPath.runId);
 
         if (!workflowRun) {
@@ -1876,10 +2187,6 @@ export async function createApp(options = {}) {
       const workflowRunCanonicalizationResolutionPath = matchWorkflowRunCanonicalizationResolutionPath(pathname);
 
       if (method === 'POST' && workflowRunCanonicalizationResolutionPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         const workflowRun = store.getWorkflowRun(workflowRunCanonicalizationResolutionPath.runId);
 
         if (!workflowRun) {
@@ -1912,10 +2219,6 @@ export async function createApp(options = {}) {
       const workflowRunAuditLogPath = matchWorkflowRunAuditLogPath(pathname);
 
       if (method === 'GET' && workflowRunAuditLogPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         const workflowRun = store.getWorkflowRun(workflowRunAuditLogPath.runId);
 
         if (!workflowRun) {
@@ -1930,10 +2233,6 @@ export async function createApp(options = {}) {
       const workflowRunExportPath = matchWorkflowRunExportPath(pathname);
 
       if (workflowRunExportPath && method === 'GET') {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         const workflowRun = store.getWorkflowRun(workflowRunExportPath.runId);
 
         if (!workflowRun) {
@@ -1948,48 +2247,23 @@ export async function createApp(options = {}) {
       }
 
       if (workflowRunExportPath && method === 'POST') {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
-        let workflowRun = store.getWorkflowRun(workflowRunExportPath.runId);
+        const workflowRun = store.getWorkflowRun(workflowRunExportPath.runId);
 
         if (!workflowRun) {
           throw createHttpError(404, 'Workflow run not found.');
         }
 
         assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'workflow-run.export', 'workflow-run', workflowRun.id);
-
-        if (!canExportRun(actor)) {
-          denyWithAudit(store, schemaRegistry, actor, 'workflow-run.export', 'workflow-run', workflowRun.id, 'Actor cannot export workflow runs.');
-        }
-
         const project = getProjectForRun(store, workflowRun);
-        const diseasePacketReference = findLatestArtifactReference(workflowRun, 'disease-packet');
-
-        if (!diseasePacketReference) {
-          throw createHttpError(409, 'Workflow run is missing a disease packet required for export.');
-        }
-
-        const diseasePacket = store.getArtifact('disease-packet', diseasePacketReference.artifactId);
-
-        if (!diseasePacket) {
-          throw createHttpError(404, 'Disease packet artifact could not be loaded.');
-        }
-
-        const qaReports = workflowRun.artifacts
-          .filter((/** @type {WorkflowArtifactReference} */ artifact) => artifact.artifactType === 'qa-report')
-          .map((/** @type {WorkflowArtifactReference} */ artifact) => store.getArtifact(artifact.artifactType, artifact.artifactId))
-          .filter(Boolean);
-
         const exportRequest = await readJsonBody(request);
-        const releasePackage = exporterService.assembleRelease({
+        const exportedRun = exportWorkflowRun({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          exporterService,
           workflowRun,
           project,
           actor,
-          diseasePacket,
-          qaReports,
-          artifactManifest: collectReleaseArtifactManifest(store, workflowRun),
           exportTargets: isRecord(exportRequest) && Array.isArray(exportRequest.exportTargets)
             ? exportRequest.exportTargets.filter((target) => typeof target === 'string')
             : undefined,
@@ -1997,112 +2271,78 @@ export async function createApp(options = {}) {
             ? exportRequest.version
             : undefined,
         });
+        sendJson(response, 201, {
+          workflowRun: exportedRun.workflowRun,
+          releaseBundle: exportedRun.releaseBundle,
+          exportHistoryEntry: exportedRun.exportHistoryEntry,
+        });
+        return;
+      }
 
-        const sourceEvidencePackDocument = store.saveDocument(
-          'source-evidence-pack',
-          releasePackage.releaseBundle.releaseId,
-          JSON.stringify(releasePackage.sourceEvidencePack, null, 2),
-          {
-            tenantId: workflowRun.tenantId,
-            contentType: 'application/json',
-            extension: 'json',
-            retentionClass: 'release-bundle',
-          },
-        );
-        const bundleIndexDocument = store.saveDocument(
-          'release-index',
-          releasePackage.releaseBundle.releaseId,
-          releasePackage.bundleIndexMarkdown,
-          {
-            tenantId: workflowRun.tenantId,
-            contentType: 'text/markdown',
-            extension: 'md',
-            retentionClass: 'release-bundle',
-          },
-        );
+      const workflowRunEvaluationPath = matchWorkflowRunEvaluationPath(pathname);
 
-        releasePackage.releaseBundle.bundleIndexLocation = bundleIndexDocument.location;
-        releasePackage.releaseBundle.sourceEvidencePackLocation = sourceEvidencePackDocument.location;
-        workflowRun = persistArtifact(
-          store,
-          schemaRegistry,
-          workflowRun,
-          'release-bundle',
-          'contracts/release-bundle.schema.json',
-          releasePackage.releaseBundle,
-          'exported',
-        );
+      if (workflowRunEvaluationPath && method === 'GET') {
+        const workflowRun = store.getWorkflowRun(workflowRunEvaluationPath.runId);
 
-        const releaseBundleMetadata = store.getArtifactMetadata('release-bundle', releasePackage.releaseBundle.releaseId);
-
-        if (!releaseBundleMetadata) {
-          throw createHttpError(500, 'Release bundle metadata was not stored.');
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
         }
 
-        const exportHistoryEntry = {
-          ...releasePackage.exportHistoryEntry,
-          bundleLocation: releaseBundleMetadata.location,
-          bundleIndexLocation: bundleIndexDocument.location,
-        };
-        assertSchema(schemaRegistry, 'contracts/export-history-entry.schema.json', exportHistoryEntry);
-        store.saveExportHistoryEntry(exportHistoryEntry);
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'workflow-run.evaluations.view', 'workflow-run', workflowRun.id);
+        const evalRuns = listEvaluationReferences(workflowRun)
+          .map((artifactReference) => store.getArtifact('eval-run', artifactReference.artifactId))
+          .filter(Boolean);
+        evalRuns.forEach((evalRun) => assertSchema(schemaRegistry, 'contracts/eval-run.schema.json', evalRun));
+        sendJson(response, 200, evalRuns);
+        return;
+      }
 
-        workflowRun = transitionWorkflow(store, schemaRegistry, workflowSpec, workflowRun, {
-          eventType: 'START_EXPORT',
-          actor: {
-            type: 'user',
-            id: actor.id,
-          },
-          payload: {
-            releaseId: releasePackage.releaseBundle.releaseId,
-          },
-          notes: 'Release bundle assembly started.',
-        });
+      if (workflowRunEvaluationPath && method === 'POST') {
+        const workflowRun = store.getWorkflowRun(workflowRunEvaluationPath.runId);
 
-        workflowRun = transitionWorkflow(store, schemaRegistry, workflowSpec, workflowRun, {
-          eventType: 'EXPORT_COMPLETED',
-          actor: {
-            type: 'system',
-            id: 'export-service',
-          },
-          payload: {
-            releaseId: releasePackage.releaseBundle.releaseId,
-            exportHistoryEntryId: exportHistoryEntry.id,
-          },
-          notes: 'Release bundle exported and stored in object storage.',
-        });
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
 
-        appendAuditLog(
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'workflow-run.evaluate', 'workflow-run', workflowRun.id);
+        const updatedWorkflowRun = evaluateWorkflowRun({
           store,
           schemaRegistry,
-          actor,
-          'workflow-run.export',
-          'workflow-run',
-          workflowRun.id,
-          'success',
-          `Exported release bundle ${releasePackage.releaseBundle.releaseId}.`,
-          {
-            exportHistoryEntryId: exportHistoryEntry.id,
-            releaseId: releasePackage.releaseBundle.releaseId,
-          },
-        );
-
-        assertSchema(schemaRegistry, 'contracts/workflow-run.schema.json', workflowRun);
-        sendJson(response, 201, {
+          evalService,
           workflowRun,
-          releaseBundle: releasePackage.releaseBundle,
-          exportHistoryEntry,
+          actor,
         });
+        sendJson(response, 201, {
+          workflowRun: updatedWorkflowRun,
+          evaluation: getLatestEvalRun(store, updatedWorkflowRun),
+        });
+        return;
+      }
+
+      const evaluationPath = matchEvaluationPath(pathname);
+
+      if (evaluationPath && method === 'GET') {
+        const evalRun = store.getArtifact('eval-run', evaluationPath.evalRunId);
+
+        if (!evalRun) {
+          throw createHttpError(404, 'Eval run not found.');
+        }
+
+        const workflowRun = store.getWorkflowRun(evalRun.workflowRunId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'workflow-run.evaluate.view', 'workflow-run', workflowRun.id);
+        assertSchema(schemaRegistry, 'contracts/eval-run.schema.json', evalRun);
+        sendJson(response, 200, evalRun);
         return;
       }
 
       const artifactPath = matchArtifactPath(pathname);
 
       if (method === 'GET' && artifactPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         const workflowRun = findWorkflowRunByArtifactReference(store, artifactPath.artifactType, artifactPath.artifactId);
 
         if (!workflowRun) {
@@ -2124,10 +2364,6 @@ export async function createApp(options = {}) {
       const evidenceRecordPath = matchEvidenceRecordPath(pathname);
 
       if (method === 'GET' && evidenceRecordPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         if (!canViewTenantData(actor)) {
           throw createHttpError(403, 'Actor cannot read evidence records.');
         }
@@ -2144,10 +2380,6 @@ export async function createApp(options = {}) {
       }
 
       if (method === 'GET' && pathname === '/api/v1/source-records') {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         if (!canViewTenantData(actor)) {
           throw createHttpError(403, 'Actor cannot read source governance records.');
         }
@@ -2167,10 +2399,6 @@ export async function createApp(options = {}) {
       const sourceRecordPath = matchSourceRecordPath(pathname);
 
       if (method === 'GET' && sourceRecordPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         if (!canViewTenantData(actor)) {
           throw createHttpError(403, 'Actor cannot read source governance records.');
         }
@@ -2189,10 +2417,6 @@ export async function createApp(options = {}) {
       const releaseBundlePath = matchReleaseBundlePath(pathname);
 
       if (method === 'GET' && releaseBundlePath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         const releaseBundle = store.getArtifact('release-bundle', releaseBundlePath.releaseId);
 
         if (!releaseBundle) {
@@ -2208,10 +2432,6 @@ export async function createApp(options = {}) {
       const releaseBundleIndexPath = matchReleaseBundleIndexPath(pathname);
 
       if (method === 'GET' && releaseBundleIndexPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         const releaseBundle = store.getArtifact('release-bundle', releaseBundleIndexPath.releaseId);
 
         if (!releaseBundle) {
@@ -2234,10 +2454,6 @@ export async function createApp(options = {}) {
       const releaseEvidencePackPath = matchReleaseEvidencePackPath(pathname);
 
       if (method === 'GET' && releaseEvidencePackPath) {
-        if (!requireApiActor(actor, response)) {
-          return;
-        }
-
         const releaseBundle = store.getArtifact('release-bundle', releaseEvidencePackPath.releaseId);
 
         if (!releaseBundle) {

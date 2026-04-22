@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/eval-run.schema.json",
+  "title": "EvalRun",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "workflowRunId",
+    "tenantId",
+    "canonicalDiseaseName",
+    "evaluatedBy",
+    "evaluatedAt",
+    "latestRelevantArtifactAt",
+    "familyResults",
+    "summary"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflowRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "tenantId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "evaluatedBy": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "evaluatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "latestRelevantArtifactAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "familyResults": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "family",
+          "mode",
+          "threshold",
+          "status",
+          "score",
+          "applicableCaseCount",
+          "passedCaseCount",
+          "failedCaseCount",
+          "cases"
+        ],
+        "properties": {
+          "family": {
+            "type": "string",
+            "enum": [
+              "medical_accuracy",
+              "mystery_integrity",
+              "educational_sequencing",
+              "panelization",
+              "render_readiness",
+              "governance_release"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "ratio",
+              "pass-fail"
+            ]
+          },
+          "releaseGate": {
+            "type": "string"
+          },
+          "threshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "not-applicable"
+            ]
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "applicableCaseCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "passedCaseCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "failedCaseCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "caseId",
+                "artifactType",
+                "status",
+                "score",
+                "threshold",
+                "message"
+              ],
+              "properties": {
+                "caseId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                },
+                "artifactType": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "passed",
+                    "failed"
+                  ]
+                },
+                "score": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "threshold": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "applicableFamilyCount",
+        "passedFamilyCount",
+        "failedFamilyCount",
+        "applicableCaseCount",
+        "passedCaseCount",
+        "failedCaseCount",
+        "allThresholdsMet"
+      ],
+      "properties": {
+        "applicableFamilyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passedFamilyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedFamilyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "applicableCaseCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passedCaseCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedCaseCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "allThresholdsMet": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

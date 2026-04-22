@@ -9,7 +9,10 @@ const distDir = path.join(rootDir, 'dist');
 const copyTargets = [
   'api',
   'contracts',
+  'evals',
+  'infra',
   'services/clinical-retrieval',
+  'services/exporter',
   'services/intake-api',
   'services/orchestrator',
   'services/story-engine',

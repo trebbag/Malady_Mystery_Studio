@@ -10,6 +10,7 @@
     "releaseId",
     "workflowRunId",
     "tenantId",
+    "evalRunId",
     "exportedBy",
     "exportedAt",
     "status",
@@ -34,6 +35,10 @@
       "pattern": "^[A-Za-z0-9._:-]+$"
     },
     "tenantId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "evalRunId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9._:-]+$"
     },

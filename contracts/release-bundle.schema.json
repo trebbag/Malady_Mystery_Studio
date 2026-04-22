@@ -190,6 +190,43 @@
         ]
       }
     },
+    "evaluationSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evalRunId",
+        "evaluatedAt",
+        "allThresholdsMet",
+        "applicableFamilyCount",
+        "passedFamilyCount",
+        "failedFamilyCount"
+      ],
+      "properties": {
+        "evalRunId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]+$"
+        },
+        "evaluatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "allThresholdsMet": {
+          "type": "boolean"
+        },
+        "applicableFamilyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passedFamilyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedFamilyCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "exportTargets": {
       "type": "array",
       "items": {

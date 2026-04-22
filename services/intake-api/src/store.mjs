@@ -127,6 +127,10 @@ export class PlatformStore {
     this.seedRetentionPolicies();
   }
 
+  close() {
+    this.db.close();
+  }
+
   applyMigrations() {
     this.db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL);');
     const appliedMigrationIds = new Set(

@@ -2,7 +2,7 @@
   "schemaVersion": "1.0.0",
   "id": "run.hcc.001",
   "projectId": "prj.demo.001",
-  "tenantId": "tenant.demo",
+  "tenantId": "tenant.local",
   "input": {
     "diseaseName": "hepatocellular carcinoma",
     "audienceTier": "provider-education",
@@ -144,19 +144,25 @@
       "artifactId": "ltm.hcc.004",
       "status": "generated",
       "path": "examples/sample_lettering_map.json"
+    },
+    {
+      "artifactType": "eval-run",
+      "artifactId": "evr.hcc.001",
+      "status": "approved",
+      "path": "examples/sample_eval_run.json"
     }
   ],
   "approvals": [
     {
       "role": "clinical",
-      "reviewerId": "clinician-01",
+      "reviewerId": "local-operator",
       "decision": "approved",
-      "comment": "packet approved",
+      "comment": "Packet approved for local review.",
       "timestamp": "2026-04-21T00:05:00Z"
     },
     {
       "role": "editorial",
-      "reviewerId": "editor-01",
+      "reviewerId": "local-operator",
       "decision": "approved",
       "comment": "Workbook sequencing works for release review.",
       "timestamp": "2026-04-21T00:09:30Z"
@@ -167,6 +173,9 @@
     }
   ],
   "lastEventId": "evt.run.hcc.001.008",
+  "latestEvalRunId": "evr.hcc.001",
+  "latestEvalStatus": "passed",
+  "latestEvalAt": "2026-04-21T00:09:45Z",
   "createdAt": "2026-04-21T00:00:00Z",
-  "updatedAt": "2026-04-21T00:09:30Z"
+  "updatedAt": "2026-04-21T00:09:45Z"
 }

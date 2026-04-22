@@ -3,10 +3,12 @@ info:
   title: Disease Comic Platform API
   version: 0.1.0
   description: >
-    Starter API contract for the Disease-to-Comic Clinical Mystery Platform.
+    Local-open API contract for the Disease Comic Platform. This runtime is intended
+    for local execution with SQLite metadata storage, filesystem object storage,
+    and a default local operator actor instead of sign-in or account management.
 servers:
-  - url: https://api.example.com
-    description: Placeholder production URL
+  - url: http://127.0.0.1:3000
+    description: Default local runtime
 paths:
   /api/v1/projects:
     post:
@@ -111,8 +113,6 @@ paths:
               required: [role, decision]
               properties:
                 role:
-                  type: string
-                reviewerId:
                   type: string
                 decision:
                   type: string
@@ -227,6 +227,65 @@ paths:
                 type: array
                 items:
                   $ref: '../contracts/audit-log-entry.schema.json'
+  /api/v1/workflow-runs/{runId}/evaluations:
+    get:
+      summary: List evaluations for a workflow run
+      operationId: listWorkflowRunEvaluations
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Eval runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/eval-run.schema.json'
+    post:
+      summary: Run deterministic local evaluations for a workflow run
+      operationId: runWorkflowEvaluations
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Eval run recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [workflowRun, evaluation]
+                properties:
+                  workflowRun:
+                    $ref: '../contracts/workflow-run.schema.json'
+                  evaluation:
+                    $ref: '../contracts/eval-run.schema.json'
+  /api/v1/evaluations/{evalRunId}:
+    get:
+      summary: Get an evaluation run
+      operationId: getEvaluationRun
+      parameters:
+        - in: path
+          name: evalRunId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Evaluation run
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/eval-run.schema.json'
   /api/v1/artifacts/{artifactType}/{artifactId}:
     get:
       summary: Get a generated artifact
@@ -260,6 +319,8 @@ paths:
                   - $ref: '../contracts/render-prompt.schema.json'
                   - $ref: '../contracts/lettering-map.schema.json'
                   - $ref: '../contracts/qa-report.schema.json'
+                  - $ref: '../contracts/eval-run.schema.json'
+                  - $ref: '../contracts/release-bundle.schema.json'
   /api/v1/evidence-records/{claimId}:
     get:
       summary: Get an evidence record by claim id
@@ -313,127 +374,6 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/source-record.schema.json'
-  /api/v1/auth/login:
-    post:
-      summary: Create a local password-authenticated session
-      operationId: login
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [tenantSlug, email, password]
-              properties:
-                tenantSlug:
-                  type: string
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-      responses:
-        '200':
-          description: Session created
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required: [actor, session]
-                properties:
-                  actor:
-                    $ref: '../contracts/user-account.schema.json'
-                  session:
-                    $ref: '../contracts/auth-session.schema.json'
-  /api/v1/auth/sso/exchange:
-    post:
-      summary: Exchange an OIDC assertion for a server-side session
-      operationId: exchangeSsoAssertion
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [idToken]
-              properties:
-                idToken:
-                  type: string
-      responses:
-        '200':
-          description: Session created
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required: [actor, session]
-                properties:
-                  actor:
-                    $ref: '../contracts/user-account.schema.json'
-                  session:
-                    $ref: '../contracts/auth-session.schema.json'
-  /api/v1/auth/me:
-    get:
-      summary: Get the current authenticated actor
-      operationId: getCurrentActor
-      responses:
-        '200':
-          description: Current actor
-          content:
-            application/json:
-              schema:
-                $ref: '../contracts/user-account.schema.json'
-  /api/v1/tenants/{tenantId}/users:
-    get:
-      summary: List users in a tenant
-      operationId: listTenantUsers
-      parameters:
-        - in: path
-          name: tenantId
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Tenant users
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '../contracts/user-account.schema.json'
-  /api/v1/tenants/{tenantId}/users/{userId}/roles:
-    post:
-      summary: Update a user's tenant role memberships
-      operationId: updateTenantUserRoles
-      parameters:
-        - in: path
-          name: tenantId
-          required: true
-          schema:
-            type: string
-        - in: path
-          name: userId
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [roles]
-              properties:
-                roles:
-                  type: array
-                  items:
-                    type: string
   /api/v1/release-bundles/{releaseId}:
     get:
       summary: Get a release bundle

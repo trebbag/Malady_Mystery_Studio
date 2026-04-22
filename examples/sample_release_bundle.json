@@ -2,7 +2,7 @@
   "schemaVersion": "1.0.0",
   "releaseId": "rel.hcc.001",
   "workflowRunId": "run.hcc.001",
-  "tenantId": "tenant.demo",
+  "tenantId": "tenant.local",
   "version": "0.1.0-demo",
   "artifactManifest": [
     {
@@ -60,6 +60,14 @@
       "contentType": "application/json",
       "retentionClass": "approved-artifact",
       "checksum": "demo-not-computed"
+    },
+    {
+      "artifactType": "eval-run",
+      "artifactId": "evr.hcc.001",
+      "location": "examples/sample_eval_run.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
     }
   ],
   "qualitySummary": {
@@ -87,34 +95,52 @@
       "name": "quality-blockers",
       "status": "passed",
       "details": "No blocking QA verdicts remained at export time."
+    },
+    {
+      "name": "source-governance",
+      "status": "passed",
+      "details": "No blocking evidence contradictions remained in the disease packet."
+    },
+    {
+      "name": "evaluation-status",
+      "status": "passed",
+      "details": "Eval run evr.hcc.001 passed all applicable thresholds."
     }
   ],
   "approvals": [
     {
       "role": "clinical",
-      "reviewerId": "clinician-01",
+      "reviewerId": "local-operator",
       "decision": "approved",
       "timestamp": "2026-04-21T00:05:00Z"
     },
     {
       "role": "editorial",
-      "reviewerId": "editor-01",
+      "reviewerId": "local-operator",
       "decision": "approved",
       "timestamp": "2026-04-21T00:06:00Z"
     },
     {
       "role": "product",
-      "reviewerId": "product-01",
+      "reviewerId": "local-operator",
       "decision": "approved",
       "timestamp": "2026-04-21T00:07:00Z"
     }
   ],
+  "evaluationSummary": {
+    "evalRunId": "evr.hcc.001",
+    "evaluatedAt": "2026-04-21T00:09:45Z",
+    "allThresholdsMet": true,
+    "applicableFamilyCount": 6,
+    "passedFamilyCount": 6,
+    "failedFamilyCount": 0
+  },
   "exportTargets": [
     "json",
     "human-readable-bundle"
   ],
   "exportedAt": "2026-04-21T00:10:00Z",
-  "exportedBy": "usr.owner.001",
+  "exportedBy": "local-operator",
   "bundleIndexLocation": "examples/release_bundle_index.md",
   "sourceEvidencePackLocation": "examples/evidence_sources.json",
   "notes": [

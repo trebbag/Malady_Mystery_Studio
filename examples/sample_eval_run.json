@@ -1,0 +1,171 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "evr.hcc.001",
+  "workflowRunId": "run.hcc.001",
+  "tenantId": "tenant.local",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "evaluatedBy": "local-operator",
+  "evaluatedAt": "2026-04-21T00:09:45Z",
+  "latestRelevantArtifactAt": "2026-04-21T00:09:00Z",
+  "familyResults": [
+    {
+      "family": "medical_accuracy",
+      "mode": "ratio",
+      "releaseGate": "Gate 2",
+      "threshold": 0.97,
+      "status": "passed",
+      "score": 1,
+      "applicableCaseCount": 1,
+      "passedCaseCount": 1,
+      "failedCaseCount": 0,
+      "cases": [
+        {
+          "caseId": "med.hcc.001",
+          "artifactType": "disease-packet",
+          "status": "passed",
+          "score": 0.98,
+          "threshold": 0.97,
+          "message": "Case satisfied medical_accuracy requirements."
+        }
+      ]
+    },
+    {
+      "family": "mystery_integrity",
+      "mode": "ratio",
+      "releaseGate": "Gate 3",
+      "threshold": 0.88,
+      "status": "passed",
+      "score": 1,
+      "applicableCaseCount": 1,
+      "passedCaseCount": 1,
+      "failedCaseCount": 0,
+      "cases": [
+        {
+          "caseId": "mys.hcc.001",
+          "artifactType": "story-workbook",
+          "status": "passed",
+          "score": 0.91,
+          "threshold": 0.88,
+          "message": "Case satisfied mystery_integrity requirements."
+        }
+      ]
+    },
+    {
+      "family": "educational_sequencing",
+      "mode": "ratio",
+      "releaseGate": "Gate 3",
+      "threshold": 0.9,
+      "status": "passed",
+      "score": 1,
+      "applicableCaseCount": 1,
+      "passedCaseCount": 1,
+      "failedCaseCount": 0,
+      "cases": [
+        {
+          "caseId": "seq.hcc.001",
+          "artifactType": "story-workbook",
+          "status": "passed",
+          "score": 0.93,
+          "threshold": 0.9,
+          "message": "Case satisfied educational_sequencing requirements."
+        }
+      ]
+    },
+    {
+      "family": "panelization",
+      "mode": "ratio",
+      "releaseGate": "Gate 4",
+      "threshold": 0.9,
+      "status": "passed",
+      "score": 1,
+      "applicableCaseCount": 1,
+      "passedCaseCount": 1,
+      "failedCaseCount": 0,
+      "cases": [
+        {
+          "caseId": "pan.hcc.001",
+          "artifactType": "panel-plan",
+          "status": "passed",
+          "score": 0.92,
+          "threshold": 0.9,
+          "message": "Case satisfied panelization requirements."
+        }
+      ]
+    },
+    {
+      "family": "render_readiness",
+      "mode": "ratio",
+      "releaseGate": "Gate 4",
+      "threshold": 0.92,
+      "status": "passed",
+      "score": 1,
+      "applicableCaseCount": 1,
+      "passedCaseCount": 1,
+      "failedCaseCount": 0,
+      "cases": [
+        {
+          "caseId": "ren.hcc.001",
+          "artifactType": "render-prompt",
+          "status": "passed",
+          "score": 0.94,
+          "threshold": 0.92,
+          "message": "Case satisfied render_readiness requirements."
+        }
+      ]
+    },
+    {
+      "family": "governance_release",
+      "mode": "pass-fail",
+      "releaseGate": "Gate 5 and Gate 6",
+      "threshold": 1,
+      "status": "passed",
+      "score": 1,
+      "applicableCaseCount": 4,
+      "passedCaseCount": 4,
+      "failedCaseCount": 0,
+      "cases": [
+        {
+          "caseId": "gov.bundle.001",
+          "artifactType": "release-bundle",
+          "status": "passed",
+          "score": 1,
+          "threshold": 1,
+          "message": "Case satisfied governance_release requirements."
+        },
+        {
+          "caseId": "gov.packet.001",
+          "artifactType": "disease-packet",
+          "status": "passed",
+          "score": 1,
+          "threshold": 1,
+          "message": "Case satisfied governance_release requirements."
+        },
+        {
+          "caseId": "gov.bundle.002",
+          "artifactType": "release-bundle-index",
+          "status": "passed",
+          "score": 1,
+          "threshold": 1,
+          "message": "Case satisfied governance_release requirements."
+        },
+        {
+          "caseId": "gov.bundle.003",
+          "artifactType": "source-evidence-pack",
+          "status": "passed",
+          "score": 1,
+          "threshold": 1,
+          "message": "Case satisfied governance_release requirements."
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "applicableFamilyCount": 6,
+    "passedFamilyCount": 6,
+    "failedFamilyCount": 0,
+    "applicableCaseCount": 9,
+    "passedCaseCount": 9,
+    "failedCaseCount": 0,
+    "allThresholdsMet": true
+  }
+}

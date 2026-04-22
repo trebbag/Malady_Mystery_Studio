@@ -171,6 +171,7 @@
               "render-prompt",
               "lettering-map",
               "qa-report",
+              "eval-run",
               "release-bundle"
             ]
           },
@@ -203,6 +204,23 @@
     "lastEventId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "latestEvalRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "latestEvalStatus": {
+      "type": "string",
+      "enum": [
+        "missing",
+        "passed",
+        "failed",
+        "stale"
+      ]
+    },
+    "latestEvalAt": {
+      "type": "string",
+      "format": "date-time"
     },
     "createdAt": {
       "type": "string",

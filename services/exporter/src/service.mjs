@@ -128,6 +128,9 @@ export function renderReleaseBundleIndex(releaseBundle, workflowRun, projectTitl
 - Exported by: ${releaseBundle.exportedBy}
 - Exported at: ${releaseBundle.exportedAt}
 - Release verdict: ${releaseBundle.qualitySummary.releaseVerdict}
+${releaseBundle.evaluationSummary ? `- Eval run: ${releaseBundle.evaluationSummary.evalRunId}
+- Eval status: ${releaseBundle.evaluationSummary.allThresholdsMet ? 'passed' : 'failed'}
+- Eval timestamp: ${releaseBundle.evaluationSummary.evaluatedAt}` : ''}
 
 ## Gate Checks
 ${releaseBundle.releaseGateChecks.map((/** @type {{ name: string, status: string, details?: string }} */ gateCheck) => `- ${gateCheck.name}: ${gateCheck.status} (${gateCheck.details})`).join('\n')}
@@ -172,8 +175,10 @@ export class ExporterService {
    *   diseasePacket: any,
    *   qaReports: any[],
    *   artifactManifest: Array<{ artifactType: string, artifactId: string, location: string, checksum: string, contentType: string, retentionClass: string }>,
+   *   evaluationSummary?: any,
    *   exportTargets?: string[],
    *   version?: string,
+   *   allowEvaluationBypass?: boolean,
    * }} options
    * @returns {{ releaseBundle: any, bundleIndexMarkdown: string, sourceEvidencePack: any, exportHistoryEntry: any }}
    */
@@ -194,6 +199,16 @@ export class ExporterService {
       throw new Error(`Release gate failed: ${failedGateCheck.name}. ${failedGateCheck.details}`);
     }
 
+    if (!options.allowEvaluationBypass) {
+      if (!options.evaluationSummary) {
+        throw new Error('Release gate failed: evaluation-status. A fresh passing eval run is required before export.');
+      }
+
+      if (!options.evaluationSummary.allThresholdsMet) {
+        throw new Error('Release gate failed: evaluation-status. The latest eval run did not meet all configured thresholds.');
+      }
+    }
+
     const exportedAt = new Date().toISOString();
     const releaseId = createId('rel');
     const releaseBundle = {
@@ -211,7 +226,19 @@ export class ExporterService {
         checksum: artifact.checksum,
       })),
       qualitySummary: buildQualitySummary(options.qaReports, options.diseasePacket),
-      releaseGateChecks,
+      releaseGateChecks: options.evaluationSummary
+        ? [
+          ...releaseGateChecks,
+          {
+            name: 'evaluation-status',
+            status: options.evaluationSummary.allThresholdsMet ? 'passed' : 'failed',
+            details: options.evaluationSummary.allThresholdsMet
+              ? `Eval run ${options.evaluationSummary.evalRunId} passed all applicable thresholds.`
+              : `Eval run ${options.evaluationSummary.evalRunId} did not pass all applicable thresholds.`,
+          },
+        ]
+        : releaseGateChecks,
+      evaluationSummary: options.evaluationSummary,
       approvals: options.workflowRun.approvals.filter((/** @type {{ decision: string }} */ approval) => approval.decision === 'approved'),
       exportTargets: options.exportTargets ?? ['json', 'human-readable-bundle'],
       exportedAt,
