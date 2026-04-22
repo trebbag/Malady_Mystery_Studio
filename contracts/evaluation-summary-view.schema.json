@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/evaluation-summary-view.schema.json",
+  "title": "EvaluationSummaryView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "latestEvalStatus",
+    "familyStatuses"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "latestEvalRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "latestEvalStatus": {
+      "type": "string",
+      "enum": [
+        "missing",
+        "passed",
+        "failed",
+        "stale"
+      ]
+    },
+    "evaluatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "allThresholdsMet": {
+      "type": "boolean"
+    },
+    "familyStatuses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "family",
+          "status",
+          "score",
+          "threshold"
+        ],
+        "properties": {
+          "family": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "not-applicable"
+            ]
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "threshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "releaseGate": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

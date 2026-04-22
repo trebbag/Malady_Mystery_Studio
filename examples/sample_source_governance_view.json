@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0.0",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "sourceRecords": [
+    {
+      "schemaVersion": "1.0.0",
+      "id": "src.hcc.guideline.001",
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "sourceLabel": "Curated hepatocellular carcinoma guideline",
+      "sourceType": "guideline",
+      "sourceTier": "tier-1",
+      "approvalStatus": "approved",
+      "freshnessScore": 0.97,
+      "freshnessStatus": "current",
+      "contradictionStatus": "none",
+      "owner": "clinical-board",
+      "governanceNotes": [
+        "Preferred baseline source for the starter knowledge pack."
+      ],
+      "sourceUrl": "https://example.org/hcc-guideline",
+      "lastReviewedAt": "2026-04-20T00:00:00Z"
+    }
+  ],
+  "governanceDecisions": [
+    {
+      "schemaVersion": "1.0.0",
+      "id": "sgd.hcc.001",
+      "tenantId": "tenant.local",
+      "sourceId": "src.hcc.guideline.001",
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "decision": "approved",
+      "reason": "This remains the preferred local baseline source for the starter library.",
+      "reviewedAt": "2026-04-22T11:30:00Z",
+      "decidedBy": "local-operator",
+      "decidedByRoles": [
+        "Local Operator"
+      ],
+      "occurredAt": "2026-04-22T11:30:00Z",
+      "notes": [
+        "Keep this source active for Gate 2 packets."
+      ]
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildEvidenceTraceabilitySummary,
   deriveEvalStatus,
   isCaseApplicable,
   loadEvaluationCases,
@@ -16,7 +17,9 @@ test('eval registry, thresholds, and datasets load from the local pack', () => {
 
   assert.equal(Array.isArray(registry.datasets), true);
   assert.equal(typeof thresholds.medical_accuracy.minimum, 'number');
+  assert.equal(typeof thresholds.evidence_traceability.minimum, 'number');
   assert.equal(casesByFamily.medical_accuracy.length > 0, true);
+  assert.equal(casesByFamily.evidence_traceability.length > 0, true);
   assert.equal(casesByFamily.governance_release.length > 0, true);
 });
 
@@ -86,4 +89,57 @@ test('stale eval detection trips when a newer relevant artifact exists', () => {
   };
 
   assert.equal(deriveEvalStatus(evalRun, fakeStore, workflowRun), 'stale');
+});
+
+test('traceability summary fails when downstream artifacts lose claim links', () => {
+  const summary = buildEvidenceTraceabilitySummary({
+    diseasePacket: {
+      evidenceSummary: {
+        blockingContradictions: 0,
+      },
+      evidence: [
+        {
+          claimId: 'clm.demo.001',
+          sourceId: 'src.demo.001',
+          approvalStatus: 'approved',
+          freshnessStatus: 'current',
+        },
+      ],
+    },
+    storyWorkbook: {
+      clueLadder: [
+        {
+          linkedClaimIds: ['clm.demo.001'],
+        },
+      ],
+    },
+    sceneCards: [],
+    panelPlans: [
+      {
+        panels: [
+          {
+            linkedClaimIds: [],
+          },
+        ],
+      },
+    ],
+    renderPrompts: [
+      {
+        linkedClaimIds: [],
+      },
+    ],
+    letteringMaps: [
+      {
+        entries: [
+          {
+            linkedClaimIds: [],
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(summary.verdict, 'failed');
+  assert.equal(summary.score < 0.95, true);
+  assert.equal(summary.blockers.some((blocker) => blocker.includes('missing valid linked claim ids')), true);
 });

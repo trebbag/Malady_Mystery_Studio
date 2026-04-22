@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0.0",
+  "score": 1,
+  "verdict": "passed",
+  "validClaimCount": 2,
+  "suspendedSourceCount": 0,
+  "staleSourceCount": 0,
+  "blockingContradictions": 0,
+  "artifactSummaries": [
+    {
+      "artifactType": "story-workbook",
+      "itemCount": 4,
+      "linkedItemCount": 4,
+      "validItemCount": 4,
+      "missingLinkCount": 0,
+      "invalidLinkCount": 0,
+      "coverageScore": 1
+    },
+    {
+      "artifactType": "panel-plan",
+      "itemCount": 3,
+      "linkedItemCount": 3,
+      "validItemCount": 3,
+      "missingLinkCount": 0,
+      "invalidLinkCount": 0,
+      "coverageScore": 1
+    }
+  ],
+  "blockers": []
+}

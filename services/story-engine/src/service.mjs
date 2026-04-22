@@ -215,6 +215,14 @@ function takeDistinct(values, count) {
 }
 
 /**
+ * @param {ReadonlyArray<string>} values
+ * @returns {string[]}
+ */
+function uniqueClaimIds(values) {
+  return [...new Set(values.filter((value) => typeof value === 'string' && value.trim().length > 0))];
+}
+
+/**
  * @param {any} diseasePacket
  * @returns {string[]}
  */
@@ -792,7 +800,39 @@ function createSceneCards(workbook, diseasePacket) {
   const clueTwo = workbook.clueLadder[1] ?? workbook.clueLadder[0];
   const clueThree = workbook.clueLadder[2] ?? workbook.clueLadder[1] ?? workbook.clueLadder[0];
   const clueFour = workbook.clueLadder[3] ?? workbook.clueLadder[2] ?? workbook.clueLadder[1] ?? workbook.clueLadder[0];
+  const primaryPathophysiology = diseasePacket.pathophysiology[0];
+  const fallbackCoreClaimIds = uniqueClaimIds([
+    ...(clueOne?.linkedClaimIds ?? []),
+    ...(primaryPathophysiology?.linkedClaimIds ?? []),
+  ]);
+  const fallbackInvestigationClaimIds = uniqueClaimIds([
+    ...(clueTwo?.linkedClaimIds ?? []),
+    ...(clueThree?.linkedClaimIds ?? []),
+    ...(primaryPathophysiology?.linkedClaimIds ?? []),
+  ]);
+  const fallbackRevealClaimIds = uniqueClaimIds([
+    ...(clueThree?.linkedClaimIds ?? []),
+    ...(clueFour?.linkedClaimIds ?? []),
+  ]);
+  const fallbackTreatmentClaimIds = uniqueClaimIds([
+    ...(diseasePacket.management.definitiveTherapies[0]?.claimIds ?? []),
+    ...(clueFour?.linkedClaimIds ?? []),
+  ]);
   const commonOutputs = ['panel-plan', 'render-prompt', 'lettering-map'];
+  /** @type {Record<string, string[]>} */
+  const defaultClaimIdsByAct = {
+    opener: fallbackCoreClaimIds,
+    'case-intake': fallbackCoreClaimIds,
+    planning: fallbackInvestigationClaimIds,
+    entry: fallbackCoreClaimIds,
+    investigation: fallbackInvestigationClaimIds,
+    reveal: fallbackRevealClaimIds,
+    treatment: fallbackTreatmentClaimIds,
+    'wrap-up': uniqueClaimIds([
+      ...fallbackRevealClaimIds,
+      ...fallbackTreatmentClaimIds,
+    ]),
+  };
   const sceneDefinitions = [
     {
       act: 'opener',
@@ -1033,6 +1073,10 @@ function createSceneCards(workbook, diseasePacket) {
     bodyScale: sceneDefinition.bodyScale,
     dramaticQuestion: sceneDefinition.dramaticQuestion,
     beats: sceneDefinition.beats.map((/** @type {any} */ beat, /** @type {number} */ beatIndex) => {
+      const fallbackClaimIds = defaultClaimIdsByAct[sceneDefinition.act] ?? fallbackCoreClaimIds;
+      const linkedClaimIds = Array.isArray(beat.linkedClaimIds) && beat.linkedClaimIds.length > 0
+        ? uniqueClaimIds(beat.linkedClaimIds)
+        : fallbackClaimIds;
       /** @type {any} */
       const beatRecord = {
         order: beatIndex + 1,
@@ -1044,8 +1088,8 @@ function createSceneCards(workbook, diseasePacket) {
         beatRecord.clueRevealed = beat.clueRevealed;
       }
 
-      if (Array.isArray(beat.linkedClaimIds) && beat.linkedClaimIds.length > 0) {
-        beatRecord.linkedClaimIds = beat.linkedClaimIds;
+      if (linkedClaimIds.length > 0) {
+        beatRecord.linkedClaimIds = linkedClaimIds;
       }
 
       return beatRecord;
@@ -1219,6 +1263,10 @@ function createPanelPlan(sceneCard, startPage) {
       panelRecord.clueRevealed = beat.clueRevealed;
     }
 
+    if (Array.isArray(beat.linkedClaimIds) && beat.linkedClaimIds.length > 0) {
+      panelRecord.linkedClaimIds = beat.linkedClaimIds;
+    }
+
     return panelRecord;
   });
 
@@ -1340,6 +1388,7 @@ function createRenderPrompt(panel, storyWorkbook, diseasePacket, options) {
     positivePrompt: `Comic-book panel art with readable ${panel.bodyScale} geography. ${panel.actionSummary} Location: ${panel.location}. Story purpose: ${panel.storyFunction}. Lighting: ${panel.lightingMood}. Keep ${panel.renderIntent.toLowerCase()} while preserving medical clarity and no visible text.`,
     negativePrompt: 'no speech bubbles, no captions, no labels, no medical chart overlays, no large text blocks, no duplicate characters, no anatomy contradictions, no generic sci-fi background, no illegible signage',
     continuityAnchors: panel.continuityAnchors,
+    linkedClaimIds: panel.linkedClaimIds ?? [],
     characterLocks: takeDistinct([
       panel.charactersPresent.includes('Detective A') ? 'Detective A is shorter and more impulsive.' : '',
       panel.charactersPresent.includes('Detective B') ? 'Detective B is taller and more analytical.' : '',
@@ -1417,6 +1466,10 @@ function createLetteringMap(sceneCard, panelPlan, storyWorkbook) {
 
       if (speaker) {
         letteringEntry.speaker = speaker;
+      }
+
+      if (Array.isArray(panel.linkedClaimIds) && panel.linkedClaimIds.length > 0) {
+        letteringEntry.linkedClaimIds = panel.linkedClaimIds;
       }
 
       return letteringEntry;

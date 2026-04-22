@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/fact-table.schema.json",
+  "title": "FactTable",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "canonicalDiseaseName",
+    "rows"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claimId",
+          "claimText",
+          "claimType",
+          "certaintyLevel",
+          "importanceRank",
+          "sourceIds"
+        ],
+        "properties": {
+          "claimId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "claimText": {
+            "type": "string"
+          },
+          "claimType": {
+            "type": "string"
+          },
+          "certaintyLevel": {
+            "type": "string",
+            "enum": [
+              "high",
+              "moderate",
+              "guarded"
+            ]
+          },
+          "importanceRank": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sourceIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          },
+          "diseaseStageApplicability": {
+            "type": "string"
+          },
+          "patientSubgroupApplicability": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "supported",
+              "review-required",
+              "blocked"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

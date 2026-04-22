@@ -55,6 +55,137 @@ function selectPrimaryQaReport(qaReports) {
 }
 
 /**
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+function normalizeLinkedClaimIds(value) {
+  return Array.isArray(value)
+    ? [...new Set(value.filter((item) => typeof item === 'string' && item.trim().length > 0))]
+    : [];
+}
+
+/**
+ * @param {string} artifactType
+ * @param {unknown[]} items
+ * @param {(item: any) => unknown} getLinkedClaimIds
+ * @param {Set<string>} validClaimIds
+ * @returns {{ artifactType: string, itemCount: number, linkedItemCount: number, validItemCount: number, missingLinkCount: number, invalidLinkCount: number, coverageScore: number }}
+ */
+function summarizeTraceCollection(artifactType, items, getLinkedClaimIds, validClaimIds) {
+  const itemCount = items.length;
+  let linkedItemCount = 0;
+  let validItemCount = 0;
+
+  for (const item of items) {
+    const linkedClaimIds = normalizeLinkedClaimIds(getLinkedClaimIds(item));
+
+    if (linkedClaimIds.length === 0) {
+      continue;
+    }
+
+    linkedItemCount += 1;
+
+    if (linkedClaimIds.every((claimId) => validClaimIds.has(claimId))) {
+      validItemCount += 1;
+    }
+  }
+
+  const missingLinkCount = Math.max(0, itemCount - linkedItemCount);
+  const invalidLinkCount = Math.max(0, linkedItemCount - validItemCount);
+
+  return {
+    artifactType,
+    itemCount,
+    linkedItemCount,
+    validItemCount,
+    missingLinkCount,
+    invalidLinkCount,
+    coverageScore: roundScore(itemCount === 0 ? 1 : validItemCount / itemCount),
+  };
+}
+
+/**
+ * @param {{ diseasePacket: any, storyWorkbook?: any | null, sceneCards?: any[], panelPlans?: any[], renderPrompts?: any[], letteringMaps?: any[] }} context
+ * @returns {{ score: number, verdict: 'passed' | 'failed', validClaimCount: number, suspendedSourceCount: number, staleSourceCount: number, blockingContradictions: number, artifactSummaries: Array<{ artifactType: string, itemCount: number, linkedItemCount: number, validItemCount: number, missingLinkCount: number, invalidLinkCount: number, coverageScore: number }>, blockers: string[] }}
+ */
+export function buildEvidenceTraceabilitySummary(context) {
+  const validClaimIds = new Set(
+    Array.isArray(context.diseasePacket?.evidence)
+      ? context.diseasePacket.evidence
+        .map((/** @type {any} */ evidenceRecord) => evidenceRecord.claimId)
+        .filter((/** @type {any} */ claimId) => typeof claimId === 'string')
+      : [],
+  );
+  const storyWorkbookClues = Array.isArray(context.storyWorkbook?.clueLadder)
+    ? context.storyWorkbook.clueLadder
+    : [];
+  const sceneBeats = (context.sceneCards ?? []).flatMap((sceneCard) => Array.isArray(sceneCard.beats) ? sceneCard.beats : []);
+  const panelItems = (context.panelPlans ?? []).flatMap((panelPlan) => Array.isArray(panelPlan.panels) ? panelPlan.panels : []);
+  const letteringEntries = (context.letteringMaps ?? []).flatMap((letteringMap) => Array.isArray(letteringMap.entries) ? letteringMap.entries : []);
+  const artifactSummaries = [
+    summarizeTraceCollection('story-workbook', storyWorkbookClues, (item) => item.linkedClaimIds, validClaimIds),
+    summarizeTraceCollection('scene-card', sceneBeats, (item) => item.linkedClaimIds, validClaimIds),
+    summarizeTraceCollection('panel-plan', panelItems, (item) => item.linkedClaimIds, validClaimIds),
+    summarizeTraceCollection('render-prompt', context.renderPrompts ?? [], (item) => item.linkedClaimIds, validClaimIds),
+    summarizeTraceCollection('lettering-map', letteringEntries, (item) => item.linkedClaimIds, validClaimIds),
+  ].filter((summary) => summary.itemCount > 0);
+  const totalItemCount = artifactSummaries.reduce((total, summary) => total + summary.itemCount, 0);
+  const totalValidItemCount = artifactSummaries.reduce((total, summary) => total + summary.validItemCount, 0);
+  const suspendedSourceCount = new Set(
+    (context.diseasePacket?.evidence ?? [])
+      .filter((/** @type {any} */ record) => record.approvalStatus === 'suspended')
+      .map((/** @type {any} */ record) => record.sourceId),
+  ).size;
+  const staleSourceCount = new Set(
+    (context.diseasePacket?.evidence ?? [])
+      .filter((/** @type {any} */ record) => record.freshnessStatus === 'stale')
+      .map((/** @type {any} */ record) => record.sourceId),
+  ).size;
+  const blockingContradictions = context.diseasePacket?.evidenceSummary?.blockingContradictions ?? 0;
+  /** @type {string[]} */
+  const blockers = [];
+
+  if (artifactSummaries.some((summary) => summary.missingLinkCount > 0 || summary.invalidLinkCount > 0)) {
+    blockers.push('One or more downstream artifacts are missing valid linked claim ids.');
+  }
+
+  if (suspendedSourceCount > 0) {
+    blockers.push('Suspended source records still support the current disease packet.');
+  }
+
+  if (staleSourceCount > 0) {
+    blockers.push('Stale source records require reviewer refresh before release.');
+  }
+
+  if (blockingContradictions > 0) {
+    blockers.push('Blocking contradictions remain unresolved in the clinical package.');
+  }
+
+  let score = roundScore(totalItemCount === 0 ? 0 : totalValidItemCount / totalItemCount);
+
+  if (suspendedSourceCount > 0) {
+    score = Math.min(score, 0.2);
+  } else if (staleSourceCount > 0) {
+    score = Math.min(score, 0.85);
+  }
+
+  if (blockingContradictions > 0) {
+    score = 0;
+  }
+
+  return {
+    score,
+    verdict: blockers.length === 0 ? 'passed' : 'failed',
+    validClaimCount: validClaimIds.size,
+    suspendedSourceCount,
+    staleSourceCount,
+    blockingContradictions,
+    artifactSummaries,
+    blockers,
+  };
+}
+
+/**
  * @param {string} artifactType
  * @returns {boolean}
  */
@@ -298,6 +429,9 @@ function scoreEvaluationCase(evaluationCase, context, threshold) {
         ? roundScore(context.primaryQaReport?.scores.medicalAccuracy ?? 0)
         : scoreMedicalPacket(context.diseasePacket);
       break;
+    case 'evidence_traceability':
+      score = context.traceabilitySummary.score;
+      break;
     case 'mystery_integrity':
       score = artifactType === 'scene-card'
         ? context.sceneReview.score
@@ -461,6 +595,25 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
   const renderPrompts = loadArtifactsByType(store, workflowRun, 'render-prompt');
   const letteringMaps = loadArtifactsByType(store, workflowRun, 'lettering-map');
   const primaryQaReport = selectPrimaryQaReport(qaReports);
+  const traceabilitySummary = diseasePacket
+    ? buildEvidenceTraceabilitySummary({
+      diseasePacket,
+      storyWorkbook,
+      sceneCards,
+      panelPlans,
+      renderPrompts,
+      letteringMaps,
+    })
+    : {
+      score: 0,
+      verdict: 'failed',
+      validClaimCount: 0,
+      suspendedSourceCount: 0,
+      staleSourceCount: 0,
+      blockingContradictions: 0,
+      artifactSummaries: [],
+      blockers: ['Disease packet is missing.'],
+    };
 
   return {
     store,
@@ -487,6 +640,7 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
     sceneReview: reviewSceneCards(sceneCards),
     panelReview: reviewPanelPlans(panelPlans),
     renderReview: reviewRenderPrompts(renderPrompts, letteringMaps),
+    traceabilitySummary,
     releasePreview: null,
   };
 }
@@ -503,6 +657,7 @@ export function summarizeEvalRun(evalRun) {
     applicableFamilyCount: evalRun.summary.applicableFamilyCount,
     passedFamilyCount: evalRun.summary.passedFamilyCount,
     failedFamilyCount: evalRun.summary.failedFamilyCount,
+    familyScores: evalRun.summary.familyScores,
   };
 }
 
@@ -543,6 +698,9 @@ export class EvalService {
     const passedCaseCount = applicableFamilyResults.reduce((total, familyResult) => total + familyResult.passedCaseCount, 0);
     const failedCaseCount = applicableCaseCount - passedCaseCount;
     const evaluatedAt = new Date().toISOString();
+    const familyScores = Object.fromEntries(
+      familyResults.map((familyResult) => [familyResult.family, familyResult.score]),
+    );
 
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -562,6 +720,7 @@ export class EvalService {
         passedCaseCount,
         failedCaseCount,
         allThresholdsMet: failedFamilyCount === 0,
+        familyScores,
       },
     };
   }

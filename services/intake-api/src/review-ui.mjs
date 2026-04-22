@@ -220,9 +220,10 @@ export function renderReviewDashboard(options) {
     <section class="surface">
       <div class="stats">
         <div class="stat"><span class="muted">Visible runs</span><strong>${options.workflowRuns.length}</strong></div>
-        <div class="stat"><span class="muted">Passed evals</span><strong>${options.workflowRuns.filter((workflowRun) => (options.runSummaries.get(workflowRun.id)?.latestEvalStatus ?? 'missing') === 'passed').length}</strong></div>
-        <div class="stat"><span class="muted">Needs eval</span><strong>${options.workflowRuns.filter((workflowRun) => (options.runSummaries.get(workflowRun.id)?.latestEvalStatus ?? 'missing') === 'missing').length}</strong></div>
-        <div class="stat"><span class="muted">Exported runs</span><strong>${options.workflowRuns.filter((workflowRun) => (options.runSummaries.get(workflowRun.id)?.exportCount ?? 0) > 0).length}</strong></div>
+        <div class="stat"><span class="muted">Blocked clinical runs</span><strong>${options.workflowRuns.filter((workflowRun) => workflowRun.pauseReason === 'clinical-governance-blocked' || workflowRun.pauseReason === 'clinical-governance-review-required').length}</strong></div>
+        <div class="stat"><span class="muted">Awaiting review</span><strong>${options.workflowRuns.filter((workflowRun) => workflowRun.state === 'review').length}</strong></div>
+        <div class="stat"><span class="muted">Stale evals</span><strong>${options.workflowRuns.filter((workflowRun) => (options.runSummaries.get(workflowRun.id)?.latestEvalStatus ?? 'missing') === 'stale').length}</strong></div>
+        <div class="stat"><span class="muted">Export ready</span><strong>${options.workflowRuns.filter((workflowRun) => workflowRun.state === 'approved' && (options.runSummaries.get(workflowRun.id)?.latestEvalStatus ?? 'missing') === 'passed').length}</strong></div>
       </div>
     </section>
     <section class="surface">
@@ -269,7 +270,26 @@ function renderArtifactGroups(groups) {
 }
 
 /**
- * @param {{ actor: any, project: any, workflowRun: any, artifactGroups: Array<{ title: string, description?: string, artifacts: Array<{ artifactType: string, artifactId: string, artifact: any }> }>, auditLogs: any[], canonicalDisease: any | null, canResolveCanonicalization: boolean, approvableRoles: string[], latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[], sourceRecords: any[] }} options
+ * @param {{ artifactType: string, itemCount: number, linkedItemCount: number, validItemCount: number, missingLinkCount: number, invalidLinkCount: number, coverageScore: number }[]} summaries
+ * @returns {string}
+ */
+function renderTraceCoverageTable(summaries) {
+  return `<table>
+    <thead><tr><th>Artifact</th><th>Items</th><th>Linked</th><th>Valid</th><th>Missing</th><th>Invalid</th><th>Coverage</th></tr></thead>
+    <tbody>${summaries.map((summary) => `<tr>
+      <td>${escapeHtml(summary.artifactType)}</td>
+      <td>${summary.itemCount}</td>
+      <td>${summary.linkedItemCount}</td>
+      <td>${summary.validItemCount}</td>
+      <td>${summary.missingLinkCount}</td>
+      <td>${summary.invalidLinkCount}</td>
+      <td>${summary.coverageScore.toFixed(2)}</td>
+    </tr>`).join('') || '<tr><td colspan="7">No downstream trace coverage artifacts are available yet.</td></tr>'}</tbody>
+  </table>`;
+}
+
+/**
+ * @param {{ actor: any, project: any, workflowRun: any, artifactGroups: Array<{ title: string, description?: string, artifacts: Array<{ artifactType: string, artifactId: string, artifact: any }> }>, auditLogs: any[], canonicalDisease: any | null, canResolveCanonicalization: boolean, approvableRoles: string[], clinicalPackage: any | null, latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[] }} options
  * @returns {string}
  */
 export function renderReviewRunPage(options) {
@@ -332,8 +352,8 @@ export function renderReviewRunPage(options) {
     </tr>`)
     .join('');
 
-  const sourceRows = options.sourceRecords
-    .map((sourceRecord) => `<tr>
+  const sourceRows = (options.clinicalPackage?.sourceRecords ?? [])
+    .map((/** @type {any} */ sourceRecord) => `<tr>
       <td><code>${escapeHtml(sourceRecord.id)}</code></td>
       <td>${escapeHtml(sourceRecord.sourceLabel)}</td>
       <td>${escapeHtml(sourceRecord.sourceType)}</td>
@@ -353,6 +373,78 @@ export function renderReviewRunPage(options) {
     </tr>`)
     .join('');
 
+  const contradictionRows = (options.clinicalPackage?.evidenceRelationships ?? [])
+    .map((/** @type {any} */ relationship) => `<tr>
+      <td><code>${escapeHtml(relationship.edgeId)}</code></td>
+      <td>${escapeHtml(relationship.fromClaimId)}</td>
+      <td>${escapeHtml(relationship.relationshipType)}</td>
+      <td>${escapeHtml(relationship.toClaimId)}</td>
+      <td>${statusTag(relationship.status)}</td>
+      <td>${escapeHtml(relationship.notes ?? '')}</td>
+    </tr>`)
+    .join('');
+
+  const governanceRows = (options.clinicalPackage?.governanceDecisions ?? [])
+    .map((/** @type {any} */ decision) => `<tr>
+      <td><code>${escapeHtml(decision.id)}</code></td>
+      <td>${escapeHtml(decision.sourceId)}</td>
+      <td>${statusTag(decision.decision)}</td>
+      <td>${escapeHtml(decision.decidedBy)}</td>
+      <td>${escapeHtml(decision.occurredAt)}</td>
+      <td>${escapeHtml(decision.reason ?? '')}</td>
+    </tr>`)
+    .join('');
+
+  const contradictionResolutionRows = (options.clinicalPackage?.contradictionResolutions ?? [])
+    .map((/** @type {any} */ resolution) => `<tr>
+      <td><code>${escapeHtml(resolution.id)}</code></td>
+      <td>${escapeHtml(resolution.claimId)}</td>
+      <td>${escapeHtml(resolution.relatedClaimId ?? '')}</td>
+      <td>${statusTag(resolution.status)}</td>
+      <td>${escapeHtml(resolution.resolvedBy)}</td>
+      <td>${escapeHtml(resolution.occurredAt)}</td>
+    </tr>`)
+    .join('');
+
+  const sourceDecisionForms = (options.clinicalPackage?.sourceRecords ?? [])
+    .map((/** @type {any} */ sourceRecord) => `<form method="post" action="/review/runs/${encodeURIComponent(options.workflowRun.id)}/source-records/${encodeURIComponent(sourceRecord.id)}/governance-decisions" class="surface">
+      <h3>${escapeHtml(sourceRecord.sourceLabel)}</h3>
+      <p class="muted"><code>${escapeHtml(sourceRecord.id)}</code> · ${escapeHtml(sourceRecord.sourceType)}</p>
+      <label>Decision
+        <select name="decision">
+          <option value="approved">approve</option>
+          <option value="conditional">conditionally approve</option>
+          <option value="suspended">suspend</option>
+          <option value="refresh-review-date">refresh review date</option>
+        </select>
+      </label>
+      <label>Reason
+        <textarea name="reason" placeholder="Record why this source should change governance state."></textarea>
+      </label>
+      <button type="submit">Record source decision</button>
+    </form>`)
+    .join('');
+
+  const contradictionForms = (options.clinicalPackage?.evidenceRelationships ?? [])
+    .filter((/** @type {any} */ relationship) => relationship.relationshipType === 'contradicts')
+    .map((/** @type {any} */ relationship) => `<form method="post" action="/review/runs/${encodeURIComponent(options.workflowRun.id)}/evidence-records/${encodeURIComponent(relationship.fromClaimId)}/contradiction-resolutions" class="surface">
+      <h3>${escapeHtml(relationship.fromClaimId)} ↔ ${escapeHtml(relationship.toClaimId)}</h3>
+      <input type="hidden" name="relatedClaimId" value="${escapeHtml(relationship.toClaimId)}" />
+      <label>Status
+        <select name="status">
+          ${['open', 'monitor', 'blocking', 'resolved'].map((/** @type {string} */ value) => `<option value="${escapeHtml(value)}"${relationship.status === value ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
+        </select>
+      </label>
+      <label>Reason
+        <textarea name="reason" placeholder="Explain how this contradiction should now be treated.">${escapeHtml(relationship.notes ?? '')}</textarea>
+      </label>
+      <button type="submit">Record contradiction status</button>
+    </form>`)
+    .join('');
+
+  const traceCoverage = options.clinicalPackage?.traceCoverage ?? null;
+  const clinicalSummary = options.clinicalPackage?.diseasePacket?.clinicalSummary ?? null;
+
   return renderLayout({
     actor: options.actor,
     title: options.workflowRun.id,
@@ -365,6 +457,7 @@ export function renderReviewRunPage(options) {
         <div><strong>Tenant</strong>: <code>${escapeHtml(options.workflowRun.tenantId ?? options.project.tenantId ?? 'tenant.local')}</code></div>
         <div><strong>State</strong>: ${statusTag(options.workflowRun.state)}</div>
         <div><strong>Current stage</strong>: ${statusTag(options.workflowRun.currentStage)}</div>
+        <div><strong>Pause reason</strong>: ${options.workflowRun.pauseReason ? statusTag(options.workflowRun.pauseReason) : '<span class="muted">none</span>'}</div>
         <div><strong>Latest eval</strong>: ${statusTag(options.latestEvalStatus)}</div>
       </div>
       <div class="surface stack">
@@ -376,6 +469,13 @@ export function renderReviewRunPage(options) {
     <section class="surface">
       <h2>Run actions</h2>
       <div class="grid two">
+        <form method="post" action="/review/runs/${encodeURIComponent(options.workflowRun.id)}/clinical-package/rebuild">
+          <p class="muted">Rebuild the clinical package after source or contradiction governance changes and invalidate downstream story artifacts.</p>
+          <label>Reason
+            <textarea name="reason">Rebuild the clinical package after local governance edits.</textarea>
+          </label>
+          <button class="warning" type="submit">Rebuild clinical package</button>
+        </form>
         <form method="post" action="/review/runs/${encodeURIComponent(options.workflowRun.id)}/evaluations">
           <p class="muted">Run the deterministic local eval harness against the latest artifacts.</p>
           <button type="submit">Run evaluations</button>
@@ -390,6 +490,26 @@ export function renderReviewRunPage(options) {
     </section>
 
     ${canonicalResolutionSection}
+
+    ${options.clinicalPackage ? `<section class="surface">
+      <div class="section-head">
+        <h2>Clinical package summary</h2>
+        <span>${statusTag(options.clinicalPackage.diseasePacket.evidenceSummary.governanceVerdict)}</span>
+      </div>
+      <div class="grid two">
+        <div class="stack">
+          <div><strong>Canonical disease</strong>: ${escapeHtml(options.clinicalPackage.diseasePacket.canonicalDiseaseName)}</div>
+          <div><strong>Freshness</strong>: ${statusTag(options.clinicalPackage.diseasePacket.evidenceSummary.freshnessStatus)}</div>
+          <div><strong>Contradictions</strong>: ${options.clinicalPackage.diseasePacket.evidenceSummary.contradictionCount}</div>
+          <div><strong>Blocking contradictions</strong>: ${options.clinicalPackage.diseasePacket.evidenceSummary.blockingContradictions}</div>
+        </div>
+        <div class="stack">
+          <div><strong>One sentence</strong>: ${escapeHtml(clinicalSummary?.oneSentence ?? '')}</div>
+          <div><strong>Patient experience</strong>: ${escapeHtml(clinicalSummary?.patientExperienceSummary ?? '')}</div>
+          <div><strong>Key mechanism</strong>: ${escapeHtml(clinicalSummary?.keyMechanism ?? '')}</div>
+        </div>
+      </div>
+    </section>` : ''}
 
     <section class="surface">
       <h2>Approvals</h2>
@@ -419,7 +539,57 @@ export function renderReviewRunPage(options) {
       </table>
     </section>
 
+    <section class="surface">
+      <h2>Source governance decisions</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Source</th><th>Decision</th><th>Actor</th><th>Occurred at</th><th>Reason</th></tr></thead>
+        <tbody>${governanceRows || '<tr><td colspan="6">No source governance decisions recorded yet.</td></tr>'}</tbody>
+      </table>
+    </section>
+
+    ${sourceDecisionForms ? `<section class="grid two">${sourceDecisionForms}</section>` : ''}
+
+    <section class="surface">
+      <h2>Contradiction status</h2>
+      <table>
+        <thead><tr><th>Edge</th><th>From claim</th><th>Relation</th><th>To claim</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>${contradictionRows || '<tr><td colspan="6">No contradiction edges were generated for this clinical package.</td></tr>'}</tbody>
+      </table>
+    </section>
+
+    <section class="surface">
+      <h2>Contradiction resolutions</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Claim</th><th>Related claim</th><th>Status</th><th>Actor</th><th>Occurred at</th></tr></thead>
+        <tbody>${contradictionResolutionRows || '<tr><td colspan="6">No contradiction resolutions recorded yet.</td></tr>'}</tbody>
+      </table>
+    </section>
+
+    ${contradictionForms ? `<section class="grid two">${contradictionForms}</section>` : ''}
+
     ${renderArtifactGroups(options.artifactGroups)}
+
+    <section class="surface">
+      <div class="section-head">
+        <h2>Downstream trace coverage</h2>
+        ${traceCoverage ? statusTag(traceCoverage.verdict) : ''}
+      </div>
+      ${traceCoverage ? `<div class="grid two">
+        <div class="stack">
+          <div><strong>Score</strong>: ${traceCoverage.score.toFixed(2)}</div>
+          <div><strong>Valid claims</strong>: ${traceCoverage.validClaimCount}</div>
+          <div><strong>Suspended sources</strong>: ${traceCoverage.suspendedSourceCount}</div>
+          <div><strong>Stale sources</strong>: ${traceCoverage.staleSourceCount}</div>
+          <div><strong>Blocking contradictions</strong>: ${traceCoverage.blockingContradictions}</div>
+        </div>
+        <div class="stack">
+          <strong>Blockers</strong>
+          ${traceCoverage.blockers.length > 0 ? traceCoverage.blockers.map((/** @type {string} */ blocker) => `<span>${escapeHtml(blocker)}</span>`).join('') : '<span class="muted">No traceability blockers are active.</span>'}
+        </div>
+      </div>
+      ${renderTraceCoverageTable(traceCoverage.artifactSummaries)}`
+        : '<p class="muted">Trace coverage is not available until the clinical package is generated.</p>'}
+    </section>
 
     <section class="surface">
       <h2>Export history</h2>

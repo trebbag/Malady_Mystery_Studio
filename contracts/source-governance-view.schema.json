@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/source-governance-view.schema.json",
+  "title": "SourceGovernanceView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "canonicalDiseaseName",
+    "sourceRecords",
+    "governanceDecisions"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "sourceRecords": {
+      "type": "array",
+      "items": {
+        "$ref": "source-record.schema.json"
+      }
+    },
+    "governanceDecisions": {
+      "type": "array",
+      "items": {
+        "$ref": "source-governance-decision.schema.json"
+      }
+    }
+  }
+}

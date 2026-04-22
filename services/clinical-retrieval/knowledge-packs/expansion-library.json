@@ -1,0 +1,2243 @@
+[
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.acute-asthma-exacerbation",
+    "canonicalDiseaseName": "Acute asthma exacerbation",
+    "aliases": [
+      "acute asthma flare",
+      "asthma attack",
+      "acute asthma exacerbation"
+    ],
+    "ontologyId": "ICD-10-CM:J45.901",
+    "diseaseCategory": "airway inflammation / obstructive lung disease",
+    "educationalFocus": [
+      "airway physiology",
+      "bronchoconstriction",
+      "severity triage",
+      "urgent rescue treatment"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Acute asthma exacerbation is a sudden worsening of airflow obstruction driven by airway inflammation and bronchospasm.",
+      "keyMechanism": "Inflamed hyperreactive airways constrict and trap air, making ventilation harder and increasing work of breathing.",
+      "timeScale": "minutes to hours, sometimes worsening quickly after a trigger or poor control",
+      "patientExperienceSummary": "Patients often describe chest tightness, cough, wheeze, and frightening shortness of breath that can escalate rapidly."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "airway caliber and resistance",
+        "whyItMatters": "Readers need to understand why a small reduction in airway diameter sharply worsens airflow."
+      },
+      {
+        "topic": "ventilation and oxygenation",
+        "whyItMatters": "The story needs a clear bridge from airflow obstruction to distress and hypoxemia risk."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "triggered airway inflammation intensifies",
+        "mechanism": "Inflammatory mediators increase bronchial hyperreactivity and airway edema.",
+        "scale": "tissue",
+        "linkedClaimIds": [
+          "clm.asthma.001"
+        ]
+      },
+      {
+        "order": 2,
+        "event": "bronchial smooth muscle constricts",
+        "mechanism": "Bronchospasm narrows the airway lumen and impedes expiratory airflow.",
+        "scale": "organ",
+        "linkedClaimIds": [
+          "clm.asthma.001"
+        ]
+      },
+      {
+        "order": 3,
+        "event": "airflow limitation drives visible distress",
+        "mechanism": "Air trapping and increased work of breathing create wheeze, dyspnea, and fatigue.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.asthma.002",
+          "clm.asthma.003"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "shortness of breath",
+        "wheeze",
+        "cough",
+        "chest tightness"
+      ],
+      "commonSigns": [
+        "tachypnea",
+        "wheezing",
+        "accessory muscle use when severe"
+      ],
+      "historyClues": [
+        "recent trigger exposure or poor control",
+        "prior severe exacerbations raise concern"
+      ],
+      "physicalExamClues": [
+        "reduced air movement can signal severity",
+        "difficulty speaking suggests worsening obstruction"
+      ],
+      "complications": [
+        "hypoxemia",
+        "respiratory fatigue",
+        "life-threatening airflow obstruction"
+      ],
+      "typicalTimecourse": "often worsens over hours but may accelerate quickly in severe attacks"
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "pulse oximetry",
+          "purpose": "monitor oxygenation and urgency",
+          "expectedFinding": "may remain normal early but can fall with severe disease",
+          "claimIds": [
+            "clm.asthma.006"
+          ]
+        }
+      ],
+      "imaging": [
+        {
+          "name": "targeted chest imaging when needed",
+          "purpose": "evaluate alternate diagnoses or complications, not routine confirmation of asthma itself",
+          "expectedFinding": "often normal or nonspecific in uncomplicated exacerbation",
+          "claimIds": [
+            "clm.asthma.004"
+          ]
+        }
+      ],
+      "pathology": [],
+      "diagnosticLogic": [
+        "Severity is judged clinically first, with bedside measures used when feasible and not delaying treatment.",
+        "Response to early bronchodilator therapy helps clarify trajectory and escalation needs."
+      ],
+      "differentials": [
+        {
+          "disease": "anaphylaxis",
+          "whyConsidered": "can also produce wheeze and respiratory distress",
+          "whyLessLikely": "additional allergic or hemodynamic clues change the story logic"
+        },
+        {
+          "disease": "COPD exacerbation",
+          "whyConsidered": "also causes obstructive symptoms and wheeze",
+          "whyLessLikely": "background disease context and chronic pattern differ"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "rapid inhaled short-acting bronchodilator therapy",
+        "supplemental oxygen when hypoxemic",
+        "systemic corticosteroids for significant exacerbations"
+      ],
+      "escalation": [
+        "repeat bronchodilator therapy",
+        "urgent reassessment for poor response or fatigue",
+        "emergency-level support when respiratory failure threatens"
+      ],
+      "monitoring": [
+        "respiratory effort",
+        "oxygenation",
+        "response to early therapy"
+      ],
+      "notes": [
+        "Treatment intensity should match severity and response rather than waiting for prolonged deterioration."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.asthma.001",
+        "claimText": "An acute asthma exacerbation reflects worsening airway inflammation and bronchoconstriction that narrow airflow and increase work of breathing.",
+        "sourceId": "src.nhlbi-asthma-exacerbation-guidance",
+        "sourceType": "guideline",
+        "sourceLabel": "NHLBI asthma exacerbation guidance",
+        "sourceLocator": "exacerbation overview",
+        "confidence": 0.97,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General emergency teaching baseline",
+        "claimType": "core-mechanism",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "mechanism and symptom escalation",
+        "patientSubgroupApplicability": "Children and adults with asthma",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.asthma.002",
+        "claimText": "Common exacerbation symptoms include shortness of breath, cough, wheeze, and chest tightness.",
+        "sourceId": "src.nhlbi-asthma-exacerbation-guidance",
+        "sourceType": "guideline",
+        "sourceLabel": "NHLBI asthma exacerbation guidance",
+        "sourceLocator": "symptom assessment",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General emergency teaching baseline",
+        "claimType": "presentation",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "presentation",
+        "patientSubgroupApplicability": "Children and adults with asthma",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.asthma.003",
+        "claimText": "Severe attacks may show accessory muscle use, difficulty speaking, or markedly reduced airflow.",
+        "sourceId": "src.nhlbi-asthma-clinicians-guide",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI asthma clinicians guide",
+        "sourceLocator": "severity markers",
+        "confidence": 0.94,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Urgent care and emergency review",
+        "claimType": "severity-marker",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "severity escalation",
+        "patientSubgroupApplicability": "Children and adults with asthma",
+        "importanceRank": 3
+      },
+      {
+        "claimId": "clm.asthma.004",
+        "claimText": "Clinical severity assessment should guide escalation, and peak flow can help when the patient is able to perform it reliably.",
+        "sourceId": "src.nhlbi-asthma-clinicians-guide",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI asthma clinicians guide",
+        "sourceLocator": "assessment and monitoring",
+        "confidence": 0.9,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Stable enough for bedside assessment",
+        "claimType": "diagnostic-or-management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Patients able to cooperate with measurement",
+        "importanceRank": 4
+      },
+      {
+        "claimId": "clm.asthma.005",
+        "claimText": "Initial treatment centers on inhaled short-acting bronchodilator therapy, with systemic corticosteroids added for more significant exacerbations.",
+        "sourceId": "src.nhlbi-asthma-clinicians-guide",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI asthma clinicians guide",
+        "sourceLocator": "quick-relief and steroid treatment",
+        "confidence": 0.97,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Emergency treatment framing",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "initial treatment",
+        "patientSubgroupApplicability": "Children and adults with asthma",
+        "importanceRank": 5
+      },
+      {
+        "claimId": "clm.asthma.006",
+        "claimText": "Hypoxemia, exhaustion, or poor response to early therapy should prompt emergency escalation and close monitoring.",
+        "sourceId": "src.nhlbi-asthma-exacerbation-guidance",
+        "sourceType": "guideline",
+        "sourceLabel": "NHLBI asthma exacerbation guidance",
+        "sourceLocator": "urgent escalation",
+        "confidence": 0.95,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Severe exacerbation escalation",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "rescue escalation",
+        "patientSubgroupApplicability": "Patients with severe or refractory symptoms",
+        "importanceRank": 6
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.nhlbi-asthma-exacerbation-guidance",
+        "canonicalDiseaseName": "Acute asthma exacerbation",
+        "sourceLabel": "NHLBI asthma exacerbation guidance",
+        "sourceType": "guideline",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Preferred baseline source for acute asthma symptom severity and urgent treatment framing."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.nhlbi.nih.gov/health/asthma/treatment-action-plan"
+      },
+      {
+        "id": "src.nhlbi-asthma-clinicians-guide",
+        "canonicalDiseaseName": "Acute asthma exacerbation",
+        "sourceLabel": "NHLBI asthma clinicians guide",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Use for quick-relief medication and steroid escalation context."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.nhlbi.nih.gov/sites/default/files/publications/Asthma%20Clinicians%20Guide%20508_02-03-21.pdf"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "order": 1,
+        "title": "Airway Narrowing Drives Distress",
+        "teachingPoint": "Tie the mystery clues to airway inflammation and bronchospasm rather than vague shortness of breath alone.",
+        "linkedClaimIds": [
+          "clm.asthma.001"
+        ]
+      },
+      {
+        "order": 2,
+        "title": "Severity Lives in the Exam",
+        "teachingPoint": "Show how accessory muscle use and difficulty speaking change the urgency of the case.",
+        "linkedClaimIds": [
+          "clm.asthma.003"
+        ]
+      },
+      {
+        "order": 3,
+        "title": "Rescue Treatment Must Be Timely",
+        "teachingPoint": "Bronchodilator rescue and steroid escalation should feel like the action sequence of the climax.",
+        "linkedClaimIds": [
+          "clm.asthma.005",
+          "clm.asthma.006"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "anchorId": "anc.acute-asthma-exacerbation.001",
+        "title": "Constricting bronchi",
+        "bodyScale": "organ",
+        "location": "lower airways",
+        "description": "Bronchi visibly narrow as the detectives feel the airflow corridor tighten.",
+        "linkedClaimIds": [
+          "clm.asthma.001"
+        ]
+      },
+      {
+        "anchorId": "anc.acute-asthma-exacerbation.002",
+        "title": "Work-of-breathing tableau",
+        "bodyScale": "whole-body",
+        "location": "patient exterior",
+        "description": "Chest effort and accessory muscle recruitment signal worsening severity.",
+        "linkedClaimIds": [
+          "clm.asthma.003"
+        ]
+      },
+      {
+        "anchorId": "anc.acute-asthma-exacerbation.003",
+        "title": "Rescue bronchodilator showdown",
+        "bodyScale": "organ",
+        "location": "airway lumen",
+        "description": "Therapy opens the obstructed airway and restores smoother flow.",
+        "linkedClaimIds": [
+          "clm.asthma.005"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.asthma.001",
+        "toClaimId": "clm.asthma.002",
+        "relationshipType": "chronology",
+        "status": "resolved",
+        "notes": "Mechanism explains the symptom cluster."
+      },
+      {
+        "fromClaimId": "clm.asthma.002",
+        "toClaimId": "clm.asthma.003",
+        "relationshipType": "supports",
+        "status": "resolved",
+        "notes": "Visible distress escalates as airflow obstruction worsens."
+      },
+      {
+        "fromClaimId": "clm.asthma.003",
+        "toClaimId": "clm.asthma.006",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Severe exam findings determine rescue urgency."
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.acute-decompensated-heart-failure",
+    "canonicalDiseaseName": "Acute decompensated heart failure",
+    "aliases": [
+      "adhf",
+      "acute decompensated heart failure",
+      "acute heart failure decompensation"
+    ],
+    "ontologyId": "ICD-10-CM:I50.9",
+    "diseaseCategory": "cardiac pump failure / volume overload",
+    "educationalFocus": [
+      "forward flow vs congestion",
+      "cardiorenal balance",
+      "volume assessment",
+      "urgent decompensation treatment"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Acute decompensated heart failure is a worsening heart-failure state marked by congestion, poor perfusion, or both.",
+      "keyMechanism": "The failing heart cannot maintain adequate circulation without rising filling pressures, so fluid backs up into the lungs and systemic tissues.",
+      "timeScale": "hours to days, often triggered by volume accumulation or another precipitating stressor",
+      "patientExperienceSummary": "Patients often notice breathlessness, swelling, fatigue, and rapid loss of their normal exertional reserve."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "cardiac output and filling pressure",
+        "whyItMatters": "The mystery depends on understanding why congestion can worsen even before the heart fully fails as a pump."
+      },
+      {
+        "topic": "fluid balance and venous congestion",
+        "whyItMatters": "Readers need a visual explanation for pulmonary edema, edema, and organ congestion."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "cardiac reserve fails under rising demand or worsening dysfunction",
+        "mechanism": "Forward flow drops or filling pressures rise beyond compensation.",
+        "scale": "organ",
+        "linkedClaimIds": [
+          "clm.adhf.001"
+        ]
+      },
+      {
+        "order": 2,
+        "event": "fluid accumulates in pulmonary and systemic circuits",
+        "mechanism": "Elevated venous and capillary pressures push fluid into tissues.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.adhf.002",
+          "clm.adhf.003"
+        ]
+      },
+      {
+        "order": 3,
+        "event": "congestion and poor perfusion complicate treatment decisions",
+        "mechanism": "Kidney function, electrolytes, and precipitating causes shape safe therapy.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.adhf.004",
+          "clm.adhf.005"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "shortness of breath",
+        "orthopnea",
+        "fatigue",
+        "edema",
+        "weight gain"
+      ],
+      "commonSigns": [
+        "crackles or pulmonary congestion",
+        "elevated neck veins",
+        "leg edema"
+      ],
+      "historyClues": [
+        "worsening baseline symptoms",
+        "fluid accumulation or precipitating illness may precede presentation"
+      ],
+      "physicalExamClues": [
+        "orthopnea and neck-vein distention point toward congestion",
+        "abdominal fullness may reflect right-sided congestion"
+      ],
+      "complications": [
+        "hypoxemia",
+        "kidney injury",
+        "cardiogenic shock in severe cases"
+      ],
+      "typicalTimecourse": "often worsens over days, but severe cases can become urgent quickly"
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "renal function and electrolytes",
+          "purpose": "guide diuretic safety and monitor response",
+          "expectedFinding": "may worsen as congestion and treatment interact",
+          "claimIds": [
+            "clm.adhf.004"
+          ]
+        },
+        {
+          "name": "natriuretic peptide testing",
+          "purpose": "support heart-failure probability in the right clinical context",
+          "expectedFinding": "often elevated but interpreted with the whole picture",
+          "claimIds": [
+            "clm.adhf.004"
+          ]
+        }
+      ],
+      "imaging": [
+        {
+          "name": "chest imaging",
+          "purpose": "assess pulmonary congestion and alternate processes",
+          "expectedFinding": "may show pulmonary edema or effusions in decompensation",
+          "claimIds": [
+            "clm.adhf.003"
+          ]
+        }
+      ],
+      "pathology": [],
+      "diagnosticLogic": [
+        "The team should identify whether congestion, poor perfusion, or both are driving the bedside picture.",
+        "Monitoring must follow treatment response, kidney function, and likely precipitating causes."
+      ],
+      "differentials": [
+        {
+          "disease": "COPD exacerbation",
+          "whyConsidered": "can also present with dyspnea",
+          "whyLessLikely": "volume-overload clues and edema shift the logic toward heart failure"
+        },
+        {
+          "disease": "pneumonia",
+          "whyConsidered": "also causes shortness of breath and chest imaging changes",
+          "whyLessLikely": "systemic congestion and orthopnea point elsewhere"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "oxygen and supportive care when needed",
+        "diuretic therapy for fluid overload",
+        "rapid assessment of precipitating causes"
+      ],
+      "escalation": [
+        "close monitoring for worsening perfusion or shock",
+        "adjust therapy to symptoms, kidney function, and hemodynamics"
+      ],
+      "monitoring": [
+        "weights and fluid status",
+        "renal function and electrolytes",
+        "respiratory status"
+      ],
+      "notes": [
+        "Acute treatment should connect symptom relief to the underlying congestion problem rather than feeling like a generic supportive montage."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.adhf.001",
+        "claimText": "Acute decompensated heart failure reflects worsening cardiac pump dysfunction or filling pressure that causes congestion and poor forward flow.",
+        "sourceId": "src.nhlbi-heart-failure-symptoms",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI heart failure symptoms",
+        "sourceLocator": "overview and major symptoms",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General inpatient teaching baseline",
+        "claimType": "core-mechanism",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "decompensation mechanism",
+        "patientSubgroupApplicability": "Adults with symptomatic heart failure",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.adhf.002",
+        "claimText": "Common decompensation symptoms include dyspnea, orthopnea, fatigue, edema, and weight gain from fluid buildup.",
+        "sourceId": "src.nhlbi-heart-failure-symptoms",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI heart failure symptoms",
+        "sourceLocator": "major symptoms",
+        "confidence": 0.97,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General inpatient teaching baseline",
+        "claimType": "presentation",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "presentation",
+        "patientSubgroupApplicability": "Adults with symptomatic heart failure",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.adhf.003",
+        "claimText": "Physical findings can include pulmonary congestion, elevated neck veins, peripheral edema, and abdominal swelling when right-sided congestion is prominent.",
+        "sourceId": "src.nhlbi-heart-failure-symptoms",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI heart failure symptoms",
+        "sourceLocator": "left-sided and right-sided findings",
+        "confidence": 0.95,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General inpatient teaching baseline",
+        "claimType": "presentation",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "exam findings",
+        "patientSubgroupApplicability": "Adults with symptomatic heart failure",
+        "importanceRank": 3
+      },
+      {
+        "claimId": "clm.adhf.004",
+        "claimText": "Evaluation and treatment should follow congestion, renal function, electrolytes, and likely precipitating causes rather than relying on one isolated sign.",
+        "sourceId": "src.nhlbi-heart-failure-treatment",
+        "sourceType": "guideline",
+        "sourceLabel": "NHLBI heart failure treatment",
+        "sourceLocator": "monitoring and treatment plan",
+        "confidence": 0.91,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Hospital and urgent care review",
+        "claimType": "diagnostic-or-management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Adults with symptomatic heart failure",
+        "importanceRank": 4
+      },
+      {
+        "claimId": "clm.adhf.005",
+        "claimText": "Patients admitted with fluid overload are commonly treated with diuretic therapy while the team reassesses symptoms, kidney function, and response.",
+        "sourceId": "src.nhlbi-heart-failure-treatment",
+        "sourceType": "guideline",
+        "sourceLabel": "NHLBI heart failure treatment",
+        "sourceLocator": "diuretics and fluid management",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Hospital treatment baseline",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "initial treatment",
+        "patientSubgroupApplicability": "Patients with volume overload",
+        "importanceRank": 5
+      },
+      {
+        "claimId": "clm.adhf.006",
+        "claimText": "Treatment also requires identifying and addressing precipitating problems and maintaining longer-term heart-failure therapy when clinically appropriate.",
+        "sourceId": "src.nhlbi-heart-failure-treatment",
+        "sourceType": "guideline",
+        "sourceLabel": "NHLBI heart failure treatment",
+        "sourceLocator": "treatment plan and symptom tracking",
+        "confidence": 0.92,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Hospital treatment and discharge framing",
+        "claimType": "management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "cause-directed management",
+        "patientSubgroupApplicability": "Adults with symptomatic heart failure",
+        "importanceRank": 6
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.nhlbi-heart-failure-symptoms",
+        "canonicalDiseaseName": "Acute decompensated heart failure",
+        "sourceLabel": "NHLBI heart failure symptoms",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Preferred baseline source for congestion patterns and symptom framing."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.nhlbi.nih.gov/health/heart-failure/symptoms"
+      },
+      {
+        "id": "src.nhlbi-heart-failure-treatment",
+        "canonicalDiseaseName": "Acute decompensated heart failure",
+        "sourceLabel": "NHLBI heart failure treatment",
+        "sourceType": "guideline",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Use for fluid-overload treatment and monitoring logic."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.nhlbi.nih.gov/health/heart-failure/treatment"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "order": 1,
+        "title": "Congestion Is the Visible Villain",
+        "teachingPoint": "Show how rising filling pressure creates the external clues of edema and breathlessness.",
+        "linkedClaimIds": [
+          "clm.adhf.001",
+          "clm.adhf.002"
+        ]
+      },
+      {
+        "order": 2,
+        "title": "The Exam Reads the Hemodynamics",
+        "teachingPoint": "Neck veins, crackles, and edema should feel like bedside detective clues.",
+        "linkedClaimIds": [
+          "clm.adhf.003"
+        ]
+      },
+      {
+        "order": 3,
+        "title": "Diuresis Needs Monitoring",
+        "teachingPoint": "Treatment should look targeted and monitored, not like fluid magically vanishes without consequence.",
+        "linkedClaimIds": [
+          "clm.adhf.004",
+          "clm.adhf.005"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "anchorId": "anc.acute-decompensated-heart-failure.001",
+        "title": "Pulmonary congestion field",
+        "bodyScale": "whole-body",
+        "location": "lungs and circulation",
+        "description": "Fluid creeps into the lung spaces while the detectives track the backed-up route.",
+        "linkedClaimIds": [
+          "clm.adhf.002"
+        ]
+      },
+      {
+        "anchorId": "anc.acute-decompensated-heart-failure.002",
+        "title": "Systemic edema signal",
+        "bodyScale": "whole-body",
+        "location": "legs and venous system",
+        "description": "Peripheral swelling becomes a visible consequence of venous congestion.",
+        "linkedClaimIds": [
+          "clm.adhf.003"
+        ]
+      },
+      {
+        "anchorId": "anc.acute-decompensated-heart-failure.003",
+        "title": "Diuretic pressure release",
+        "bodyScale": "organ",
+        "location": "kidney and circulation interface",
+        "description": "Treatment relieves congestion while the team watches for kidney and electrolyte fallout.",
+        "linkedClaimIds": [
+          "clm.adhf.005"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.adhf.001",
+        "toClaimId": "clm.adhf.002",
+        "relationshipType": "chronology",
+        "status": "resolved",
+        "notes": "Hemodynamic failure produces the congestion pattern."
+      },
+      {
+        "fromClaimId": "clm.adhf.002",
+        "toClaimId": "clm.adhf.003",
+        "relationshipType": "supports",
+        "status": "resolved",
+        "notes": "Symptoms and physical findings reinforce a congestion-centered explanation."
+      },
+      {
+        "fromClaimId": "clm.adhf.004",
+        "toClaimId": "clm.adhf.005",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Monitoring logic shapes safe diuretic treatment."
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.ischemic-stroke",
+    "canonicalDiseaseName": "Ischemic stroke",
+    "aliases": [
+      "acute ischemic stroke",
+      "ischemic stroke",
+      "brain ischemia stroke"
+    ],
+    "ontologyId": "ICD-10-CM:I63.9",
+    "diseaseCategory": "neurovascular occlusion / acute neurology",
+    "educationalFocus": [
+      "focal deficits",
+      "brain perfusion",
+      "time-sensitive triage",
+      "reperfusion treatment"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Ischemic stroke is a sudden neurologic injury caused by interrupted blood flow to brain tissue.",
+      "keyMechanism": "A blocked cerebral artery deprives brain tissue of oxygen and glucose, so rapid reperfusion determines how much tissue survives.",
+      "timeScale": "minutes to hours, with outcome tightly linked to time and tissue salvage",
+      "patientExperienceSummary": "Symptoms strike abruptly, often turning an ordinary moment into a neurologic emergency."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "regional brain perfusion",
+        "whyItMatters": "The story needs a clear picture of how one blocked route can create focal deficits."
+      },
+      {
+        "topic": "time-sensitive tissue injury",
+        "whyItMatters": "Readers should feel why minutes matter before reperfusion options shrink."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "a clot lodges in a cerebral artery",
+        "mechanism": "Blood flow to downstream tissue falls sharply.",
+        "scale": "organ",
+        "linkedClaimIds": [
+          "clm.stroke.001"
+        ]
+      },
+      {
+        "order": 2,
+        "event": "focal brain dysfunction becomes visible",
+        "mechanism": "Neural networks fail in the vascular territory affected by ischemia.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.stroke.002"
+        ]
+      },
+      {
+        "order": 3,
+        "event": "time-sensitive reperfusion decisions determine salvage",
+        "mechanism": "Imaging and treatment eligibility decide whether threatened tissue can be saved.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.stroke.003",
+          "clm.stroke.004",
+          "clm.stroke.005"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "sudden unilateral weakness",
+        "sudden numbness",
+        "speech difficulty",
+        "vision loss or disturbance"
+      ],
+      "commonSigns": [
+        "face droop",
+        "arm drift or weakness",
+        "aphasia or dysarthria"
+      ],
+      "historyClues": [
+        "precise last-known-well time is critical",
+        "symptoms are abrupt rather than slowly progressive"
+      ],
+      "physicalExamClues": [
+        "neurologic deficit pattern localizes the affected territory"
+      ],
+      "complications": [
+        "permanent disability",
+        "brain swelling",
+        "aspiration and secondary injury"
+      ],
+      "typicalTimecourse": "neurologic deficits begin suddenly and evolve over minutes to hours"
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "point-of-care glucose and baseline labs",
+          "purpose": "exclude mimics and prepare treatment safely",
+          "expectedFinding": "supportive rather than diagnostic by themselves",
+          "claimIds": [
+            "clm.stroke.004"
+          ]
+        }
+      ],
+      "imaging": [
+        {
+          "name": "urgent brain imaging",
+          "purpose": "distinguish ischemia from hemorrhage and guide treatment",
+          "expectedFinding": "must rule out bleeding before thrombolysis",
+          "claimIds": [
+            "clm.stroke.004"
+          ]
+        },
+        {
+          "name": "vascular imaging when indicated",
+          "purpose": "identify large-vessel occlusion and thrombectomy candidates",
+          "expectedFinding": "selected patients show treatable occlusion patterns",
+          "claimIds": [
+            "clm.stroke.006"
+          ]
+        }
+      ],
+      "pathology": [],
+      "diagnosticLogic": [
+        "Stroke care starts with time, symptoms, and imaging rather than waiting for a long differential workup.",
+        "Eligibility for thrombolysis or thrombectomy depends on onset window, imaging, and contraindications."
+      ],
+      "differentials": [
+        {
+          "disease": "hypoglycemia",
+          "whyConsidered": "can mimic focal neurologic change",
+          "whyLessLikely": "rapid bedside testing helps separate it"
+        },
+        {
+          "disease": "seizure with postictal deficit",
+          "whyConsidered": "may present with focal weakness",
+          "whyLessLikely": "timing and imaging push the diagnosis elsewhere"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "activate emergency stroke response",
+        "urgent brain imaging",
+        "consider reperfusion therapy for eligible patients"
+      ],
+      "escalation": [
+        "endovascular thrombectomy for selected large-vessel occlusion",
+        "intensive monitoring for neurologic decline and complications"
+      ],
+      "monitoring": [
+        "neurologic exam trend",
+        "blood pressure and airway safety",
+        "swallowing and complication surveillance"
+      ],
+      "notes": [
+        "The diagnosis and treatment should feel time-critical without overpromising that every patient qualifies for every therapy."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.stroke.001",
+        "claimText": "Ischemic stroke occurs when a clot blocks blood flow in a brain artery and rapidly threatens brain tissue.",
+        "sourceId": "src.ninds-approved-therapies-for-ischemic-stroke",
+        "sourceType": "guideline",
+        "sourceLabel": "NINDS approved therapies for ischemic stroke",
+        "sourceLocator": "overview",
+        "confidence": 0.98,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General emergency neurology teaching baseline",
+        "claimType": "core-mechanism",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "mechanism",
+        "patientSubgroupApplicability": "Adults with suspected acute stroke",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.stroke.002",
+        "claimText": "Typical symptoms appear suddenly and can include unilateral weakness or numbness, speech difficulty, or visual disturbance.",
+        "sourceId": "src.ninds-stroke-signs-and-symptoms",
+        "sourceType": "reference",
+        "sourceLabel": "NINDS stroke signs and symptoms",
+        "sourceLocator": "common stroke signs",
+        "confidence": 0.97,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General emergency neurology teaching baseline",
+        "claimType": "presentation",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "presentation",
+        "patientSubgroupApplicability": "Adults with suspected acute stroke",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.stroke.003",
+        "claimText": "Immediate emergency evaluation is critical because reperfusion therapies depend on time from symptom onset and imaging findings.",
+        "sourceId": "src.ninds-stroke-signs-and-symptoms",
+        "sourceType": "reference",
+        "sourceLabel": "NINDS stroke signs and symptoms",
+        "sourceLocator": "emergency action and timing",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Prehospital and emergency triage",
+        "claimType": "severity-marker",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "triage",
+        "patientSubgroupApplicability": "Adults with suspected acute stroke",
+        "importanceRank": 3
+      },
+      {
+        "claimId": "clm.stroke.004",
+        "claimText": "Brain imaging is required to determine whether bleeding is present before thrombolytic therapy is given.",
+        "sourceId": "src.ninds-stroke-assessment-and-treatment",
+        "sourceType": "guideline",
+        "sourceLabel": "NINDS stroke assessment and treatment",
+        "sourceLocator": "imaging before thrombolysis",
+        "confidence": 0.97,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Emergency department stroke workup",
+        "claimType": "diagnostic-or-management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Adults with suspected acute stroke",
+        "importanceRank": 4
+      },
+      {
+        "claimId": "clm.stroke.005",
+        "claimText": "Eligible patients may receive intravenous thrombolytic therapy within the treatment window after symptom onset.",
+        "sourceId": "src.ninds-approved-therapies-for-ischemic-stroke",
+        "sourceType": "guideline",
+        "sourceLabel": "NINDS approved therapies for ischemic stroke",
+        "sourceLocator": "intravenous therapy",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Acute ischemic stroke treatment",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "reperfusion",
+        "patientSubgroupApplicability": "Eligible adults with acute ischemic stroke",
+        "importanceRank": 5
+      },
+      {
+        "claimId": "clm.stroke.006",
+        "claimText": "Selected patients with large-vessel occlusion may benefit from endovascular thrombectomy beyond the earliest thrombolysis window when imaging supports salvageable tissue.",
+        "sourceId": "src.ninds-approved-therapies-for-ischemic-stroke",
+        "sourceType": "guideline",
+        "sourceLabel": "NINDS approved therapies for ischemic stroke",
+        "sourceLocator": "thrombectomy timing context",
+        "confidence": 0.93,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Large-vessel occlusion treatment pathway",
+        "claimType": "management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "advanced reperfusion",
+        "patientSubgroupApplicability": "Selected adults with large-vessel occlusion",
+        "importanceRank": 6
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.ninds-stroke-signs-and-symptoms",
+        "canonicalDiseaseName": "Ischemic stroke",
+        "sourceLabel": "NINDS stroke signs and symptoms",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Preferred source for symptom onset and emergency-response framing."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.ninds.nih.gov/health-information/stroke/signs-and-symptoms"
+      },
+      {
+        "id": "src.ninds-stroke-assessment-and-treatment",
+        "canonicalDiseaseName": "Ischemic stroke",
+        "sourceLabel": "NINDS stroke assessment and treatment",
+        "sourceType": "guideline",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Use for imaging-first assessment and reperfusion timing logic."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.ninds.nih.gov/health-information/stroke/assess-and-treat"
+      },
+      {
+        "id": "src.ninds-approved-therapies-for-ischemic-stroke",
+        "canonicalDiseaseName": "Ischemic stroke",
+        "sourceLabel": "NINDS approved therapies for ischemic stroke",
+        "sourceType": "guideline",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Use for thrombolysis and thrombectomy timing context."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.ninds.nih.gov/about-ninds/what-we-do/impact/ninds-contributions-approved-therapies/optimizing-endovascular-therapy-ischemic-stroke"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "order": 1,
+        "title": "The Clock Starts Immediately",
+        "teachingPoint": "The detectives should treat time of onset as a major clue, not background paperwork.",
+        "linkedClaimIds": [
+          "clm.stroke.003"
+        ]
+      },
+      {
+        "order": 2,
+        "title": "Imaging Decides the Safe Path",
+        "teachingPoint": "The story must show why imaging comes before thrombolytic decisions.",
+        "linkedClaimIds": [
+          "clm.stroke.004"
+        ]
+      },
+      {
+        "order": 3,
+        "title": "Reperfusion Is Earned and Selective",
+        "teachingPoint": "Use thrombolysis and thrombectomy as distinct but related action beats.",
+        "linkedClaimIds": [
+          "clm.stroke.005",
+          "clm.stroke.006"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "anchorId": "anc.ischemic-stroke.001",
+        "title": "Blocked cerebral route",
+        "bodyScale": "organ",
+        "location": "brain artery",
+        "description": "A clot halts traffic through a critical brain vessel.",
+        "linkedClaimIds": [
+          "clm.stroke.001"
+        ]
+      },
+      {
+        "anchorId": "anc.ischemic-stroke.002",
+        "title": "Sudden deficit split-screen",
+        "bodyScale": "whole-body",
+        "location": "patient exterior",
+        "description": "A once-normal action fractures into focal neurologic deficit.",
+        "linkedClaimIds": [
+          "clm.stroke.002"
+        ]
+      },
+      {
+        "anchorId": "anc.ischemic-stroke.003",
+        "title": "Imaging-before-treatment checkpoint",
+        "bodyScale": "organ",
+        "location": "imaging and triage bay",
+        "description": "The detectives must confirm the route is blocked, not bleeding, before the rescue move.",
+        "linkedClaimIds": [
+          "clm.stroke.004"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.stroke.001",
+        "toClaimId": "clm.stroke.002",
+        "relationshipType": "chronology",
+        "status": "resolved",
+        "notes": "Vascular occlusion creates the focal deficit pattern."
+      },
+      {
+        "fromClaimId": "clm.stroke.003",
+        "toClaimId": "clm.stroke.004",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Urgency still requires imaging before certain therapies."
+      },
+      {
+        "fromClaimId": "clm.stroke.005",
+        "toClaimId": "clm.stroke.006",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Thrombectomy expands treatment for selected large-vessel occlusions."
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.bacterial-meningitis",
+    "canonicalDiseaseName": "Bacterial meningitis",
+    "aliases": [
+      "acute bacterial meningitis",
+      "bacterial meningitis",
+      "meningitis bacterial"
+    ],
+    "ontologyId": "ICD-10-CM:G00.9",
+    "diseaseCategory": "central nervous system infection / medical emergency",
+    "educationalFocus": [
+      "meningeal inflammation",
+      "emergency recognition",
+      "testing vs treatment timing",
+      "sepsis risk"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Bacterial meningitis is a rapidly progressive central nervous system infection that inflames the meninges and can become life-threatening quickly.",
+      "keyMechanism": "Bacteria trigger intense meningeal inflammation, raising intracranial and systemic risk while neurological function deteriorates.",
+      "timeScale": "hours to days, with the most severe cases worsening rapidly",
+      "patientExperienceSummary": "Patients may move from fever and headache to confusion, neck stiffness, and systemic collapse fast enough that delay changes the outcome."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "meninges and cerebrospinal fluid space",
+        "whyItMatters": "The detectives need to understand the compartment where inflammation unfolds."
+      },
+      {
+        "topic": "brain protection and systemic infection response",
+        "whyItMatters": "The story connects neurologic findings with the danger of sepsis and swelling."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "bacteria reach the meninges",
+        "mechanism": "Infection seeds the protective coverings of the brain and spinal cord.",
+        "scale": "organ",
+        "linkedClaimIds": [
+          "clm.meningitis.001"
+        ]
+      },
+      {
+        "order": 2,
+        "event": "intense inflammation disrupts neurologic function",
+        "mechanism": "Inflammatory injury produces headache, stiffness, confusion, and systemic illness.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.meningitis.002",
+          "clm.meningitis.003"
+        ]
+      },
+      {
+        "order": 3,
+        "event": "diagnosis and treatment race against deterioration",
+        "mechanism": "Testing helps identify the pathogen, but treatment timing remains urgent.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.meningitis.004",
+          "clm.meningitis.005",
+          "clm.meningitis.006"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "fever",
+        "headache",
+        "neck stiffness",
+        "altered mental status"
+      ],
+      "commonSigns": [
+        "meningeal irritation",
+        "confusion",
+        "toxicity or sepsis signs"
+      ],
+      "historyClues": [
+        "rapid progression should increase urgency",
+        "age and organism context can change details"
+      ],
+      "physicalExamClues": [
+        "neck stiffness and mental-status change shift the mystery toward CNS infection"
+      ],
+      "complications": [
+        "seizures",
+        "coma",
+        "death",
+        "sepsis"
+      ],
+      "typicalTimecourse": "can progress quickly enough that delay becomes part of the danger"
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "blood cultures",
+          "purpose": "help identify the infecting organism",
+          "expectedFinding": "can support organism-directed treatment",
+          "claimIds": [
+            "clm.meningitis.004",
+            "clm.meningitis.006"
+          ]
+        }
+      ],
+      "imaging": [
+        {
+          "name": "targeted neuroimaging when indicated",
+          "purpose": "evaluate safety concerns before lumbar puncture in selected patients",
+          "expectedFinding": "used selectively rather than as a universal first move",
+          "claimIds": [
+            "clm.meningitis.006"
+          ]
+        }
+      ],
+      "pathology": [
+        {
+          "name": "cerebrospinal fluid analysis",
+          "purpose": "characterize meningitis and support organism identification",
+          "expectedFinding": "supports diagnosis when feasible to obtain safely",
+          "claimIds": [
+            "clm.meningitis.004"
+          ]
+        }
+      ],
+      "diagnosticLogic": [
+        "The team should gather urgent diagnostic data without turning the workup into an excuse for dangerous delay.",
+        "Testing supports precision, but the emergency is clinical before it becomes beautifully labeled."
+      ],
+      "differentials": [
+        {
+          "disease": "viral meningitis",
+          "whyConsidered": "also causes meningeal symptoms",
+          "whyLessLikely": "bacterial illness often looks more toxic and urgent"
+        },
+        {
+          "disease": "encephalitis",
+          "whyConsidered": "can also cause altered mental status and fever",
+          "whyLessLikely": "the story logic shifts once meningeal signs and CSF patterns dominate"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "urgent evaluation",
+        "prompt antibiotics when bacterial meningitis is suspected",
+        "supportive emergency care and monitoring"
+      ],
+      "escalation": [
+        "manage sepsis-related instability",
+        "intensive neurologic and systemic monitoring"
+      ],
+      "monitoring": [
+        "mental status",
+        "hemodynamics",
+        "complication surveillance"
+      ],
+      "notes": [
+        "The story should show the tension between diagnostic precision and not delaying life-saving therapy."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.meningitis.001",
+        "claimText": "Bacterial meningitis is an infection-driven inflammation of the meninges around the brain and spinal cord.",
+        "sourceId": "src.cdc-bacterial-meningitis-guidance",
+        "sourceType": "guideline",
+        "sourceLabel": "CDC bacterial meningitis guidance",
+        "sourceLocator": "overview",
+        "confidence": 0.98,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General emergency infectious-disease teaching baseline",
+        "claimType": "core-mechanism",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "mechanism",
+        "patientSubgroupApplicability": "Adults and children with suspected meningitis",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.meningitis.002",
+        "claimText": "Typical symptoms include fever, headache, stiff neck, and altered mental status, though presentation can vary by age and organism.",
+        "sourceId": "src.cdc-bacterial-meningitis-guidance",
+        "sourceType": "guideline",
+        "sourceLabel": "CDC bacterial meningitis guidance",
+        "sourceLocator": "symptoms",
+        "confidence": 0.97,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General emergency infectious-disease teaching baseline",
+        "claimType": "presentation",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "presentation",
+        "patientSubgroupApplicability": "Adults and children with suspected meningitis",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.meningitis.003",
+        "claimText": "Bacterial meningitis is a medical emergency because it can progress quickly to seizures, coma, death, or sepsis-related complications.",
+        "sourceId": "src.cdc-bacterial-meningitis-guidance",
+        "sourceType": "guideline",
+        "sourceLabel": "CDC bacterial meningitis guidance",
+        "sourceLocator": "complications and emergency care",
+        "confidence": 0.97,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Emergency triage",
+        "claimType": "severity-marker",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "severity",
+        "patientSubgroupApplicability": "Adults and children with suspected meningitis",
+        "importanceRank": 3
+      },
+      {
+        "claimId": "clm.meningitis.004",
+        "claimText": "Diagnostic workup uses laboratory testing for meningitis, including blood cultures and cerebrospinal fluid evaluation when feasible.",
+        "sourceId": "src.cdc-bacterial-meningitis-guidance",
+        "sourceType": "guideline",
+        "sourceLabel": "CDC bacterial meningitis guidance",
+        "sourceLocator": "testing and diagnosis",
+        "confidence": 0.94,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Emergency diagnostic framing",
+        "claimType": "diagnostic-or-management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Adults and children with suspected meningitis",
+        "importanceRank": 4
+      },
+      {
+        "claimId": "clm.meningitis.005",
+        "claimText": "Treatment uses antibiotics and should begin as soon as possible when bacterial meningitis is suspected.",
+        "sourceId": "src.cdc-bacterial-meningitis-guidance",
+        "sourceType": "guideline",
+        "sourceLabel": "CDC bacterial meningitis guidance",
+        "sourceLocator": "treatment and recovery",
+        "confidence": 0.98,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Emergency treatment baseline",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "initial treatment",
+        "patientSubgroupApplicability": "Adults and children with suspected meningitis",
+        "importanceRank": 5
+      },
+      {
+        "claimId": "clm.meningitis.006",
+        "claimText": "If lumbar puncture must be delayed, treatment should still proceed promptly after appropriate early evaluation rather than waiting passively for later confirmation.",
+        "sourceId": "src.cdc-meningococcal-disease-emergency-treatment-guidance",
+        "sourceType": "reference",
+        "sourceLabel": "CDC meningococcal disease emergency treatment guidance",
+        "sourceLocator": "treatment after cultures if LP delayed",
+        "confidence": 0.91,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "High-risk emergency pathway",
+        "claimType": "management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "initial treatment",
+        "patientSubgroupApplicability": "Adults with suspected acute bacterial meningitis",
+        "importanceRank": 6
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.cdc-bacterial-meningitis-guidance",
+        "canonicalDiseaseName": "Bacterial meningitis",
+        "sourceLabel": "CDC bacterial meningitis guidance",
+        "sourceType": "guideline",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Preferred source for emergency presentation, testing, and antibiotic timing."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.cdc.gov/meningitis/about/bacterial-meningitis.html"
+      },
+      {
+        "id": "src.cdc-meningococcal-disease-emergency-treatment-guidance",
+        "canonicalDiseaseName": "Bacterial meningitis",
+        "sourceLabel": "CDC meningococcal disease emergency treatment guidance",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Use for the medical-emergency framing around meningitis and sepsis."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.cdc.gov/yellow-book/hcp/travel-associated-infections-diseases/meningococcal-disease.html"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "order": 1,
+        "title": "Emergency Recognition Matters",
+        "teachingPoint": "The clues should make meningitis feel dangerous before the final label appears.",
+        "linkedClaimIds": [
+          "clm.meningitis.002",
+          "clm.meningitis.003"
+        ]
+      },
+      {
+        "order": 2,
+        "title": "Testing and Treatment Pull Against Delay",
+        "teachingPoint": "Show that workup supports the truth but does not justify waiting through a worsening emergency.",
+        "linkedClaimIds": [
+          "clm.meningitis.004",
+          "clm.meningitis.005"
+        ]
+      },
+      {
+        "order": 3,
+        "title": "Sepsis and CNS Danger Travel Together",
+        "teachingPoint": "The climax should connect neurologic decline with systemic risk.",
+        "linkedClaimIds": [
+          "clm.meningitis.003"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "anchorId": "anc.bacterial-meningitis.001",
+        "title": "Inflamed meningeal boundary",
+        "bodyScale": "organ",
+        "location": "meninges and cerebrospinal fluid space",
+        "description": "The protective layers around the brain glow with danger as inflammation spreads.",
+        "linkedClaimIds": [
+          "clm.meningitis.001"
+        ]
+      },
+      {
+        "anchorId": "anc.bacterial-meningitis.002",
+        "title": "Toxic bedside presentation",
+        "bodyScale": "whole-body",
+        "location": "patient exterior",
+        "description": "Fever, pain, and confusion make the urgency visible before lab labels arrive.",
+        "linkedClaimIds": [
+          "clm.meningitis.002",
+          "clm.meningitis.003"
+        ]
+      },
+      {
+        "anchorId": "anc.bacterial-meningitis.003",
+        "title": "Antibiotic race sequence",
+        "bodyScale": "whole-body",
+        "location": "emergency treatment bay",
+        "description": "The detectives must treat while still piecing together the responsible organism.",
+        "linkedClaimIds": [
+          "clm.meningitis.005",
+          "clm.meningitis.006"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.meningitis.001",
+        "toClaimId": "clm.meningitis.002",
+        "relationshipType": "chronology",
+        "status": "resolved",
+        "notes": "Meningeal infection produces the symptom cluster."
+      },
+      {
+        "fromClaimId": "clm.meningitis.004",
+        "toClaimId": "clm.meningitis.005",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Diagnostic workup supports treatment without replacing urgent therapy."
+      },
+      {
+        "fromClaimId": "clm.meningitis.004",
+        "toClaimId": "clm.meningitis.006",
+        "relationshipType": "contradicts",
+        "status": "monitor",
+        "notes": "When lumbar puncture is delayed, teams must reconcile diagnostic thoroughness with not delaying antibiotics."
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.ulcerative-colitis-flare",
+    "canonicalDiseaseName": "Ulcerative colitis flare",
+    "aliases": [
+      "uc flare",
+      "ulcerative colitis flare",
+      "ulcerative colitis exacerbation"
+    ],
+    "ontologyId": "ICD-10-CM:K51.90",
+    "diseaseCategory": "inflammatory bowel disease / colonic mucosal inflammation",
+    "educationalFocus": [
+      "colon mucosal inflammation",
+      "bloody diarrhea differential",
+      "severity-based treatment",
+      "hospital flare management"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Ulcerative colitis flare is a recurrence or worsening of inflammatory colonic disease with bleeding, pain, and urgent bowel symptoms.",
+      "keyMechanism": "Diffuse mucosal inflammation in the colon drives bleeding, diarrhea, pain, and escalating severity in active disease.",
+      "timeScale": "days to weeks, with severe flares sometimes escalating fast enough to require hospitalization",
+      "patientExperienceSummary": "Patients often experience exhausting urgency, abdominal pain, and bleeding that make the disease feel both visible and relentless."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "colon mucosa and absorption",
+        "whyItMatters": "The mystery depends on seeing why inflamed lining creates bleeding and diarrhea."
+      },
+      {
+        "topic": "immune-mediated intestinal inflammation",
+        "whyItMatters": "Readers need a mechanism for why the colon becomes persistently inflamed."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "colonic mucosa becomes inflamed",
+        "mechanism": "Immune-driven injury disrupts the lining of the large intestine.",
+        "scale": "tissue",
+        "linkedClaimIds": [
+          "clm.uc.001"
+        ]
+      },
+      {
+        "order": 2,
+        "event": "mucosal injury produces bleeding and urgent diarrhea",
+        "mechanism": "Inflamed tissue loses normal barrier and absorptive function.",
+        "scale": "organ",
+        "linkedClaimIds": [
+          "clm.uc.002"
+        ]
+      },
+      {
+        "order": 3,
+        "event": "severity drives treatment intensity and hospital need",
+        "mechanism": "Complications, dehydration, and heavy inflammation raise urgency.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.uc.004",
+          "clm.uc.005"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "diarrhea",
+        "rectal bleeding",
+        "abdominal pain",
+        "urgency"
+      ],
+      "commonSigns": [
+        "abdominal tenderness",
+        "volume depletion in severe flare",
+        "systemic toxicity in severe disease"
+      ],
+      "historyClues": [
+        "known inflammatory bowel disease history helps frame the case",
+        "infection still has to be considered and excluded"
+      ],
+      "physicalExamClues": [
+        "ongoing bleeding and dehydration clues raise concern for severity"
+      ],
+      "complications": [
+        "severe dehydration",
+        "anemia",
+        "toxic megacolon or perforation in severe disease"
+      ],
+      "typicalTimecourse": "flares often build over days but severe disease can become a hospital problem quickly"
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "CBC and inflammatory markers",
+          "purpose": "assess bleeding burden and systemic inflammation",
+          "expectedFinding": "can support severity assessment but not define the disease alone",
+          "claimIds": [
+            "clm.uc.004"
+          ]
+        }
+      ],
+      "imaging": [
+        {
+          "name": "targeted abdominal imaging in severe disease",
+          "purpose": "evaluate complications rather than confirm routine flare alone",
+          "expectedFinding": "used when severe complication is a concern",
+          "claimIds": [
+            "clm.uc.004"
+          ]
+        }
+      ],
+      "pathology": [
+        {
+          "name": "endoscopy with biopsy",
+          "purpose": "confirm inflammatory colitis pattern and support diagnosis",
+          "expectedFinding": "mucosal inflammation and biopsy findings support ulcerative colitis",
+          "claimIds": [
+            "clm.uc.003"
+          ]
+        }
+      ],
+      "diagnosticLogic": [
+        "Known ulcerative colitis does not remove the need to assess severity and rule out mimics or infection when appropriate.",
+        "Endoscopy and biopsy anchor the diagnosis, but bedside severity still determines urgency."
+      ],
+      "differentials": [
+        {
+          "disease": "infectious colitis",
+          "whyConsidered": "can also cause diarrhea, pain, and bleeding",
+          "whyLessLikely": "testing and background history help sort the pattern"
+        },
+        {
+          "disease": "Crohn disease",
+          "whyConsidered": "also causes inflammatory bowel symptoms",
+          "whyLessLikely": "distribution and pathology pattern differ"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "severity-based anti-inflammatory treatment",
+        "hydration and complication assessment",
+        "hospital care for severe or fulminant disease"
+      ],
+      "escalation": [
+        "corticosteroids for more severe flares",
+        "immunosuppressants or biologics when indicated",
+        "surgical evaluation for life-threatening complications"
+      ],
+      "monitoring": [
+        "bleeding burden",
+        "hydration and electrolytes",
+        "response to anti-inflammatory therapy"
+      ],
+      "notes": [
+        "Do not flatten treatment into one universal medication; the story should respect severity-based escalation."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.uc.001",
+        "claimText": "Ulcerative colitis is an inflammatory disease of the colon that causes mucosal injury and recurrent flares.",
+        "sourceId": "src.niddk-ulcerative-colitis-symptoms-and-causes",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK ulcerative colitis symptoms and causes",
+        "sourceLocator": "overview",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General inflammatory bowel disease teaching baseline",
+        "claimType": "core-mechanism",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "mechanism",
+        "patientSubgroupApplicability": "Adults with ulcerative colitis",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.uc.002",
+        "claimText": "Common flare symptoms include diarrhea, rectal bleeding, abdominal pain, and urgency.",
+        "sourceId": "src.niddk-ulcerative-colitis-symptoms-and-causes",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK ulcerative colitis symptoms and causes",
+        "sourceLocator": "common symptoms",
+        "confidence": 0.97,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General inflammatory bowel disease teaching baseline",
+        "claimType": "presentation",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "presentation",
+        "patientSubgroupApplicability": "Adults with ulcerative colitis",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.uc.003",
+        "claimText": "Doctors diagnose ulcerative colitis using history, testing, and endoscopy with biopsy while ruling out other causes such as infection.",
+        "sourceId": "src.niddk-ulcerative-colitis-diagnosis",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK ulcerative colitis diagnosis",
+        "sourceLocator": "diagnosis overview",
+        "confidence": 0.95,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Outpatient and inpatient diagnostic review",
+        "claimType": "diagnostic-or-management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Adults with suspected or known ulcerative colitis flare",
+        "importanceRank": 3
+      },
+      {
+        "claimId": "clm.uc.004",
+        "claimText": "Treatment intensity depends on flare severity, and severe or fulminant disease is often treated in the hospital.",
+        "sourceId": "src.niddk-ulcerative-colitis-treatment",
+        "sourceType": "guideline",
+        "sourceLabel": "NIDDK ulcerative colitis treatment",
+        "sourceLocator": "severity and hospitalization",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Hospitalization and escalation framing",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "initial treatment",
+        "patientSubgroupApplicability": "Adults with moderate to severe flare",
+        "importanceRank": 4
+      },
+      {
+        "claimId": "clm.uc.005",
+        "claimText": "Aminosalicylates, corticosteroids, immunosuppressants, and biologics are used according to severity and response.",
+        "sourceId": "src.niddk-ulcerative-colitis-treatment",
+        "sourceType": "guideline",
+        "sourceLabel": "NIDDK ulcerative colitis treatment",
+        "sourceLocator": "medicines",
+        "confidence": 0.94,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Medication-tier teaching baseline",
+        "claimType": "management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "ongoing treatment",
+        "patientSubgroupApplicability": "Adults with ulcerative colitis",
+        "importanceRank": 5
+      },
+      {
+        "claimId": "clm.uc.006",
+        "claimText": "People with ulcerative colitis are generally advised to avoid NSAIDs for pain because these medicines may worsen symptoms.",
+        "sourceId": "src.niddk-ulcerative-colitis-treatment",
+        "sourceType": "guideline",
+        "sourceLabel": "NIDDK ulcerative colitis treatment",
+        "sourceLocator": "other treatments and medicines to avoid",
+        "confidence": 0.93,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Self-management counseling",
+        "claimType": "management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "supportive care",
+        "patientSubgroupApplicability": "Adults with ulcerative colitis",
+        "importanceRank": 6
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.niddk-ulcerative-colitis-symptoms-and-causes",
+        "canonicalDiseaseName": "Ulcerative colitis flare",
+        "sourceLabel": "NIDDK ulcerative colitis symptoms and causes",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Preferred baseline source for flare symptoms and disease distribution."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.niddk.nih.gov/health-information/digestive-diseases/ulcerative-colitis/symptoms-causes"
+      },
+      {
+        "id": "src.niddk-ulcerative-colitis-treatment",
+        "canonicalDiseaseName": "Ulcerative colitis flare",
+        "sourceLabel": "NIDDK ulcerative colitis treatment",
+        "sourceType": "guideline",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Use for medication tiers and hospitalized severe-flare treatment framing."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.niddk.nih.gov/health-information/digestive-diseases/ulcerative-colitis/treatment"
+      },
+      {
+        "id": "src.niddk-ulcerative-colitis-diagnosis",
+        "canonicalDiseaseName": "Ulcerative colitis flare",
+        "sourceLabel": "NIDDK ulcerative colitis diagnosis",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Use for endoscopy, biopsy, and infection-exclusion logic."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.niddk.nih.gov/health-information/digestive-diseases/ulcerative-colitis/diagnosis"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "order": 1,
+        "title": "Mucosal Injury Explains the Symptoms",
+        "teachingPoint": "Bloody diarrhea should feel like a clue that the colon lining itself is under attack.",
+        "linkedClaimIds": [
+          "clm.uc.001",
+          "clm.uc.002"
+        ]
+      },
+      {
+        "order": 2,
+        "title": "Severity Changes the Setting",
+        "teachingPoint": "The story should distinguish outpatient flare logic from severe hospitalized flare logic.",
+        "linkedClaimIds": [
+          "clm.uc.004"
+        ]
+      },
+      {
+        "order": 3,
+        "title": "Diagnosis Needs Confirmation and Exclusion",
+        "teachingPoint": "Known disease still needs careful evaluation when the bedside picture changes.",
+        "linkedClaimIds": [
+          "clm.uc.003"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "anchorId": "anc.ulcerative-colitis-flare.001",
+        "title": "Inflamed colonic lining",
+        "bodyScale": "tissue",
+        "location": "colonic mucosa",
+        "description": "The detectives see a reddened, friable lining that bleeds when disturbed.",
+        "linkedClaimIds": [
+          "clm.uc.001"
+        ]
+      },
+      {
+        "anchorId": "anc.ulcerative-colitis-flare.002",
+        "title": "Urgency and bleeding clue trail",
+        "bodyScale": "whole-body",
+        "location": "patient exterior and bathroom threshold",
+        "description": "Symptoms dominate the patient experience before the diagnosis is named.",
+        "linkedClaimIds": [
+          "clm.uc.002"
+        ]
+      },
+      {
+        "anchorId": "anc.ulcerative-colitis-flare.003",
+        "title": "Severity ward checkpoint",
+        "bodyScale": "whole-body",
+        "location": "hospital treatment bay",
+        "description": "Escalation depends on how sick and depleted the patient becomes.",
+        "linkedClaimIds": [
+          "clm.uc.004"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.uc.001",
+        "toClaimId": "clm.uc.002",
+        "relationshipType": "chronology",
+        "status": "resolved",
+        "notes": "Inflammation produces the flare symptom cluster."
+      },
+      {
+        "fromClaimId": "clm.uc.003",
+        "toClaimId": "clm.uc.004",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Diagnosis and severity assessment together shape treatment setting."
+      },
+      {
+        "fromClaimId": "clm.uc.002",
+        "toClaimId": "clm.uc.006",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Symptom management choices should avoid medications that worsen disease activity."
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.sickle-cell-vaso-occlusive-crisis",
+    "canonicalDiseaseName": "Sickle cell vaso-occlusive crisis",
+    "aliases": [
+      "vaso-occlusive crisis",
+      "sickle cell pain crisis",
+      "sickle cell vaso-occlusive crisis"
+    ],
+    "ontologyId": "ICD-10-CM:D57.00",
+    "diseaseCategory": "hemoglobinopathy / microvascular occlusion",
+    "educationalFocus": [
+      "red cell sickling",
+      "ischemic pain",
+      "complication screening",
+      "rapid pain management"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Sickle cell vaso-occlusive crisis is a painful ischemic event caused by obstructed microvascular blood flow in sickle cell disease.",
+      "keyMechanism": "Sickled red cells impede circulation, producing tissue ischemia, pain, and risk for organ complications.",
+      "timeScale": "often sudden, with pain escalating over hours and complications able to appear during the same episode",
+      "patientExperienceSummary": "Patients can move quickly from ordinary function to severe pain that dominates movement, breathing, and attention."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "red blood cell shape and flow",
+        "whyItMatters": "Readers need to understand why altered cell shape changes circulation so dramatically."
+      },
+      {
+        "topic": "microvascular ischemia and organ risk",
+        "whyItMatters": "The story must connect blocked flow to pain and to dangerous downstream complications."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "red cells sickle and obstruct microvascular flow",
+        "mechanism": "Abnormal cell shape and adhesion slow circulation and block small vessels.",
+        "scale": "cellular",
+        "linkedClaimIds": [
+          "clm.scd.001"
+        ]
+      },
+      {
+        "order": 2,
+        "event": "ischemic tissue pain escalates",
+        "mechanism": "Reduced perfusion produces severe pain and loss of normal function.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.scd.002"
+        ]
+      },
+      {
+        "order": 3,
+        "event": "the team must search for complications beyond pain",
+        "mechanism": "Acute chest syndrome, infection, or anemia can change the entire treatment path.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.scd.003",
+          "clm.scd.006"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "severe pain",
+        "painful swelling or limb discomfort",
+        "fatigue"
+      ],
+      "commonSigns": [
+        "distress from severe pain",
+        "tachycardia",
+        "possible chest symptoms if acute chest syndrome develops"
+      ],
+      "historyClues": [
+        "pain may arise without warning",
+        "prior individual pain plans matter to the response"
+      ],
+      "physicalExamClues": [
+        "location and severity of pain matter, but chest symptoms or anemia clues change urgency"
+      ],
+      "complications": [
+        "acute chest syndrome",
+        "severe anemia",
+        "infection-related deterioration"
+      ],
+      "typicalTimecourse": "pain can intensify over hours, while complications may emerge during the same crisis"
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "CBC and reticulocyte count",
+          "purpose": "evaluate anemia burden and marrow response",
+          "expectedFinding": "helps frame whether severe anemia or aplastic complications are present",
+          "claimIds": [
+            "clm.scd.003"
+          ]
+        }
+      ],
+      "imaging": [
+        {
+          "name": "targeted chest imaging when symptoms warrant",
+          "purpose": "evaluate acute chest syndrome",
+          "expectedFinding": "used when chest pain, fever, or breathing symptoms raise concern",
+          "claimIds": [
+            "clm.scd.006"
+          ]
+        }
+      ],
+      "pathology": [],
+      "diagnosticLogic": [
+        "The workup should validate the pain crisis while actively looking for the dangerous things that can hide inside it.",
+        "Pain intensity alone is not the only clue; respiratory and anemia findings can redirect the case."
+      ],
+      "differentials": [
+        {
+          "disease": "osteomyelitis",
+          "whyConsidered": "can also cause focal severe pain in sickle cell disease",
+          "whyLessLikely": "systemic context and evaluation alter the story logic"
+        },
+        {
+          "disease": "acute chest syndrome",
+          "whyConsidered": "may overlap with a pain crisis",
+          "whyLessLikely": "respiratory symptoms and chest findings move it into a more dangerous lane"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "rapid analgesia",
+        "individualized pain plan when available",
+        "supportive hydration and reassessment"
+      ],
+      "escalation": [
+        "evaluate and treat acute chest syndrome or severe anemia urgently",
+        "hospital-based care for uncontrolled pain or dangerous complications"
+      ],
+      "monitoring": [
+        "pain response",
+        "oxygenation and respiratory symptoms",
+        "anemia and complication signs"
+      ],
+      "notes": [
+        "The story should respect pain as real and urgent while still teaching complication vigilance."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.scd.001",
+        "claimText": "A vaso-occlusive crisis happens when sickled red blood cells obstruct blood flow and trigger tissue ischemia and pain.",
+        "sourceId": "src.nhlbi-sickle-cell-health-effects",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI sickle cell health effects",
+        "sourceLocator": "pain crisis overview",
+        "confidence": 0.98,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General sickle cell emergency teaching baseline",
+        "claimType": "core-mechanism",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "mechanism",
+        "patientSubgroupApplicability": "People with sickle cell disease",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.scd.002",
+        "claimText": "Pain crises can occur without warning and often cause severe pain that may require clinic or hospital treatment.",
+        "sourceId": "src.nhlbi-sickle-cell-symptoms-and-emergencies",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI sickle cell symptoms and emergencies",
+        "sourceLocator": "severe pain emergency care",
+        "confidence": 0.97,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "General sickle cell emergency teaching baseline",
+        "claimType": "presentation",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "presentation",
+        "patientSubgroupApplicability": "People with sickle cell disease",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.scd.003",
+        "claimText": "Evaluation during severe pain must also look for dangerous complications such as acute chest syndrome, serious anemia, or infection.",
+        "sourceId": "src.nhlbi-sickle-cell-symptoms-and-emergencies",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI sickle cell symptoms and emergencies",
+        "sourceLocator": "emergency symptoms and acute chest syndrome",
+        "confidence": 0.95,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Emergency pain-crisis review",
+        "claimType": "severity-marker",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "complication screening",
+        "patientSubgroupApplicability": "People with sickle cell disease",
+        "importanceRank": 3
+      },
+      {
+        "claimId": "clm.scd.004",
+        "claimText": "Pain-crisis management should be rapid, structured, and based on an individualized pain plan when available.",
+        "sourceId": "src.nhlbi-sickle-cell-pain-management-fact-sheet",
+        "sourceType": "guideline",
+        "sourceLabel": "NHLBI sickle cell pain management fact sheet",
+        "sourceLocator": "managing pain plan",
+        "confidence": 0.92,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Emergency and inpatient pain treatment",
+        "claimType": "management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "initial treatment",
+        "patientSubgroupApplicability": "People with sickle cell disease",
+        "importanceRank": 4
+      },
+      {
+        "claimId": "clm.scd.005",
+        "claimText": "Hydration and supportive care may help, but treatment must stay focused on pain control and complication-directed care rather than assuming pain is the only issue.",
+        "sourceId": "src.nhlbi-sickle-cell-pain-management-fact-sheet",
+        "sourceType": "guideline",
+        "sourceLabel": "NHLBI sickle cell pain management fact sheet",
+        "sourceLocator": "acute or severe pain crisis support",
+        "confidence": 0.9,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Emergency and inpatient pain treatment",
+        "claimType": "management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "supportive care",
+        "patientSubgroupApplicability": "People with sickle cell disease",
+        "importanceRank": 5
+      },
+      {
+        "claimId": "clm.scd.006",
+        "claimText": "Acute chest syndrome is a medical emergency that changes the pathway from pain-only management to respiratory and transfusion-oriented escalation.",
+        "sourceId": "src.nhlbi-sickle-cell-health-effects",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI sickle cell health effects",
+        "sourceLocator": "acute chest syndrome emergency",
+        "confidence": 0.94,
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "applicability": "Complication escalation",
+        "claimType": "management",
+        "certaintyLevel": "moderate",
+        "diseaseStageApplicability": "rescue escalation",
+        "patientSubgroupApplicability": "People with sickle cell disease and chest symptoms",
+        "importanceRank": 6
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.nhlbi-sickle-cell-symptoms-and-emergencies",
+        "canonicalDiseaseName": "Sickle cell vaso-occlusive crisis",
+        "sourceLabel": "NHLBI sickle cell symptoms and emergencies",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Preferred baseline source for pain-crisis symptoms and emergency escalation clues."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.nhlbi.nih.gov/health/sickle-cell-disease/symptoms"
+      },
+      {
+        "id": "src.nhlbi-sickle-cell-health-effects",
+        "canonicalDiseaseName": "Sickle cell vaso-occlusive crisis",
+        "sourceLabel": "NHLBI sickle cell health effects",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Use for vaso-occlusion and complication framing."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.nhlbi.nih.gov/health/sickle-cell-disease/health-effects"
+      },
+      {
+        "id": "src.nhlbi-sickle-cell-pain-management-fact-sheet",
+        "canonicalDiseaseName": "Sickle cell vaso-occlusive crisis",
+        "sourceLabel": "NHLBI sickle cell pain management fact sheet",
+        "sourceType": "guideline",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "governanceNotes": [
+          "Use for acute pain-crisis management framing."
+        ],
+        "lastReviewedAt": "2026-04-22T00:00:00Z",
+        "sourceUrl": "https://www.nhlbi.nih.gov/resources/managing-pain-sickle-cell-disease-fact-sheet"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "order": 1,
+        "title": "Blocked Flow Creates Real Pain",
+        "teachingPoint": "Anchor the mystery in microvascular obstruction rather than vague suffering.",
+        "linkedClaimIds": [
+          "clm.scd.001",
+          "clm.scd.002"
+        ]
+      },
+      {
+        "order": 2,
+        "title": "Pain Crisis Is Not the Whole Differential",
+        "teachingPoint": "The detectives should keep scanning for acute chest syndrome, anemia, and infection.",
+        "linkedClaimIds": [
+          "clm.scd.003",
+          "clm.scd.006"
+        ]
+      },
+      {
+        "order": 3,
+        "title": "Rapid Analgesia Is Part of Good Care",
+        "teachingPoint": "Pain management should feel like competent urgent treatment, not an afterthought.",
+        "linkedClaimIds": [
+          "clm.scd.004",
+          "clm.scd.005"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "anchorId": "anc.sickle-cell-vaso-occlusive-crisis.001",
+        "title": "Sickled-cell traffic jam",
+        "bodyScale": "cellular",
+        "location": "microvasculature",
+        "description": "Misshapen red cells clog a narrow vessel route and halt progress.",
+        "linkedClaimIds": [
+          "clm.scd.001"
+        ]
+      },
+      {
+        "anchorId": "anc.sickle-cell-vaso-occlusive-crisis.002",
+        "title": "Pain crisis surge",
+        "bodyScale": "whole-body",
+        "location": "patient exterior",
+        "description": "The body reacts to ischemic pain with immediate distress and loss of function.",
+        "linkedClaimIds": [
+          "clm.scd.002"
+        ]
+      },
+      {
+        "anchorId": "anc.sickle-cell-vaso-occlusive-crisis.003",
+        "title": "Complication fork in the road",
+        "bodyScale": "whole-body",
+        "location": "chest and systemic evaluation bay",
+        "description": "Respiratory clues force the detectives to ask whether the crisis is becoming acute chest syndrome.",
+        "linkedClaimIds": [
+          "clm.scd.003",
+          "clm.scd.006"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.scd.001",
+        "toClaimId": "clm.scd.002",
+        "relationshipType": "chronology",
+        "status": "resolved",
+        "notes": "Microvascular obstruction drives the pain event."
+      },
+      {
+        "fromClaimId": "clm.scd.003",
+        "toClaimId": "clm.scd.006",
+        "relationshipType": "supports",
+        "status": "resolved",
+        "notes": "Complication screening is justified because acute chest syndrome is a medical emergency."
+      },
+      {
+        "fromClaimId": "clm.scd.004",
+        "toClaimId": "clm.scd.005",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Supportive care complements rather than replaces rapid analgesia and complication-directed care."
+      }
+    ]
+  }
+]

@@ -35,21 +35,26 @@ function selectPrimaryQaReport(qaReports) {
 /**
  * @param {any[]} qaReports
  * @param {any} diseasePacket
- * @returns {{ medicalAccuracy: number, mysteryIntegrity: number, educationalSequencing: number, panelization: number, renderReadiness: number, sourceFreshness: number, contradictionStatus: string, releaseVerdict: string }}
+ * @param {any | undefined} evaluationSummary
+ * @returns {{ medicalAccuracy: number, evidenceTraceability: number, mysteryIntegrity: number, educationalSequencing: number, panelization: number, renderReadiness: number, sourceFreshness: number, contradictionStatus: string, releaseVerdict: string }}
  */
-function buildQualitySummary(qaReports, diseasePacket) {
+function buildQualitySummary(qaReports, diseasePacket, evaluationSummary) {
   const primaryQaReport = selectPrimaryQaReport(qaReports);
   const medicalAccuracyScores = qaReports.map((qaReport) => qaReport.scores.medicalAccuracy);
   const mysteryIntegrityScores = qaReports.map((qaReport) => qaReport.scores.mysteryIntegrity);
   const educationalSequencingScores = qaReports.map((qaReport) => qaReport.scores.educationalSequencing);
   const panelizationScores = qaReports.map((qaReport) => qaReport.scores.panelization);
   const renderReadinessScores = qaReports.map((qaReport) => qaReport.scores.renderReadiness);
+  const evidenceTraceability = Number((evaluationSummary?.familyScores?.evidence_traceability ?? (
+    diseasePacket.evidenceSummary.governanceVerdict === 'approved' ? 1 : 0
+  )).toFixed(3));
   const contradictionStatus = diseasePacket.evidenceSummary.blockingContradictions > 0
     ? 'blocking'
     : (diseasePacket.evidenceSummary.contradictionCount > 0 ? 'monitor' : 'none');
 
   return {
     medicalAccuracy: Number((primaryQaReport?.scores.medicalAccuracy ?? average(medicalAccuracyScores)).toFixed(3)),
+    evidenceTraceability,
     mysteryIntegrity: Number((primaryQaReport?.scores.mysteryIntegrity ?? average(mysteryIntegrityScores)).toFixed(3)),
     educationalSequencing: Number((primaryQaReport?.scores.educationalSequencing ?? average(educationalSequencingScores)).toFixed(3)),
     panelization: Number((primaryQaReport?.scores.panelization ?? average(panelizationScores)).toFixed(3)),
@@ -225,7 +230,7 @@ export class ExporterService {
         retentionClass: artifact.retentionClass,
         checksum: artifact.checksum,
       })),
-      qualitySummary: buildQualitySummary(options.qaReports, options.diseasePacket),
+      qualitySummary: buildQualitySummary(options.qaReports, options.diseasePacket, options.evaluationSummary),
       releaseGateChecks: options.evaluationSummary
         ? [
           ...releaseGateChecks,

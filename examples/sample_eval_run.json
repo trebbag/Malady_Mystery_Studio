@@ -30,6 +30,35 @@
       ]
     },
     {
+      "family": "evidence_traceability",
+      "mode": "ratio",
+      "releaseGate": "Gate 2, Gate 4, and Gate 5",
+      "threshold": 0.95,
+      "status": "passed",
+      "score": 1,
+      "applicableCaseCount": 2,
+      "passedCaseCount": 2,
+      "failedCaseCount": 0,
+      "cases": [
+        {
+          "caseId": "trace.hcc.001",
+          "artifactType": "panel-plan",
+          "status": "passed",
+          "score": 1,
+          "threshold": 0.95,
+          "message": "Case satisfied evidence_traceability requirements."
+        },
+        {
+          "caseId": "trace.hcc.002",
+          "artifactType": "render-prompt",
+          "status": "passed",
+          "score": 1,
+          "threshold": 0.95,
+          "message": "Case satisfied evidence_traceability requirements."
+        }
+      ]
+    },
+    {
       "family": "mystery_integrity",
       "mode": "ratio",
       "releaseGate": "Gate 3",
@@ -168,12 +197,21 @@
     }
   ],
   "summary": {
-    "applicableFamilyCount": 6,
-    "passedFamilyCount": 6,
+    "applicableFamilyCount": 7,
+    "passedFamilyCount": 7,
     "failedFamilyCount": 0,
-    "applicableCaseCount": 10,
-    "passedCaseCount": 10,
+    "applicableCaseCount": 12,
+    "passedCaseCount": 12,
     "failedCaseCount": 0,
-    "allThresholdsMet": true
+    "allThresholdsMet": true,
+    "familyScores": {
+      "medical_accuracy": 1,
+      "evidence_traceability": 1,
+      "mystery_integrity": 1,
+      "educational_sequencing": 1,
+      "panelization": 1,
+      "render_readiness": 1,
+      "governance_release": 1
+    }
   }
 }

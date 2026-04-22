@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "cdr.meningitis.001",
+  "tenantId": "tenant.local",
+  "canonicalDiseaseName": "Bacterial meningitis",
+  "claimId": "clm.meningitis.004",
+  "relatedClaimId": "clm.meningitis.006",
+  "status": "resolved",
+  "reason": "The reviewer confirmed the starter contradiction is contextual rather than blocking for this run.",
+  "resolvedBy": "local-operator",
+  "resolvedByRoles": [
+    "Local Operator"
+  ],
+  "occurredAt": "2026-04-22T12:00:00Z"
+}

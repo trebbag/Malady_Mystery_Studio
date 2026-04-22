@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/clinical-package-view.schema.json",
+  "title": "ClinicalPackageView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "canonicalDisease",
+    "diseasePacket",
+    "factTable",
+    "evidenceGraph",
+    "clinicalTeachingPoints",
+    "visualAnchorCatalog",
+    "sourceGovernance",
+    "contradictionResolutions",
+    "traceCoverage"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "canonicalDisease": {
+      "$ref": "canonical-disease.schema.json"
+    },
+    "diseasePacket": {
+      "$ref": "disease-packet.schema.json"
+    },
+    "factTable": {
+      "$ref": "fact-table.schema.json"
+    },
+    "evidenceGraph": {
+      "$ref": "evidence-graph.schema.json"
+    },
+    "clinicalTeachingPoints": {
+      "$ref": "clinical-teaching-points.schema.json"
+    },
+    "visualAnchorCatalog": {
+      "$ref": "visual-anchor-catalog.schema.json"
+    },
+    "sourceGovernance": {
+      "$ref": "source-governance-view.schema.json"
+    },
+    "contradictionResolutions": {
+      "type": "array",
+      "items": {
+        "$ref": "contradiction-resolution.schema.json"
+      }
+    },
+    "traceCoverage": {
+      "$ref": "trace-coverage-view.schema.json"
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/source-catalog-entry.schema.json",
+  "title": "SourceCatalogEntry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "sourceLabel",
+    "sourceType",
+    "sourceTier",
+    "defaultApprovalStatus",
+    "owner",
+    "governanceNotes",
+    "lastReviewedAt"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "sourceLabel": {
+      "type": "string"
+    },
+    "sourceType": {
+      "type": "string",
+      "enum": [
+        "guideline",
+        "review",
+        "trial",
+        "textbook",
+        "reference"
+      ]
+    },
+    "sourceTier": {
+      "type": "string",
+      "enum": [
+        "tier-1",
+        "tier-2",
+        "tier-3",
+        "tenant-pack"
+      ]
+    },
+    "defaultApprovalStatus": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "conditional",
+        "suspended"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "governanceNotes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "topics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sourceUrl": {
+      "type": "string"
+    },
+    "lastReviewedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

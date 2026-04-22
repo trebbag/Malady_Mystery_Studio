@@ -39,6 +39,7 @@ const YAML_FILES = [
 
 const JSONL_DATASETS = [
   'evals/datasets/medical_accuracy_cases.jsonl',
+  'evals/datasets/evidence_traceability_cases.jsonl',
   'evals/datasets/mystery_integrity_cases.jsonl',
   'evals/datasets/educational_sequencing_cases.jsonl',
   'evals/datasets/panelization_cases.jsonl',

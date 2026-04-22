@@ -25,6 +25,17 @@
     "claimText": {
       "type": "string"
     },
+    "claimType": {
+      "type": "string"
+    },
+    "certaintyLevel": {
+      "type": "string",
+      "enum": [
+        "high",
+        "moderate",
+        "guarded"
+      ]
+    },
     "canonicalDiseaseName": {
       "type": "string"
     },
@@ -46,6 +57,9 @@
       "type": "string"
     },
     "sourceLocator": {
+      "type": "string"
+    },
+    "sourceUrl": {
       "type": "string"
     },
     "confidence": {
@@ -97,6 +111,16 @@
     },
     "applicability": {
       "type": "string"
+    },
+    "diseaseStageApplicability": {
+      "type": "string"
+    },
+    "patientSubgroupApplicability": {
+      "type": "string"
+    },
+    "importanceRank": {
+      "type": "integer",
+      "minimum": 1
     },
     "reviewNotes": {
       "type": "array",

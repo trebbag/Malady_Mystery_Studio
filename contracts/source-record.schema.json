@@ -87,6 +87,9 @@
         "type": "string"
       }
     },
+    "sourceUrl": {
+      "type": "string"
+    },
     "lastReviewedAt": {
       "type": "string",
       "format": "date-time"

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "vac.hcc.001",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "anchors": [
+    {
+      "anchorId": "anc.hcc.001",
+      "title": "Weathered liver terrain",
+      "bodyScale": "organ",
+      "location": "liver surface",
+      "description": "Show a liver landscape that already hints at chronic injury before the focal lesion is named.",
+      "linkedClaimIds": [
+        "clm.hcc.001"
+      ]
+    },
+    {
+      "anchorId": "anc.hcc.002",
+      "title": "Suspicious focal district",
+      "bodyScale": "tissue",
+      "location": "adjacent to suspicious liver region",
+      "description": "Contrast abnormal focal growth against more orderly surrounding tissue.",
+      "linkedClaimIds": [
+        "clm.hcc.006"
+      ]
+    }
+  ]
+}

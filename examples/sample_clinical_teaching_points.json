@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "ctp.hcc.001",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "points": [
+    {
+      "order": 1,
+      "title": "Chronic injury context",
+      "teachingPoint": "Chronic liver injury creates the biologic context for malignant transformation.",
+      "linkedClaimIds": [
+        "clm.hcc.001"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Imaging is contextual",
+      "teachingPoint": "Imaging behavior supports diagnosis in context and should not be flattened into one universal shortcut.",
+      "linkedClaimIds": [
+        "clm.hcc.006"
+      ]
+    }
+  ]
+}

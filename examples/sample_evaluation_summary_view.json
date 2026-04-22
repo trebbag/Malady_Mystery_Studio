@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0.0",
+  "latestEvalRunId": "evr.hcc.001",
+  "latestEvalStatus": "passed",
+  "evaluatedAt": "2026-04-21T00:09:45Z",
+  "allThresholdsMet": true,
+  "familyStatuses": [
+    {
+      "family": "medical_accuracy",
+      "status": "passed",
+      "score": 1,
+      "threshold": 0.97,
+      "releaseGate": "Gate 2"
+    },
+    {
+      "family": "evidence_traceability",
+      "status": "passed",
+      "score": 1,
+      "threshold": 0.95,
+      "releaseGate": "Gate 2, Gate 4, and Gate 5"
+    },
+    {
+      "family": "governance_release",
+      "status": "passed",
+      "score": 1,
+      "threshold": 1,
+      "releaseGate": "Gate 5 and Gate 6"
+    }
+  ]
+}

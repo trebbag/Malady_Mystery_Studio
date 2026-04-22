@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0.0",
+  "title": "Local Review Dashboard",
+  "filters": {
+    "disease": "",
+    "state": "",
+    "stage": "",
+    "exportStatus": "",
+    "evalStatus": "",
+    "sort": "updated-desc"
+  },
+  "stats": {
+    "visibleRunCount": 2,
+    "blockedClinicalRunCount": 1,
+    "awaitingReviewCount": 1,
+    "staleEvalCount": 0,
+    "exportReadyCount": 1
+  },
+  "runs": [
+    {
+      "runId": "run.cap.001",
+      "projectTitle": "Community-acquired pneumonia starter project",
+      "diseaseName": "Community-acquired pneumonia",
+      "state": "approved",
+      "currentStage": "export",
+      "latestEvalStatus": "passed",
+      "exportCount": 1,
+      "updatedAt": "2026-04-22T12:15:00Z"
+    },
+    {
+      "runId": "run.meningitis.001",
+      "projectTitle": "Bacterial meningitis starter project",
+      "diseaseName": "Bacterial meningitis",
+      "state": "review",
+      "currentStage": "disease-packet",
+      "pauseReason": "clinical-governance-review-required",
+      "latestEvalStatus": "missing",
+      "exportCount": 0,
+      "updatedAt": "2026-04-22T12:20:00Z"
+    }
+  ]
+}

@@ -39,22 +39,24 @@ pnpm local:restore -- --path var/backups/<timestamp>
 
 ## Current local MVP status
 
-- Foundation and local runtime: `94%`
-- Clinical truth layer: `84%`
-- Workbook and guardrails: `72%`
-- Scene, panel, render-prep: `68%`
-- Local review, eval, and export workflow: `86%`
-- Operational pilot readiness: `36%`
+- Foundation and local runtime: `95%`
+- Clinical truth layer: `91%`
+- Workbook and guardrails: `75%`
+- Scene, panel, render-prep: `72%`
+- Local review, eval, and export workflow: `90%`
+- Frontend structure and UX prep: `70%`
+- Operational pilot readiness: `38%`
 
 Overall:
-- Local MVP readiness: `80%`
-- Pilot readiness: `42%`
+- Local MVP readiness: `85%`
+- Pilot readiness: `45%`
 
 ## What remains before MVP and pilot
 
-- Expand the governed disease and source library beyond the current seeded set.
-- Improve clinical contradiction handling and source-refresh operations.
-- Add richer reviewer comments, diffing, and assignment workflows.
+- Add reviewer comments, diffing, assignment, and queueing on top of the current debug-oriented review UI.
+- Expand the governed disease and source library beyond the current twelve-disease local pack set.
+- Deepen contradiction handling, source refresh, and source owner workflows beyond the current local controls.
+- Add live render integration and retry orchestration instead of stopping at render-prompt generation.
 - Move from local SQLite and filesystem object storage to managed infrastructure for a pilot.
 - Add real deployment, observability, retention execution, backup policies, and recovery drills.
 - Integrate real auth at an external frontend or gateway layer when the app moves beyond local-open mode.

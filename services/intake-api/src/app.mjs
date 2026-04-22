@@ -22,6 +22,7 @@ import {
 } from '../../orchestrator/src/workflow-machine.mjs';
 import { createStoryEngineService } from '../../story-engine/src/service.mjs';
 import {
+  buildEvidenceTraceabilitySummary,
   createEvalService,
   deriveEvalStatus,
   listEvaluationReferences,
@@ -207,6 +208,24 @@ function matchWorkflowRunEvaluationPath(pathname) {
 
 /**
  * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunClinicalPackagePath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/clinical-package$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunClinicalPackageRebuildPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/clinical-package\/rebuild$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
  * @returns {{ evalRunId: string } | null}
  */
 function matchEvaluationPath(pathname) {
@@ -239,10 +258,28 @@ function matchEvidenceRecordPath(pathname) {
 
 /**
  * @param {string} pathname
+ * @returns {{ claimId: string } | null}
+ */
+function matchContradictionResolutionPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/evidence-records\/([^/]+)\/contradiction-resolutions$/);
+  return match ? { claimId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
  * @returns {{ sourceId: string } | null}
  */
 function matchSourceRecordPath(pathname) {
   const match = pathname.match(/^\/api\/v1\/source-records\/([^/]+)$/);
+  return match ? { sourceId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ sourceId: string } | null}
+ */
+function matchSourceGovernanceDecisionPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/source-records\/([^/]+)\/governance-decisions$/);
   return match ? { sourceId: decodeURIComponent(match[1]) } : null;
 }
 
@@ -307,6 +344,33 @@ function matchReviewRunCanonicalizationActionPath(pathname) {
 function matchReviewRunEvaluationActionPath(pathname) {
   const match = pathname.match(/^\/review\/runs\/([^/]+)\/evaluations$/);
   return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchReviewRunClinicalPackageRebuildActionPath(pathname) {
+  const match = pathname.match(/^\/review\/runs\/([^/]+)\/clinical-package\/rebuild$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string, sourceId: string } | null}
+ */
+function matchReviewRunSourceGovernanceActionPath(pathname) {
+  const match = pathname.match(/^\/review\/runs\/([^/]+)\/source-records\/([^/]+)\/governance-decisions$/);
+  return match ? { runId: decodeURIComponent(match[1]), sourceId: decodeURIComponent(match[2]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string, claimId: string } | null}
+ */
+function matchReviewRunContradictionResolutionActionPath(pathname) {
+  const match = pathname.match(/^\/review\/runs\/([^/]+)\/evidence-records\/([^/]+)\/contradiction-resolutions$/);
+  return match ? { runId: decodeURIComponent(match[1]), claimId: decodeURIComponent(match[2]) } : null;
 }
 
 /**
@@ -451,6 +515,18 @@ function persistTransition(store, schemaRegistry, transition) {
 }
 
 /**
+ * @param {PlatformStore} store
+ * @param {any} schemaRegistry
+ * @param {any} workflowRun
+ * @returns {any}
+ */
+function saveWorkflowRunRecord(store, schemaRegistry, workflowRun) {
+  assertSchema(schemaRegistry, 'contracts/workflow-run.schema.json', workflowRun);
+  store.saveWorkflowRun(workflowRun);
+  return workflowRun;
+}
+
+/**
  * @param {any | null} actor
  * @param {import('node:http').ServerResponse} response
  * @returns {actor is any}
@@ -529,6 +605,40 @@ function findLatestArtifactReference(workflowRun, artifactType) {
   );
 
   return matchingArtifacts.at(-1) ?? null;
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @param {string} artifactType
+ * @returns {any | null}
+ */
+function loadLatestArtifact(store, workflowRun, artifactType) {
+  const artifactReference = findLatestArtifactReference(workflowRun, artifactType);
+  return artifactReference ? loadArtifactByReference(store, artifactReference) : null;
+}
+
+/**
+ * @param {any[]} values
+ * @returns {string[]}
+ */
+function collectUniqueClaimIds(values) {
+  return [...new Set(values.filter((value) => typeof value === 'string' && value.trim().length > 0))];
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {any | null}
+ */
+function loadResolvedCanonicalDiseaseForRun(store, workflowRun) {
+  const canonicalDisease = loadLatestArtifact(store, workflowRun, 'canonical-disease');
+
+  if (!canonicalDisease || canonicalDisease.resolutionStatus !== 'resolved') {
+    return null;
+  }
+
+  return canonicalDisease;
 }
 
 /**
@@ -709,69 +819,428 @@ function transitionWorkflow(store, schemaRegistry, workflowSpec, workflowRun, ev
 }
 
 /**
+ * @param {PlatformStore} store
+ * @param {string} tenantId
+ * @param {string} artifactType
+ * @returns {any[]}
+ */
+function listTenantGovernanceArtifacts(store, tenantId, artifactType) {
+  return store.listArtifactsByType(artifactType, {
+    tenantId: normalizeTenantId(tenantId),
+  });
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @param {string} canonicalDiseaseName
+ * @returns {{ governanceDecisions: any[], contradictionResolutions: any[] }}
+ */
+function loadClinicalGovernanceState(store, workflowRun, canonicalDiseaseName) {
+  const governanceDecisions = listTenantGovernanceArtifacts(store, workflowRun.tenantId, 'source-governance-decision')
+    .filter((decision) => decision.canonicalDiseaseName === canonicalDiseaseName);
+  const contradictionResolutions = listTenantGovernanceArtifacts(store, workflowRun.tenantId, 'contradiction-resolution')
+    .filter((resolution) => resolution.canonicalDiseaseName === canonicalDiseaseName);
+
+  return {
+    governanceDecisions,
+    contradictionResolutions,
+  };
+}
+
+/**
  * @param {{
  *   store: PlatformStore,
- *   schemaRegistry: any,
- *   workflowSpec: any,
  *   workflowRun: any,
- *   workflowInput: WorkflowInput,
- *   canonicalDisease: any,
  *   clinicalService: any,
- *   storyEngineService: any,
+ *   canonicalDisease: any,
  * }} options
  * @returns {any}
  */
-function continueResolvedPipeline(options) {
-  let workflowRun = options.workflowRun;
-
-  workflowRun = transitionWorkflow(
+function buildClinicalPackageForRun(options) {
+  const governanceState = loadClinicalGovernanceState(
     options.store,
-    options.schemaRegistry,
-    options.workflowSpec,
-    workflowRun,
-    {
-      eventType: 'STAGE_PASSED',
-      actor: {
-        type: 'system',
-        id: 'canonicalization-stage',
-      },
-      payload: {
-        canonicalDiseaseId: options.canonicalDisease.id,
-      },
-      notes: `Canonical disease resolved to ${options.canonicalDisease.canonicalDiseaseName}.`,
-    },
+    options.workflowRun,
+    options.canonicalDisease.canonicalDiseaseName,
+  );
+  const clinicalPackage = options.clinicalService.buildClinicalPackage(
+    options.canonicalDisease,
+    governanceState,
   );
 
-  const diseasePacket = options.clinicalService.buildDiseasePacket(options.canonicalDisease);
+  return {
+    ...clinicalPackage,
+    evidenceRelationships: options.clinicalService.listEvidenceRelationships(
+      options.canonicalDisease.canonicalDiseaseName,
+      {
+        contradictionResolutions: governanceState.contradictionResolutions,
+      },
+    ),
+    ...governanceState,
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, workflowRun: any, clinicalService: any }} options
+ * @returns {any | null}
+ */
+function loadClinicalPackageForRun(options) {
+  const canonicalDisease = loadResolvedCanonicalDiseaseForRun(options.store, options.workflowRun);
+
+  if (!canonicalDisease) {
+    return null;
+  }
+
+  const governanceState = loadClinicalGovernanceState(
+    options.store,
+    options.workflowRun,
+    canonicalDisease.canonicalDiseaseName,
+  );
+  const generatedClinicalPackage = options.clinicalService.buildClinicalPackage(
+    canonicalDisease,
+    governanceState,
+  );
+  const diseasePacket = loadLatestArtifact(options.store, options.workflowRun, 'disease-packet') ?? generatedClinicalPackage.diseasePacket;
+  const factTable = loadLatestArtifact(options.store, options.workflowRun, 'fact-table') ?? generatedClinicalPackage.factTable;
+  const evidenceGraph = loadLatestArtifact(options.store, options.workflowRun, 'evidence-graph') ?? generatedClinicalPackage.evidenceGraph;
+  const clinicalTeachingPoints = loadLatestArtifact(options.store, options.workflowRun, 'clinical-teaching-points') ?? generatedClinicalPackage.clinicalTeachingPoints;
+  const visualAnchorCatalog = loadLatestArtifact(options.store, options.workflowRun, 'visual-anchor-catalog') ?? generatedClinicalPackage.visualAnchorCatalog;
+  const storyWorkbook = loadLatestArtifact(options.store, options.workflowRun, 'story-workbook');
+  const sceneCards = collectArtifactsForRun(options.store, options.workflowRun)
+    .filter((entry) => entry.artifactType === 'scene-card')
+    .map((entry) => entry.artifact);
+  const panelPlans = collectArtifactsForRun(options.store, options.workflowRun)
+    .filter((entry) => entry.artifactType === 'panel-plan')
+    .map((entry) => entry.artifact);
+  const renderPrompts = collectArtifactsForRun(options.store, options.workflowRun)
+    .filter((entry) => entry.artifactType === 'render-prompt')
+    .map((entry) => entry.artifact);
+  const letteringMaps = collectArtifactsForRun(options.store, options.workflowRun)
+    .filter((entry) => entry.artifactType === 'lettering-map')
+    .map((entry) => entry.artifact);
+
+  return {
+    runId: options.workflowRun.id,
+    canonicalDisease,
+    diseasePacket,
+    factTable,
+    evidenceGraph,
+    clinicalTeachingPoints,
+    visualAnchorCatalog,
+    sourceRecords: generatedClinicalPackage.sourceRecords,
+    evidenceRecords: generatedClinicalPackage.evidenceRecords,
+    evidenceRelationships: options.clinicalService.listEvidenceRelationships(
+      canonicalDisease.canonicalDiseaseName,
+      {
+        contradictionResolutions: governanceState.contradictionResolutions,
+      },
+    ),
+    governanceDecisions: governanceState.governanceDecisions,
+    contradictionResolutions: governanceState.contradictionResolutions,
+    traceCoverage: diseasePacket
+      ? buildEvidenceTraceabilitySummary({
+        diseasePacket,
+        storyWorkbook,
+        sceneCards,
+        panelPlans,
+        renderPrompts,
+        letteringMaps,
+      })
+      : null,
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, clinicalPackage: any }} options
+ * @returns {any}
+ */
+function persistClinicalArtifacts(options) {
+  let workflowRun = options.workflowRun;
+
   workflowRun = persistArtifact(
     options.store,
     options.schemaRegistry,
     workflowRun,
     'disease-packet',
     'contracts/disease-packet.schema.json',
-    diseasePacket,
+    options.clinicalPackage.diseasePacket,
+    options.clinicalPackage.diseasePacket.evidenceSummary.governanceVerdict === 'blocked' ? 'rejected' : 'generated',
   );
-
-  workflowRun = transitionWorkflow(
+  workflowRun = persistArtifact(
     options.store,
     options.schemaRegistry,
-    options.workflowSpec,
     workflowRun,
+    'fact-table',
+    'contracts/fact-table.schema.json',
+    options.clinicalPackage.factTable,
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'evidence-graph',
+    'contracts/evidence-graph.schema.json',
+    options.clinicalPackage.evidenceGraph,
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'clinical-teaching-points',
+    'contracts/clinical-teaching-points.schema.json',
+    options.clinicalPackage.clinicalTeachingPoints,
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'visual-anchor-catalog',
+    'contracts/visual-anchor-catalog.schema.json',
+    options.clinicalPackage.visualAnchorCatalog,
+  );
+
+  return workflowRun;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, actor: any, canonicalDiseaseName: string, sourceId: string, decision: string, reason?: string, notes?: string[] }} options
+ * @returns {any}
+ */
+function saveSourceGovernanceDecision(options) {
+  const occurredAt = new Date().toISOString();
+  /** @type {any} */
+  const governanceDecision = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('sgd'),
+    tenantId: options.workflowRun.tenantId,
+    sourceId: options.sourceId,
+    canonicalDiseaseName: options.canonicalDiseaseName,
+    decision: options.decision,
+    reason: options.reason,
+    reviewedAt: occurredAt,
+    decidedBy: options.actor.id,
+    decidedByRoles: [...options.actor.roles],
+    occurredAt,
+  };
+
+  if (Array.isArray(options.notes) && options.notes.length > 0) {
+    governanceDecision.notes = options.notes;
+  }
+
+  assertSchema(options.schemaRegistry, 'contracts/source-governance-decision.schema.json', governanceDecision);
+  options.store.saveArtifact('source-governance-decision', governanceDecision.id, governanceDecision, {
+    tenantId: options.workflowRun.tenantId,
+  });
+
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'source-governance.record',
+    'source-record',
+    options.sourceId,
+    'success',
+    `Recorded ${options.decision} for source ${options.sourceId}.`,
     {
-      eventType: 'STAGE_PASSED',
-      actor: {
-        type: 'system',
-        id: 'disease-packet-stage',
-      },
-      payload: {
-        canonicalDiseaseId: options.canonicalDisease.id,
-        diseasePacketId: diseasePacket.id,
-      },
-      notes: 'Disease packet generated and stored for reviewer inspection.',
+      canonicalDiseaseName: options.canonicalDiseaseName,
+      decisionId: governanceDecision.id,
     },
   );
 
-  const storyWorkbookPackage = options.storyEngineService.generateStoryWorkbookPackage(diseasePacket, {
+  return governanceDecision;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, actor: any, canonicalDiseaseName: string, claimId: string, relatedClaimId?: string, status: string, reason?: string }} options
+ * @returns {any}
+ */
+function saveContradictionResolution(options) {
+  const occurredAt = new Date().toISOString();
+  /** @type {any} */
+  const contradictionResolution = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('cdr'),
+    tenantId: options.workflowRun.tenantId,
+    canonicalDiseaseName: options.canonicalDiseaseName,
+    claimId: options.claimId,
+    status: options.status,
+    reason: options.reason,
+    resolvedBy: options.actor.id,
+    resolvedByRoles: [...options.actor.roles],
+    occurredAt,
+  };
+
+  if (options.relatedClaimId) {
+    contradictionResolution.relatedClaimId = options.relatedClaimId;
+  }
+
+  assertSchema(options.schemaRegistry, 'contracts/contradiction-resolution.schema.json', contradictionResolution);
+  options.store.saveArtifact('contradiction-resolution', contradictionResolution.id, contradictionResolution, {
+    tenantId: options.workflowRun.tenantId,
+  });
+
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'contradiction-resolution.record',
+    'evidence-record',
+    options.claimId,
+    'success',
+    `Recorded contradiction status ${options.status} for claim ${options.claimId}.`,
+    {
+      canonicalDiseaseName: options.canonicalDiseaseName,
+      relatedClaimId: options.relatedClaimId,
+      resolutionId: contradictionResolution.id,
+    },
+  );
+
+  return contradictionResolution;
+}
+
+/**
+ * @param {{
+ *   store: PlatformStore,
+ *   schemaRegistry: any,
+ *   workflowSpec: any,
+ *   clinicalService: any,
+ *   storyEngineService: any,
+ *   workflowRun: any,
+ *   actor: any,
+ *   reason?: string,
+ * }} options
+ * @returns {any}
+ */
+function rebuildClinicalPackageForRun(options) {
+  const canonicalDisease = loadResolvedCanonicalDiseaseForRun(options.store, options.workflowRun);
+
+  if (!canonicalDisease) {
+    throw createHttpError(409, 'A resolved canonical disease artifact is required before rebuilding the clinical package.');
+  }
+
+  const timestamp = new Date().toISOString();
+  let workflowRun = resetWorkflowForClinicalRebuild(
+    options.workflowSpec,
+    options.workflowRun,
+    timestamp,
+    options.reason ?? 'Rebuilding the clinical package after local governance updates.',
+  );
+
+  workflowRun = saveWorkflowRunRecord(options.store, options.schemaRegistry, workflowRun);
+
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'clinical-package.rebuild',
+    'workflow-run',
+    workflowRun.id,
+    'success',
+    options.reason ?? 'Rebuilt the clinical package and invalidated downstream artifacts.',
+    {
+      canonicalDiseaseName: canonicalDisease.canonicalDiseaseName,
+    },
+  );
+
+  return continueClinicalStage({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowSpec: options.workflowSpec,
+    workflowRun,
+    workflowInput: clone(workflowRun.input),
+    canonicalDisease,
+    clinicalService: options.clinicalService,
+    storyEngineService: options.storyEngineService,
+  });
+}
+
+/**
+ * @param {any} workflowRun
+ * @param {string | undefined} pauseReason
+ * @returns {any}
+ */
+function withPauseReason(workflowRun, pauseReason) {
+  const nextWorkflowRun = clone(workflowRun);
+
+  if (pauseReason) {
+    nextWorkflowRun.pauseReason = pauseReason;
+  } else {
+    delete nextWorkflowRun.pauseReason;
+  }
+
+  return nextWorkflowRun;
+}
+
+/**
+ * @param {any} workflowSpec
+ * @param {any} workflowRun
+ * @param {string} timestamp
+ * @param {string} notes
+ * @returns {any}
+ */
+function resetWorkflowForClinicalRebuild(workflowSpec, workflowRun, timestamp, notes) {
+  const keepArtifactTypes = new Set([
+    'project',
+    'canonical-disease',
+    'canonicalization-resolution',
+  ]);
+
+  return withPauseReason({
+    ...workflowRun,
+    state: 'running',
+    currentStage: 'disease-packet',
+    artifacts: workflowRun.artifacts.filter((/** @type {any} */ artifactReference) => keepArtifactTypes.has(artifactReference.artifactType)),
+    approvals: workflowRun.requiredApprovalRoles.map((/** @type {string} */ role) => ({
+      role,
+      decision: 'pending',
+    })),
+    stages: workflowSpec.stageOrder.map((/** @type {string} */ stageName) => {
+      const existingStage = workflowRun.stages.find((/** @type {any} */ stage) => stage.name === stageName);
+
+      if (stageName === 'intake' || stageName === 'canonicalization') {
+        return {
+          ...existingStage,
+          name: stageName,
+          status: 'passed',
+          startedAt: existingStage?.startedAt ?? workflowRun.createdAt,
+          endedAt: existingStage?.endedAt ?? timestamp,
+          notes: existingStage?.notes,
+        };
+      }
+
+      if (stageName === 'disease-packet') {
+        return {
+          name: stageName,
+          status: 'running',
+          startedAt: timestamp,
+          notes,
+        };
+      }
+
+      return {
+        name: stageName,
+        status: 'pending',
+      };
+    }),
+    updatedAt: timestamp,
+  }, undefined);
+}
+
+/**
+ * @param {{
+ *   store: PlatformStore,
+ *   schemaRegistry: any,
+ *   workflowSpec: any,
+ *   workflowRun: any,
+ *   workflowInput: WorkflowInput,
+ *   diseasePacket: any,
+ *   storyEngineService: any,
+ * }} options
+ * @returns {any}
+ */
+function continueStoryPipeline(options) {
+  let workflowRun = withPauseReason(options.workflowRun, undefined);
+  const storyWorkbookPackage = options.storyEngineService.generateStoryWorkbookPackage(options.diseasePacket, {
     audienceTier: options.workflowInput.audienceTier,
     styleProfile: options.workflowInput.styleProfile,
     workflowRunId: workflowRun.id,
@@ -857,7 +1326,7 @@ function continueResolvedPipeline(options) {
   );
 
   const visualPlanningPackage = options.storyEngineService.generateVisualPlanningPackage(
-    diseasePacket,
+    options.diseasePacket,
     storyWorkbookPackage.storyWorkbook,
     storyWorkbookPackage.qaReport,
     {
@@ -997,6 +1466,171 @@ function continueResolvedPipeline(options) {
       notes: `Generated ${visualPlanningPackage.renderPrompts.length} render prompts with separate lettering maps.`,
     },
   );
+}
+
+/**
+ * @param {{
+ *   store: PlatformStore,
+ *   schemaRegistry: any,
+ *   workflowSpec: any,
+ *   workflowRun: any,
+ *   workflowInput: WorkflowInput,
+ *   canonicalDisease: any,
+ *   clinicalService: any,
+ *   storyEngineService: any,
+ * }} options
+ * @returns {any}
+ */
+function continueClinicalStage(options) {
+  let workflowRun = withPauseReason(options.workflowRun, undefined);
+  const clinicalPackage = buildClinicalPackageForRun({
+    store: options.store,
+    workflowRun,
+    clinicalService: options.clinicalService,
+    canonicalDisease: options.canonicalDisease,
+  });
+
+  workflowRun = persistClinicalArtifacts({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowRun,
+    clinicalPackage,
+  });
+
+  if (clinicalPackage.diseasePacket.evidenceSummary.governanceVerdict === 'blocked') {
+    workflowRun = transitionWorkflow(
+      options.store,
+      options.schemaRegistry,
+      options.workflowSpec,
+      workflowRun,
+      {
+        eventType: 'STAGE_FAILED',
+        actor: {
+          type: 'system',
+          id: 'disease-packet-stage',
+        },
+        payload: {
+          diseasePacketId: clinicalPackage.diseasePacket.id,
+          evidenceGraphId: clinicalPackage.evidenceGraph.id,
+          factTableId: clinicalPackage.factTable.id,
+          governanceVerdict: clinicalPackage.diseasePacket.evidenceSummary.governanceVerdict,
+        },
+        notes: 'Clinical governance blocked the run before story generation could begin.',
+      },
+    );
+
+    return saveWorkflowRunRecord(
+      options.store,
+      options.schemaRegistry,
+      withPauseReason(workflowRun, 'clinical-governance-blocked'),
+    );
+  }
+
+  if (clinicalPackage.diseasePacket.evidenceSummary.governanceVerdict === 'review-required') {
+    workflowRun = transitionWorkflow(
+      options.store,
+      options.schemaRegistry,
+      options.workflowSpec,
+      workflowRun,
+      {
+        eventType: 'REQUEST_REVIEW',
+        actor: {
+          type: 'system',
+          id: 'disease-packet-stage',
+        },
+        payload: {
+          diseasePacketId: clinicalPackage.diseasePacket.id,
+          evidenceGraphId: clinicalPackage.evidenceGraph.id,
+          factTableId: clinicalPackage.factTable.id,
+          governanceVerdict: clinicalPackage.diseasePacket.evidenceSummary.governanceVerdict,
+        },
+        notes: 'Clinical governance review is required before story generation can continue.',
+      },
+    );
+
+    return saveWorkflowRunRecord(
+      options.store,
+      options.schemaRegistry,
+      withPauseReason(workflowRun, 'clinical-governance-review-required'),
+    );
+  }
+
+  workflowRun = transitionWorkflow(
+    options.store,
+    options.schemaRegistry,
+    options.workflowSpec,
+    withPauseReason(workflowRun, undefined),
+    {
+      eventType: 'STAGE_PASSED',
+      actor: {
+        type: 'system',
+        id: 'disease-packet-stage',
+      },
+      payload: {
+        canonicalDiseaseId: options.canonicalDisease.id,
+        diseasePacketId: clinicalPackage.diseasePacket.id,
+        evidenceGraphId: clinicalPackage.evidenceGraph.id,
+        factTableId: clinicalPackage.factTable.id,
+      },
+      notes: 'Clinical package generated and approved for downstream story work.',
+    },
+  );
+
+  return continueStoryPipeline({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowSpec: options.workflowSpec,
+    workflowRun,
+    workflowInput: options.workflowInput,
+    diseasePacket: clinicalPackage.diseasePacket,
+    storyEngineService: options.storyEngineService,
+  });
+}
+
+/**
+ * @param {{
+ *   store: PlatformStore,
+ *   schemaRegistry: any,
+ *   workflowSpec: any,
+ *   workflowRun: any,
+ *   workflowInput: WorkflowInput,
+ *   canonicalDisease: any,
+ *   clinicalService: any,
+ *   storyEngineService: any,
+ * }} options
+ * @returns {any}
+ */
+function continueResolvedPipeline(options) {
+  let workflowRun = options.workflowRun;
+
+  workflowRun = transitionWorkflow(
+    options.store,
+    options.schemaRegistry,
+    options.workflowSpec,
+    workflowRun,
+    {
+      eventType: 'STAGE_PASSED',
+      actor: {
+        type: 'system',
+        id: 'canonicalization-stage',
+      },
+      payload: {
+        canonicalDiseaseId: options.canonicalDisease.id,
+      },
+      notes: `Canonical disease resolved to ${options.canonicalDisease.canonicalDiseaseName}.`,
+    },
+  );
+
+  return continueClinicalStage({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowSpec: options.workflowSpec,
+    workflowRun,
+    workflowInput: options.workflowInput,
+    canonicalDisease: options.canonicalDisease,
+    clinicalService: options.clinicalService,
+    storyEngineService: options.storyEngineService,
+  });
 }
 
 /**
@@ -1312,13 +1946,31 @@ function buildReviewArtifactGroups(store, workflowRun) {
 
   return [
     {
-      title: 'Disease packet and governed evidence',
-      description: 'Canonical disease context plus the clinical evidence packet.',
+      title: 'Disease packet summary',
+      description: 'Canonical disease context and the persisted packet summary.',
       artifacts: [
         ...(groupedArtifacts.get('canonical-disease') ?? []),
         ...(groupedArtifacts.get('canonicalization-resolution') ?? []),
         ...(groupedArtifacts.get('disease-packet') ?? []),
       ],
+    },
+    {
+      title: 'Fact table',
+      description: 'Claim-level clinical fact rows and support status.',
+      artifacts: groupedArtifacts.get('fact-table') ?? [],
+    },
+    {
+      title: 'Evidence graph',
+      description: 'Structured support and contradiction edges across claims.',
+      artifacts: groupedArtifacts.get('evidence-graph') ?? [],
+    },
+    {
+      title: 'Clinical teaching points',
+      artifacts: groupedArtifacts.get('clinical-teaching-points') ?? [],
+    },
+    {
+      title: 'Visual anchor catalog',
+      artifacts: groupedArtifacts.get('visual-anchor-catalog') ?? [],
     },
     {
       title: 'Story workbook and narrative review trace',
@@ -1770,13 +2422,14 @@ export async function createApp(options = {}) {
         const canonicalDisease = canonicalArtifactReference
           ? store.getArtifact('canonical-disease', canonicalArtifactReference.artifactId)
           : null;
+        const clinicalPackage = loadClinicalPackageForRun({
+          store,
+          workflowRun,
+          clinicalService,
+        });
         const approvableRoles = workflowRun.requiredApprovalRoles.filter(
           (/** @type {string} */ role) => canSubmitApproval(actor, role),
         );
-        const diseasePacketReference = findLatestArtifactReference(workflowRun, 'disease-packet');
-        const diseasePacket = diseasePacketReference
-          ? store.getArtifact('disease-packet', diseasePacketReference.artifactId)
-          : null;
 
         sendHtml(response, 200, renderReviewRunPage({
           actor,
@@ -1787,10 +2440,10 @@ export async function createApp(options = {}) {
           canonicalDisease,
           canResolveCanonicalization: canResolveCanonicalization(actor),
           approvableRoles,
+          clinicalPackage,
           latestEvalRun: getLatestEvalRun(store, workflowRun),
           latestEvalStatus: getLatestEvalStatus(store, workflowRun),
           exportHistory: store.listExportHistoryEntries(workflowRun.id),
-          sourceRecords: diseasePacket ? clinicalService.listSourceRecords(diseasePacket.canonicalDiseaseName) : [],
         }));
         return;
       }
@@ -1863,6 +2516,116 @@ export async function createApp(options = {}) {
           evalService,
           workflowRun,
           actor,
+        });
+        redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
+        return;
+      }
+
+      const reviewRunClinicalPackageRebuildActionPath = matchReviewRunClinicalPackageRebuildActionPath(pathname);
+
+      if (method === 'POST' && reviewRunClinicalPackageRebuildActionPath) {
+        const workflowRun = store.getWorkflowRun(reviewRunClinicalPackageRebuildActionPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'clinical-package.rebuild', 'workflow-run', workflowRun.id);
+        const body = await readFormBody(request);
+
+        rebuildClinicalPackageForRun({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          clinicalService,
+          storyEngineService,
+          workflowRun,
+          actor,
+          reason: body.reason,
+        });
+        redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
+        return;
+      }
+
+      const reviewRunSourceGovernanceActionPath = matchReviewRunSourceGovernanceActionPath(pathname);
+
+      if (method === 'POST' && reviewRunSourceGovernanceActionPath) {
+        const workflowRun = store.getWorkflowRun(reviewRunSourceGovernanceActionPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'source-governance.record', 'workflow-run', workflowRun.id);
+        const clinicalPackage = loadClinicalPackageForRun({
+          store,
+          workflowRun,
+          clinicalService,
+        });
+
+        if (!clinicalPackage) {
+          throw createHttpError(409, 'No clinical package is available for this workflow run yet.');
+        }
+
+        const sourceRecord = clinicalPackage.sourceRecords.find((/** @type {any} */ entry) => entry.id === reviewRunSourceGovernanceActionPath.sourceId);
+
+        if (!sourceRecord) {
+          throw createHttpError(404, 'Source record not found for this workflow run.');
+        }
+
+        const body = await readFormBody(request);
+        saveSourceGovernanceDecision({
+          store,
+          schemaRegistry,
+          workflowRun,
+          actor,
+          canonicalDiseaseName: clinicalPackage.diseasePacket.canonicalDiseaseName,
+          sourceId: sourceRecord.id,
+          decision: body.decision,
+          reason: body.reason,
+          notes: body.reason ? [body.reason] : [],
+        });
+        redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
+        return;
+      }
+
+      const reviewRunContradictionResolutionActionPath = matchReviewRunContradictionResolutionActionPath(pathname);
+
+      if (method === 'POST' && reviewRunContradictionResolutionActionPath) {
+        const workflowRun = store.getWorkflowRun(reviewRunContradictionResolutionActionPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'contradiction-resolution.record', 'workflow-run', workflowRun.id);
+        const clinicalPackage = loadClinicalPackageForRun({
+          store,
+          workflowRun,
+          clinicalService,
+        });
+
+        if (!clinicalPackage) {
+          throw createHttpError(409, 'No clinical package is available for this workflow run yet.');
+        }
+
+        const evidenceRecord = clinicalPackage.evidenceRecords.find((/** @type {any} */ entry) => entry.claimId === reviewRunContradictionResolutionActionPath.claimId);
+
+        if (!evidenceRecord) {
+          throw createHttpError(404, 'Evidence record not found for this workflow run.');
+        }
+
+        const body = await readFormBody(request);
+        saveContradictionResolution({
+          store,
+          schemaRegistry,
+          workflowRun,
+          actor,
+          canonicalDiseaseName: clinicalPackage.diseasePacket.canonicalDiseaseName,
+          claimId: evidenceRecord.claimId,
+          relatedClaimId: body.relatedClaimId || undefined,
+          status: body.status,
+          reason: body.reason,
         });
         redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
         return;
@@ -2101,6 +2864,55 @@ export async function createApp(options = {}) {
         assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'workflow-run.view', 'workflow-run', workflowRun.id);
         assertSchema(schemaRegistry, 'contracts/workflow-run.schema.json', workflowRun);
         sendJson(response, 200, workflowRun);
+        return;
+      }
+
+      const workflowRunClinicalPackagePath = matchWorkflowRunClinicalPackagePath(pathname);
+
+      if (method === 'GET' && workflowRunClinicalPackagePath) {
+        const workflowRun = store.getWorkflowRun(workflowRunClinicalPackagePath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'clinical-package.view', 'workflow-run', workflowRun.id);
+        const clinicalPackage = loadClinicalPackageForRun({
+          store,
+          workflowRun,
+          clinicalService,
+        });
+
+        if (!clinicalPackage) {
+          throw createHttpError(404, 'Clinical package is not available for this workflow run.');
+        }
+
+        sendJson(response, 200, clinicalPackage);
+        return;
+      }
+
+      const workflowRunClinicalPackageRebuildPath = matchWorkflowRunClinicalPackageRebuildPath(pathname);
+
+      if (method === 'POST' && workflowRunClinicalPackageRebuildPath) {
+        const workflowRun = store.getWorkflowRun(workflowRunClinicalPackageRebuildPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'clinical-package.rebuild', 'workflow-run', workflowRun.id);
+        const body = await readJsonBody(request);
+        const rebuiltRun = rebuildClinicalPackageForRun({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          clinicalService,
+          storyEngineService,
+          workflowRun,
+          actor,
+          reason: isRecord(body) && typeof body.reason === 'string' ? body.reason : undefined,
+        });
+        sendJson(response, 200, rebuiltRun);
         return;
       }
 
@@ -2368,7 +3180,12 @@ export async function createApp(options = {}) {
           throw createHttpError(403, 'Actor cannot read evidence records.');
         }
 
-        const evidenceRecord = clinicalService.getEvidenceRecord(evidenceRecordPath.claimId);
+        const governanceDecisions = listTenantGovernanceArtifacts(store, actor.tenantId, 'source-governance-decision');
+        const contradictionResolutions = listTenantGovernanceArtifacts(store, actor.tenantId, 'contradiction-resolution');
+        const evidenceRecord = clinicalService.getEvidenceRecord(evidenceRecordPath.claimId, {
+          governanceDecisions,
+          contradictionResolutions,
+        });
 
         if (!evidenceRecord) {
           throw createHttpError(404, 'Evidence record not found.');
@@ -2376,6 +3193,53 @@ export async function createApp(options = {}) {
 
         assertSchema(schemaRegistry, 'contracts/evidence-record.schema.json', evidenceRecord);
         sendJson(response, 200, evidenceRecord);
+        return;
+      }
+
+      const contradictionResolutionPath = matchContradictionResolutionPath(pathname);
+
+      if (method === 'POST' && contradictionResolutionPath) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot record contradiction resolutions.');
+        }
+
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body) || typeof body.canonicalDiseaseName !== 'string' || typeof body.status !== 'string') {
+          throw createHttpError(400, 'canonicalDiseaseName and status are required.');
+        }
+
+        const matchingRun = store.listWorkflowRuns().find((workflowRun) => (
+          getTenantId(workflowRun) === actor.tenantId
+          && loadResolvedCanonicalDiseaseForRun(store, workflowRun)?.canonicalDiseaseName === body.canonicalDiseaseName
+        ));
+
+        if (!matchingRun) {
+          throw createHttpError(404, 'No workflow run was found for the requested canonical disease.');
+        }
+
+        const evidenceRecord = clinicalService.getEvidenceRecord(contradictionResolutionPath.claimId, {
+          governanceDecisions: listTenantGovernanceArtifacts(store, actor.tenantId, 'source-governance-decision'),
+          contradictionResolutions: listTenantGovernanceArtifacts(store, actor.tenantId, 'contradiction-resolution'),
+        });
+
+        if (!evidenceRecord || evidenceRecord.canonicalDiseaseName !== body.canonicalDiseaseName) {
+          throw createHttpError(404, 'Evidence record not found for the requested disease.');
+        }
+
+        const contradictionResolution = saveContradictionResolution({
+          store,
+          schemaRegistry,
+          workflowRun: matchingRun,
+          actor,
+          canonicalDiseaseName: body.canonicalDiseaseName,
+          claimId: contradictionResolutionPath.claimId,
+          relatedClaimId: typeof body.relatedClaimId === 'string' ? body.relatedClaimId : undefined,
+          status: body.status,
+          reason: typeof body.reason === 'string' ? body.reason : undefined,
+        });
+
+        sendJson(response, 201, contradictionResolution);
         return;
       }
 
@@ -2390,7 +3254,12 @@ export async function createApp(options = {}) {
           throw createHttpError(400, 'canonicalDiseaseName is required to list source records.');
         }
 
-        const sourceRecords = clinicalService.listSourceRecords(diseaseName);
+        const governanceDecisions = listTenantGovernanceArtifacts(store, actor.tenantId, 'source-governance-decision');
+        const contradictionResolutions = listTenantGovernanceArtifacts(store, actor.tenantId, 'contradiction-resolution');
+        const sourceRecords = clinicalService.listSourceRecords(diseaseName, {
+          governanceDecisions,
+          contradictionResolutions,
+        });
         sourceRecords.forEach((sourceRecord) => assertSchema(schemaRegistry, 'contracts/source-record.schema.json', sourceRecord));
         sendJson(response, 200, sourceRecords);
         return;
@@ -2403,7 +3272,12 @@ export async function createApp(options = {}) {
           throw createHttpError(403, 'Actor cannot read source governance records.');
         }
 
-        const sourceRecord = clinicalService.getSourceRecord(sourceRecordPath.sourceId);
+        const governanceDecisions = listTenantGovernanceArtifacts(store, actor.tenantId, 'source-governance-decision');
+        const contradictionResolutions = listTenantGovernanceArtifacts(store, actor.tenantId, 'contradiction-resolution');
+        const sourceRecord = clinicalService.getSourceRecord(sourceRecordPath.sourceId, {
+          governanceDecisions,
+          contradictionResolutions,
+        });
 
         if (!sourceRecord) {
           throw createHttpError(404, 'Source record not found.');
@@ -2411,6 +3285,53 @@ export async function createApp(options = {}) {
 
         assertSchema(schemaRegistry, 'contracts/source-record.schema.json', sourceRecord);
         sendJson(response, 200, sourceRecord);
+        return;
+      }
+
+      const sourceGovernanceDecisionPath = matchSourceGovernanceDecisionPath(pathname);
+
+      if (method === 'POST' && sourceGovernanceDecisionPath) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot record source governance decisions.');
+        }
+
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body) || typeof body.canonicalDiseaseName !== 'string' || typeof body.decision !== 'string') {
+          throw createHttpError(400, 'canonicalDiseaseName and decision are required.');
+        }
+
+        const matchingRun = store.listWorkflowRuns().find((workflowRun) => (
+          getTenantId(workflowRun) === actor.tenantId
+          && loadResolvedCanonicalDiseaseForRun(store, workflowRun)?.canonicalDiseaseName === body.canonicalDiseaseName
+        ));
+
+        if (!matchingRun) {
+          throw createHttpError(404, 'No workflow run was found for the requested canonical disease.');
+        }
+
+        const sourceRecord = clinicalService.getSourceRecord(sourceGovernanceDecisionPath.sourceId, {
+          governanceDecisions: listTenantGovernanceArtifacts(store, actor.tenantId, 'source-governance-decision'),
+          contradictionResolutions: listTenantGovernanceArtifacts(store, actor.tenantId, 'contradiction-resolution'),
+        });
+
+        if (!sourceRecord) {
+          throw createHttpError(404, 'Source record not found.');
+        }
+
+        const governanceDecision = saveSourceGovernanceDecision({
+          store,
+          schemaRegistry,
+          workflowRun: matchingRun,
+          actor,
+          canonicalDiseaseName: body.canonicalDiseaseName,
+          sourceId: sourceGovernanceDecisionPath.sourceId,
+          decision: body.decision,
+          reason: typeof body.reason === 'string' ? body.reason : undefined,
+          notes: Array.isArray(body.notes) ? body.notes.filter((value) => typeof value === 'string') : [],
+        });
+
+        sendJson(response, 201, governanceDecision);
         return;
       }
 

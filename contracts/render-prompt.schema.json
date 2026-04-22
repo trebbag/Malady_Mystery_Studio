@@ -47,6 +47,13 @@
         "type": "string"
       }
     },
+    "linkedClaimIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      }
+    },
     "characterLocks": {
       "type": "array",
       "items": {

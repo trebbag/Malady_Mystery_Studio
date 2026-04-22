@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/disease-knowledge-pack.schema.json",
+  "title": "DiseaseKnowledgePack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "canonicalDiseaseName",
+    "aliases",
+    "ontologyId",
+    "diseaseCategory",
+    "educationalFocus",
+    "clinicalSummary",
+    "physiologyPrerequisites",
+    "pathophysiology",
+    "presentation",
+    "diagnostics",
+    "management",
+    "evidence",
+    "sourceCatalog",
+    "clinicalTeachingPoints",
+    "visualAnchors",
+    "evidenceRelationships"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "aliases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "ontologyId": {
+      "type": "string"
+    },
+    "diseaseCategory": {
+      "type": "string"
+    },
+    "educationalFocus": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "clinicalSummary": {
+      "type": "object"
+    },
+    "physiologyPrerequisites": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "pathophysiology": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "presentation": {
+      "type": "object"
+    },
+    "diagnostics": {
+      "type": "object"
+    },
+    "management": {
+      "type": "object"
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claimId",
+          "claimText",
+          "sourceId",
+          "sourceType",
+          "sourceLabel",
+          "sourceLocator",
+          "confidence"
+        ],
+        "properties": {
+          "claimId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "claimText": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "guideline",
+              "review",
+              "trial",
+              "textbook",
+              "reference"
+            ]
+          },
+          "sourceLabel": {
+            "type": "string"
+          },
+          "sourceLocator": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "lastReviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "applicability": {
+            "type": "string"
+          },
+          "claimType": {
+            "type": "string"
+          },
+          "certaintyLevel": {
+            "type": "string",
+            "enum": [
+              "high",
+              "moderate",
+              "guarded"
+            ]
+          },
+          "diseaseStageApplicability": {
+            "type": "string"
+          },
+          "patientSubgroupApplicability": {
+            "type": "string"
+          },
+          "importanceRank": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "sourceCatalog": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "source-catalog-entry.schema.json"
+      }
+    },
+    "clinicalTeachingPoints": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object"
+      }
+    },
+    "visualAnchors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object"
+      }
+    },
+    "evidenceRelationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fromClaimId",
+          "toClaimId",
+          "relationshipType",
+          "status"
+        ],
+        "properties": {
+          "fromClaimId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "toClaimId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "relationshipType": {
+            "type": "string",
+            "enum": [
+              "supports",
+              "chronology",
+              "contradicts",
+              "qualifies"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "monitor",
+              "blocking",
+              "resolved"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

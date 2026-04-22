@@ -111,6 +111,13 @@
               "type": "string"
             }
           },
+          "linkedClaimIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          },
           "cameraFraming": {
             "type": "string"
           },

@@ -1,0 +1,204 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "dpkp.hcc.001",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "aliases": [
+    "HCC"
+  ],
+  "ontologyId": "ICD-10-CM:C22.0",
+  "diseaseCategory": "Oncology",
+  "educationalFocus": [
+    "chronic liver injury context",
+    "fair clue ladder before diagnosis",
+    "stage-aware treatment framing"
+  ],
+  "clinicalSummary": {
+    "oneSentence": "A focal liver malignancy emerges from chronic injury context and should be discovered through fair clues rather than a banner headline.",
+    "patientExperienceSummary": "The patient experiences vague but escalating symptoms that only make sense once the hidden lesion is investigated.",
+    "keyMechanism": "Chronic injury and dysregulated growth create a focal malignant process."
+  },
+  "physiologyPrerequisites": [
+    {
+      "topic": "Hepatic circulation",
+      "whyItMatters": "Readers need the organ context before the lesion becomes the obvious culprit."
+    }
+  ],
+  "pathophysiology": [
+    {
+      "order": 1,
+      "event": "chronic liver injury creates a pro-carcinogenic environment",
+      "mechanism": "Inflammation, regeneration, and genomic injury increase malignant transformation risk.",
+      "scale": "organ",
+      "linkedClaimIds": [
+        "clm.hcc.001"
+      ]
+    },
+    {
+      "order": 2,
+      "event": "a malignant clone expands into a focal tumor",
+      "mechanism": "Autonomous growth distorts normal liver architecture.",
+      "scale": "tissue",
+      "linkedClaimIds": [
+        "clm.hcc.006"
+      ]
+    }
+  ],
+  "presentation": {
+    "commonSymptoms": [
+      "fatigue",
+      "right upper quadrant discomfort"
+    ],
+    "historyClues": [
+      "The patient has chronic liver disease risk context."
+    ],
+    "physicalExamClues": [
+      "The exam hints at hepatic involvement without naming the diagnosis."
+    ]
+  },
+  "diagnostics": {
+    "labs": [
+      {
+        "name": "alpha-fetoprotein",
+        "purpose": "supportive tumor marker in context",
+        "expectedFinding": "may be elevated in some cases and should remain a clue instead of a shortcut",
+        "claimIds": [
+          "clm.hcc.006"
+        ]
+      }
+    ],
+    "imaging": [
+      {
+        "name": "multiphasic liver imaging",
+        "purpose": "characterize lesion behavior",
+        "expectedFinding": "arterial enhancement with washout may support diagnosis in context",
+        "claimIds": [
+          "clm.hcc.006"
+        ]
+      }
+    ],
+    "pathology": [
+      {
+        "name": "tumor histology",
+        "expectedFinding": "malignant hepatocellular features when tissue is required",
+        "claimIds": [
+          "clm.hcc.006"
+        ]
+      }
+    ],
+    "diagnosticLogic": [
+      "Interpret imaging, biomarkers, and risk context together."
+    ],
+    "differentials": [
+      {
+        "disease": "cholangiocarcinoma",
+        "whyConsidered": "another primary liver malignancy can present with a focal lesion",
+        "whyLessLikely": "the story evidence fits hepatocellular biology better"
+      }
+    ]
+  },
+  "management": {
+    "acuteStabilization": [
+      "stabilize urgent complications when present"
+    ],
+    "definitiveTherapies": [
+      {
+        "name": "locoregional therapy",
+        "mechanismOfAction": "remove or destroy tumor tissue in selected contexts",
+        "whenUsed": "selected localized disease",
+        "claimIds": [
+          "clm.hcc.006"
+        ]
+      }
+    ],
+    "monitoring": [
+      "follow liver function and treatment response"
+    ],
+    "notes": [
+      "Management remains stage-aware and liver-function-aware."
+    ]
+  },
+  "evidence": [
+    {
+      "claimId": "clm.hcc.001",
+      "claimText": "Chronic liver injury increases malignant transformation risk.",
+      "sourceId": "src.hcc.guideline.001",
+      "sourceType": "guideline",
+      "sourceLabel": "Curated hepatocellular carcinoma guideline",
+      "sourceLocator": "risk-context section",
+      "confidence": 0.98,
+      "applicability": "baseline risk framing",
+      "claimType": "pathophysiology",
+      "certaintyLevel": "high",
+      "diseaseStageApplicability": "disease development",
+      "patientSubgroupApplicability": "patients with chronic liver injury risk",
+      "importanceRank": 1
+    },
+    {
+      "claimId": "clm.hcc.006",
+      "claimText": "Multiphasic liver imaging can support diagnosis when interpreted in context.",
+      "sourceId": "src.hcc.guideline.001",
+      "sourceType": "guideline",
+      "sourceLabel": "Curated hepatocellular carcinoma guideline",
+      "sourceLocator": "imaging section",
+      "confidence": 0.96,
+      "applicability": "diagnostic workup",
+      "claimType": "diagnostic-support",
+      "certaintyLevel": "moderate",
+      "diseaseStageApplicability": "diagnostic workup",
+      "patientSubgroupApplicability": "patients under lesion evaluation",
+      "importanceRank": 2
+    }
+  ],
+  "sourceCatalog": [
+    {
+      "id": "src.hcc.guideline.001",
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "sourceLabel": "Curated hepatocellular carcinoma guideline",
+      "sourceType": "guideline",
+      "sourceTier": "tier-1",
+      "defaultApprovalStatus": "approved",
+      "owner": "clinical-board",
+      "governanceNotes": [
+        "Preferred baseline source for the starter knowledge pack."
+      ],
+      "topics": [
+        "risk context",
+        "imaging",
+        "treatment staging"
+      ],
+      "sourceUrl": "https://example.org/hcc-guideline",
+      "lastReviewedAt": "2026-04-20T00:00:00Z"
+    }
+  ],
+  "clinicalTeachingPoints": [
+    {
+      "order": 1,
+      "title": "Injury precedes naming",
+      "teachingPoint": "Readers should encounter chronic liver injury context before the final diagnosis label lands.",
+      "linkedClaimIds": [
+        "clm.hcc.001"
+      ]
+    }
+  ],
+  "visualAnchors": [
+    {
+      "anchorId": "anc.hcc.001",
+      "title": "Weathered liver terrain",
+      "bodyScale": "organ",
+      "location": "liver surface",
+      "description": "Use scarred terrain and uneven reserve to hint at chronic injury before the focal lesion is named.",
+      "linkedClaimIds": [
+        "clm.hcc.001"
+      ]
+    }
+  ],
+  "evidenceRelationships": [
+    {
+      "fromClaimId": "clm.hcc.001",
+      "toClaimId": "clm.hcc.006",
+      "relationshipType": "chronology",
+      "status": "resolved",
+      "notes": "Risk context explains why lesion-directed imaging matters."
+    }
+  ]
+}

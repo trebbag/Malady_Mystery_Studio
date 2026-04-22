@@ -1,0 +1,413 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "run.hcc.001",
+  "projectTitle": "Hepatocellular carcinoma starter project",
+  "diseaseName": "Hepatocellular carcinoma",
+  "state": "review",
+  "currentStage": "review",
+  "stageTimeline": [
+    {
+      "name": "intake",
+      "status": "passed",
+      "notes": "Input accepted and stored in workflow context."
+    },
+    {
+      "name": "disease-packet",
+      "status": "passed",
+      "notes": "Clinical package generated and approved for downstream story work."
+    },
+    {
+      "name": "review",
+      "status": "running",
+      "notes": "Awaiting human approvals."
+    }
+  ],
+  "clinicalPackage": {
+    "schemaVersion": "1.0.0",
+    "runId": "run.hcc.001",
+    "canonicalDisease": {
+      "schemaVersion": "1.0.0",
+      "id": "can.hcc.001",
+      "rawInput": "hepatocellular carcinoma",
+      "normalizedInput": "hepatocellular carcinoma",
+      "resolutionStatus": "resolved",
+      "confidence": 0.99,
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "aliases": [
+        "HCC"
+      ],
+      "ontologyId": "ICD-10-CM:C22.0",
+      "diseaseCategory": "Oncology",
+      "candidateMatches": [
+        {
+          "canonicalDiseaseName": "Hepatocellular carcinoma",
+          "ontologyId": "ICD-10-CM:C22.0",
+          "matchType": "exact"
+        }
+      ],
+      "notes": "Exact canonical disease match."
+    },
+    "diseasePacket": {
+      "schemaVersion": "1.0.0",
+      "id": "dpk.hcc.001",
+      "diseaseInput": {
+        "rawInput": "hepatocellular carcinoma",
+        "normalizedInput": "hepatocellular carcinoma",
+        "resolutionStatus": "resolved",
+        "ontologyId": "ICD-10-CM:C22.0",
+        "confidence": 0.99
+      },
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "aliases": [
+        "HCC"
+      ],
+      "diseaseCategory": "Oncology",
+      "sourceSetHash": "srcset.hcc.001",
+      "evidenceSummary": {
+        "sourceIds": [
+          "src.hcc.guideline.001"
+        ],
+        "freshnessScore": 0.97,
+        "freshnessStatus": "current",
+        "contradictionCount": 0,
+        "blockingContradictions": 0,
+        "governanceVerdict": "approved"
+      },
+      "educationalFocus": [
+        "chronic liver injury context",
+        "fair clue ladder before diagnosis"
+      ],
+      "clinicalSummary": {
+        "oneSentence": "A focal liver malignancy emerges from chronic injury context and should be discovered through fair clues rather than a banner headline.",
+        "patientExperienceSummary": "The patient experiences vague but escalating symptoms that only make sense once the hidden lesion is investigated.",
+        "keyMechanism": "Chronic injury and dysregulated growth create a focal malignant process.",
+        "timeScale": "The disease develops over months to years on top of chronic liver injury context."
+      },
+      "physiologyPrerequisites": [
+        {
+          "topic": "Hepatic circulation",
+          "whyItMatters": "Readers need organ context before the lesion becomes obvious."
+        }
+      ],
+      "pathophysiology": [
+        {
+          "order": 1,
+          "event": "chronic liver injury creates a pro-carcinogenic environment",
+          "mechanism": "Inflammation, regeneration, and genomic injury increase malignant transformation risk.",
+          "scale": "organ",
+          "linkedClaimIds": [
+            "clm.hcc.001"
+          ]
+        }
+      ],
+      "presentation": {
+        "commonSymptoms": [
+          "fatigue",
+          "right upper quadrant discomfort"
+        ],
+        "commonSigns": [
+          "hepatomegaly",
+          "subtle chronic liver disease stigmata"
+        ],
+        "historyClues": [
+          "The patient has chronic liver disease risk context."
+        ],
+        "physicalExamClues": [
+          "The exam hints at hepatic involvement without naming the diagnosis."
+        ],
+        "complications": [
+          "liver decompensation",
+          "vascular invasion"
+        ]
+      },
+      "diagnostics": {
+        "labs": [
+          {
+            "name": "alpha-fetoprotein",
+            "purpose": "supportive tumor marker in context",
+            "expectedFinding": "may be elevated in some cases and should remain a clue instead of a shortcut",
+            "claimIds": [
+              "clm.hcc.006"
+            ]
+          }
+        ],
+        "imaging": [
+          {
+            "name": "multiphasic liver imaging",
+            "purpose": "characterize lesion behavior",
+            "expectedFinding": "arterial enhancement with washout may support diagnosis in context",
+            "claimIds": [
+              "clm.hcc.006"
+            ]
+          }
+        ],
+        "pathology": [
+          {
+            "name": "tumor histology",
+            "expectedFinding": "malignant hepatocellular features when tissue is required",
+            "claimIds": [
+              "clm.hcc.006"
+            ]
+          }
+        ],
+        "diagnosticLogic": [
+          "Interpret imaging, biomarkers, and risk context together."
+        ],
+        "differentials": [
+          {
+            "disease": "cholangiocarcinoma",
+            "whyConsidered": "another primary liver malignancy can present with a focal lesion",
+            "whyLessLikely": "the story evidence fits hepatocellular biology better"
+          }
+        ]
+      },
+      "management": {
+        "acuteStabilization": [
+          "stabilize urgent complications when present"
+        ],
+        "definitiveTherapies": [
+          {
+            "name": "locoregional therapy",
+            "mechanismOfAction": "remove or destroy tumor tissue in selected contexts",
+            "whenUsed": "selected localized disease",
+            "claimIds": [
+              "clm.hcc.006"
+            ]
+          }
+        ],
+        "monitoring": [
+          "follow liver function and treatment response"
+        ],
+        "notes": [
+          "Management remains stage-aware and liver-function-aware."
+        ]
+      },
+      "evidence": [
+        {
+          "claimId": "clm.hcc.001",
+          "claimText": "Chronic liver injury increases malignant transformation risk.",
+          "canonicalDiseaseName": "Hepatocellular carcinoma",
+          "sourceId": "src.hcc.guideline.001",
+          "sourceType": "guideline",
+          "sourceLabel": "Curated hepatocellular carcinoma guideline",
+          "sourceLocator": "risk-context section",
+          "confidence": 0.98,
+          "sourceTier": "tier-1",
+          "lastReviewedAt": "2026-04-20T00:00:00Z",
+          "freshnessScore": 0.97,
+          "freshnessStatus": "current",
+          "contradictionStatus": "none",
+          "approvalStatus": "approved",
+          "applicability": "baseline risk framing",
+          "reviewNotes": [
+            "Preferred baseline source for the starter knowledge pack."
+          ],
+          "claimType": "pathophysiology",
+          "certaintyLevel": "high",
+          "diseaseStageApplicability": "disease development",
+          "patientSubgroupApplicability": "patients with chronic liver injury risk",
+          "importanceRank": 1
+        }
+      ]
+    },
+    "factTable": {
+      "schemaVersion": "1.0.0",
+      "id": "ftb.hcc.001",
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "rows": [
+        {
+          "claimId": "clm.hcc.001",
+          "claimText": "Chronic liver injury increases malignant transformation risk.",
+          "claimType": "pathophysiology",
+          "certaintyLevel": "high",
+          "importanceRank": 1,
+          "sourceIds": [
+            "src.hcc.guideline.001"
+          ],
+          "diseaseStageApplicability": "disease development",
+          "patientSubgroupApplicability": "patients with chronic liver injury risk",
+          "status": "supported"
+        }
+      ]
+    },
+    "evidenceGraph": {
+      "schemaVersion": "1.0.0",
+      "id": "egr.hcc.001",
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "nodes": [
+        {
+          "nodeId": "nod.clm.hcc.001",
+          "claimId": "clm.hcc.001",
+          "claimText": "Chronic liver injury increases malignant transformation risk.",
+          "claimType": "pathophysiology",
+          "certaintyLevel": "high",
+          "sourceIds": [
+            "src.hcc.guideline.001"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "edgeId": "edg.hcc.001",
+          "fromClaimId": "clm.hcc.001",
+          "toClaimId": "clm.hcc.001",
+          "relationshipType": "supports",
+          "status": "resolved",
+          "notes": "Minimal sample edge."
+        }
+      ]
+    },
+    "clinicalTeachingPoints": {
+      "schemaVersion": "1.0.0",
+      "id": "ctp.hcc.001",
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "points": [
+        {
+          "order": 1,
+          "title": "Chronic injury context",
+          "teachingPoint": "Chronic liver injury creates the biologic context for malignant transformation.",
+          "linkedClaimIds": [
+            "clm.hcc.001"
+          ]
+        }
+      ]
+    },
+    "visualAnchorCatalog": {
+      "schemaVersion": "1.0.0",
+      "id": "vac.hcc.001",
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "anchors": [
+        {
+          "anchorId": "anc.hcc.001",
+          "title": "Weathered liver terrain",
+          "bodyScale": "organ",
+          "location": "liver surface",
+          "description": "Show a liver landscape that already hints at chronic injury before the focal lesion is named.",
+          "linkedClaimIds": [
+            "clm.hcc.001"
+          ]
+        }
+      ]
+    },
+    "sourceGovernance": {
+      "schemaVersion": "1.0.0",
+      "canonicalDiseaseName": "Hepatocellular carcinoma",
+      "sourceRecords": [
+        {
+          "schemaVersion": "1.0.0",
+          "id": "src.hcc.guideline.001",
+          "canonicalDiseaseName": "Hepatocellular carcinoma",
+          "sourceLabel": "Curated hepatocellular carcinoma guideline",
+          "sourceType": "guideline",
+          "sourceTier": "tier-1",
+          "approvalStatus": "approved",
+          "freshnessScore": 0.97,
+          "freshnessStatus": "current",
+          "contradictionStatus": "none",
+          "owner": "clinical-board",
+          "governanceNotes": [
+            "Preferred baseline source for the starter knowledge pack."
+          ],
+          "sourceUrl": "https://example.org/hcc-guideline",
+          "lastReviewedAt": "2026-04-20T00:00:00Z"
+        }
+      ],
+      "governanceDecisions": [
+        {
+          "schemaVersion": "1.0.0",
+          "id": "sgd.hcc.001",
+          "tenantId": "tenant.local",
+          "sourceId": "src.hcc.guideline.001",
+          "canonicalDiseaseName": "Hepatocellular carcinoma",
+          "decision": "approved",
+          "reason": "This remains the preferred local baseline source for the starter library.",
+          "reviewedAt": "2026-04-22T11:30:00Z",
+          "decidedBy": "local-operator",
+          "decidedByRoles": [
+            "Local Operator"
+          ],
+          "occurredAt": "2026-04-22T11:30:00Z",
+          "notes": [
+            "Keep this source active for Gate 2 packets."
+          ]
+        }
+      ]
+    },
+    "contradictionResolutions": [],
+    "traceCoverage": {
+      "schemaVersion": "1.0.0",
+      "score": 1,
+      "verdict": "passed",
+      "validClaimCount": 2,
+      "suspendedSourceCount": 0,
+      "staleSourceCount": 0,
+      "blockingContradictions": 0,
+      "artifactSummaries": [
+        {
+          "artifactType": "story-workbook",
+          "itemCount": 4,
+          "linkedItemCount": 4,
+          "validItemCount": 4,
+          "missingLinkCount": 0,
+          "invalidLinkCount": 0,
+          "coverageScore": 1
+        }
+      ],
+      "blockers": []
+    }
+  },
+  "evaluationSummary": {
+    "schemaVersion": "1.0.0",
+    "latestEvalRunId": "evr.hcc.001",
+    "latestEvalStatus": "passed",
+    "evaluatedAt": "2026-04-21T00:09:45Z",
+    "allThresholdsMet": true,
+    "familyStatuses": [
+      {
+        "family": "medical_accuracy",
+        "status": "passed",
+        "score": 1,
+        "threshold": 0.97,
+        "releaseGate": "Gate 2"
+      },
+      {
+        "family": "evidence_traceability",
+        "status": "passed",
+        "score": 1,
+        "threshold": 0.95,
+        "releaseGate": "Gate 2, Gate 4, and Gate 5"
+      }
+    ]
+  },
+  "exportHistory": {
+    "schemaVersion": "1.0.0",
+    "runId": "run.hcc.001",
+    "entries": [
+      {
+        "schemaVersion": "1.0.0",
+        "id": "exp.hcc.001",
+        "releaseId": "rel.hcc.001",
+        "workflowRunId": "run.hcc.001",
+        "tenantId": "tenant.local",
+        "exportedBy": "local-operator",
+        "exportedAt": "2026-04-21T00:10:00Z",
+        "status": "completed",
+        "bundleLocation": "examples/sample_release_bundle.json",
+        "bundleIndexLocation": "examples/release_bundle_index.md",
+        "evalRunId": "evr.hcc.001",
+        "exportTargets": [
+          "json",
+          "human-readable-bundle"
+        ]
+      }
+    ]
+  },
+  "availableActions": [
+    "resolve-canonicalization",
+    "record-source-decision",
+    "record-contradiction-resolution",
+    "rebuild-clinical-package",
+    "run-evaluations",
+    "export-bundle"
+  ]
+}

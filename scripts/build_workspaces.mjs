@@ -8,7 +8,10 @@ const distDir = path.join(rootDir, 'dist');
 
 const copyTargets = [
   'api',
+  'apps/admin',
+  'apps/web',
   'contracts',
+  'docs',
   'evals',
   'examples',
   'infra',

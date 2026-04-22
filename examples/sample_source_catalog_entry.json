@@ -1,0 +1,19 @@
+{
+  "id": "src.hcc.guideline.001",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "sourceLabel": "Curated hepatocellular carcinoma guideline",
+  "sourceType": "guideline",
+  "sourceTier": "tier-1",
+  "defaultApprovalStatus": "approved",
+  "owner": "clinical-board",
+  "governanceNotes": [
+    "Preferred baseline source for chronic liver injury and lesion-directed workup."
+  ],
+  "topics": [
+    "risk context",
+    "imaging",
+    "treatment staging"
+  ],
+  "sourceUrl": "https://example.org/hcc-guideline",
+  "lastReviewedAt": "2026-04-20T00:00:00Z"
+}

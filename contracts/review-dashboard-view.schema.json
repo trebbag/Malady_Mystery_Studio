@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/review-dashboard-view.schema.json",
+  "title": "ReviewDashboardView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "title",
+    "filters",
+    "stats",
+    "runs"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "disease",
+        "state",
+        "stage",
+        "exportStatus",
+        "evalStatus",
+        "sort"
+      ],
+      "properties": {
+        "disease": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "exportStatus": {
+          "type": "string"
+        },
+        "evalStatus": {
+          "type": "string"
+        },
+        "sort": {
+          "type": "string"
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visibleRunCount",
+        "blockedClinicalRunCount",
+        "awaitingReviewCount",
+        "staleEvalCount",
+        "exportReadyCount"
+      ],
+      "properties": {
+        "visibleRunCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blockedClinicalRunCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "awaitingReviewCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "staleEvalCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exportReadyCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "runId",
+          "projectTitle",
+          "diseaseName",
+          "state",
+          "currentStage",
+          "latestEvalStatus",
+          "exportCount",
+          "updatedAt"
+        ],
+        "properties": {
+          "runId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "projectTitle": {
+            "type": "string"
+          },
+          "diseaseName": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "currentStage": {
+            "type": "string"
+          },
+          "pauseReason": {
+            "type": "string"
+          },
+          "latestEvalStatus": {
+            "type": "string"
+          },
+          "exportCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

@@ -39,14 +39,14 @@ Repository validation and utility scripts.
 
 ### `apps/`
 User-facing applications. Typical future contents:
-- `apps/web` — editorial UI
+- `apps/web` — editorial UI placeholder/prep layer with route manifests, page shells, component map, and screen-shaped view models
 - `apps/admin` — governance/admin console
 
 ### `services/`
 Back-end services and workers. Typical future contents:
 - orchestrator
 - intake API
-- clinical retrieval
+- clinical retrieval, including local governed knowledge packs under `services/clinical-retrieval/knowledge-packs`
 - story engine
 - render prep
 - export service

@@ -44,7 +44,10 @@
         "project",
         "workflow-run",
         "artifact",
-        "session"
+        "session",
+        "source-record",
+        "evidence-record",
+        "release-bundle"
       ]
     },
     "subjectId": {

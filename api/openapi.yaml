@@ -181,9 +181,11 @@ paths:
                     - START_RUN
                     - STAGE_PASSED
                     - STAGE_FAILED
+                    - REQUEST_REVIEW
                     - RECORD_APPROVAL
                     - APPROVALS_COMPLETED
                     - REJECT_TO_STAGE
+                    - RESUME_STAGE
                     - START_EXPORT
                     - EXPORT_COMPLETED
                     - RETRY_STAGE
@@ -227,6 +229,50 @@ paths:
                 type: array
                 items:
                   $ref: '../contracts/audit-log-entry.schema.json'
+  /api/v1/workflow-runs/{runId}/clinical-package:
+    get:
+      summary: Get the assembled clinical package for a workflow run
+      operationId: getWorkflowRunClinicalPackage
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Clinical package view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/clinical-package-view.schema.json'
+  /api/v1/workflow-runs/{runId}/clinical-package/rebuild:
+    post:
+      summary: Rebuild clinical artifacts and invalidate downstream story artifacts
+      operationId: rebuildWorkflowRunClinicalPackage
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Workflow run after clinical package rebuild
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/workflow-run.schema.json'
   /api/v1/workflow-runs/{runId}/evaluations:
     get:
       summary: List evaluations for a workflow run
@@ -311,6 +357,10 @@ paths:
                   - $ref: '../contracts/canonical-disease.schema.json'
                   - $ref: '../contracts/canonicalization-resolution.schema.json'
                   - $ref: '../contracts/disease-packet.schema.json'
+                  - $ref: '../contracts/fact-table.schema.json'
+                  - $ref: '../contracts/evidence-graph.schema.json'
+                  - $ref: '../contracts/clinical-teaching-points.schema.json'
+                  - $ref: '../contracts/visual-anchor-catalog.schema.json'
                   - $ref: '../contracts/story-workbook.schema.json'
                   - $ref: '../contracts/story-memory.schema.json'
                   - $ref: '../contracts/narrative-review-trace.schema.json'
@@ -338,6 +388,41 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/evidence-record.schema.json'
+  /api/v1/evidence-records/{claimId}/contradiction-resolutions:
+    post:
+      summary: Record a local contradiction resolution for an evidence claim
+      operationId: recordContradictionResolution
+      parameters:
+        - in: path
+          name: claimId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [canonicalDiseaseName, status]
+              properties:
+                canonicalDiseaseName:
+                  type: string
+                relatedClaimId:
+                  type: string
+                status:
+                  type: string
+                  enum: [open, monitor, blocking, resolved]
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Contradiction resolution recorded
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/contradiction-resolution.schema.json'
   /api/v1/source-records:
     get:
       summary: List governed source records for a canonical disease
@@ -374,6 +459,43 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/source-record.schema.json'
+  /api/v1/source-records/{sourceId}/governance-decisions:
+    post:
+      summary: Record a local source governance decision
+      operationId: recordSourceGovernanceDecision
+      parameters:
+        - in: path
+          name: sourceId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [canonicalDiseaseName, decision]
+              properties:
+                canonicalDiseaseName:
+                  type: string
+                decision:
+                  type: string
+                  enum: [approved, conditional, suspended, refresh-review-date]
+                reason:
+                  type: string
+                notes:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Source governance decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/source-governance-decision.schema.json'
   /api/v1/release-bundles/{releaseId}:
     get:
       summary: Get a release bundle

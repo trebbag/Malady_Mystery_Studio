@@ -235,6 +235,84 @@ test('canonicalization can be resolved from the local review page', async () => 
   }
 });
 
+test('clinical governance can pause a run before story generation and expose the clinical package', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer(sandbox);
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'bacterial meningitis',
+    });
+    const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+
+    assert.equal(workflowRun.state, 'review');
+    assert.equal(workflowRun.currentStage, 'disease-packet');
+    assert.equal(workflowRun.pauseReason, 'clinical-governance-review-required');
+    assert.equal(workflowRun.artifacts.some((/** @type {any} */ artifact) => artifact.artifactType === 'story-workbook'), false);
+
+    const clinicalPackageResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/clinical-package`);
+    assert.equal(clinicalPackageResponse.status, 200);
+    const clinicalPackage = await clinicalPackageResponse.json();
+
+    assert.equal(clinicalPackage.diseasePacket.canonicalDiseaseName, 'Bacterial meningitis');
+    assert.equal(clinicalPackage.evidenceRelationships.some((/** @type {any} */ relationship) => relationship.relationshipType === 'contradicts'), true);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});
+
+test('contradiction resolution plus rebuild regenerates downstream artifacts', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer(sandbox);
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'bacterial meningitis',
+    });
+    let workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+    const clinicalPackageResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/clinical-package`);
+    const clinicalPackage = await clinicalPackageResponse.json();
+    const contradictionEdge = clinicalPackage.evidenceRelationships.find((/** @type {any} */ relationship) => relationship.relationshipType === 'contradicts');
+
+    assert.ok(contradictionEdge);
+
+    const resolutionResponse = await fetch(`${app.baseUrl}/api/v1/evidence-records/${encodeURIComponent(contradictionEdge.fromClaimId)}/contradiction-resolutions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        canonicalDiseaseName: 'Bacterial meningitis',
+        relatedClaimId: contradictionEdge.toClaimId,
+        status: 'resolved',
+        reason: 'Local reviewer resolved the starter contradiction for this run.',
+      }),
+    });
+    assert.equal(resolutionResponse.status, 201);
+
+    const rebuildResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/clinical-package/rebuild`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        reason: 'Resume downstream story generation after contradiction review.',
+      }),
+    });
+    assert.equal(rebuildResponse.status, 200);
+    workflowRun = await rebuildResponse.json();
+
+    assert.equal(workflowRun.pauseReason ?? null, null);
+    assert.equal(workflowRun.state, 'review');
+    assert.equal(workflowRun.currentStage, 'review');
+    assert.equal(workflowRun.artifacts.some((/** @type {any} */ artifact) => artifact.artifactType === 'story-workbook'), true);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});
+
 test('evaluations persist, appear in the review UI, and gate export', async () => {
   const sandbox = await createSandbox();
   const app = await startServer(sandbox);
@@ -298,6 +376,53 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
     const reviewPage = await reviewResponse.text();
     assert.match(reviewPage, new RegExp(evaluationPayload.evaluation.id));
     assert.match(reviewPage, /release-bundles/);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});
+
+test('traceability failures block export after downstream artifacts drift', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer(sandbox);
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'community-acquired pneumonia',
+    });
+    let workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+
+    workflowRun = await submitApproval(app.baseUrl, workflowRun.id, 'clinical');
+    workflowRun = await submitApproval(app.baseUrl, workflowRun.id, 'editorial');
+    workflowRun = await submitApproval(app.baseUrl, workflowRun.id, 'product');
+
+    for (const renderPromptReference of workflowRun.artifacts.filter((/** @type {any} */ artifact) => artifact.artifactType === 'render-prompt')) {
+      const renderPrompt = app.store.getArtifact('render-prompt', renderPromptReference.artifactId);
+      renderPrompt.linkedClaimIds = [];
+      app.store.saveArtifact('render-prompt', renderPrompt.id, renderPrompt, {
+        tenantId: workflowRun.tenantId,
+      });
+    }
+
+    const evaluationResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/evaluations`, {
+      method: 'POST',
+    });
+    assert.equal(evaluationResponse.status, 201);
+    const evaluationPayload = await evaluationResponse.json();
+
+    assert.equal(evaluationPayload.evaluation.summary.allThresholdsMet, false);
+    assert.equal(evaluationPayload.evaluation.summary.familyScores.evidence_traceability < 0.95, true);
+
+    const exportResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/exports`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ version: 'cap-local-trace-fail' }),
+    });
+    assert.equal(exportResponse.status, 409);
+    const exportPayload = await exportResponse.json();
+    assert.match(exportPayload.error, /latest eval run/i);
   } finally {
     await app.close();
     await sandbox.cleanup();

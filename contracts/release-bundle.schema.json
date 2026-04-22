@@ -79,6 +79,7 @@
       "additionalProperties": false,
       "required": [
         "medicalAccuracy",
+        "evidenceTraceability",
         "mysteryIntegrity",
         "educationalSequencing",
         "panelization",
@@ -87,6 +88,11 @@
       ],
       "properties": {
         "medicalAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidenceTraceability": {
           "type": "number",
           "minimum": 0,
           "maximum": 1
@@ -224,6 +230,47 @@
         "failedFamilyCount": {
           "type": "integer",
           "minimum": 0
+        },
+        "familyScores": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "medical_accuracy": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "evidence_traceability": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "mystery_integrity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "educational_sequencing": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "panelization": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "render_readiness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "governance_release": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
         }
       }
     },

@@ -72,6 +72,7 @@
   ],
   "qualitySummary": {
     "medicalAccuracy": 0.97,
+    "evidenceTraceability": 1,
     "mysteryIntegrity": 0.91,
     "educationalSequencing": 0.93,
     "panelization": 0.9,
@@ -131,9 +132,18 @@
     "evalRunId": "evr.hcc.001",
     "evaluatedAt": "2026-04-21T00:09:45Z",
     "allThresholdsMet": true,
-    "applicableFamilyCount": 6,
-    "passedFamilyCount": 6,
-    "failedFamilyCount": 0
+    "applicableFamilyCount": 7,
+    "passedFamilyCount": 7,
+    "failedFamilyCount": 0,
+    "familyScores": {
+      "medical_accuracy": 1,
+      "evidence_traceability": 1,
+      "mystery_integrity": 1,
+      "educational_sequencing": 1,
+      "panelization": 1,
+      "render_readiness": 1,
+      "governance_release": 1
+    }
   },
   "exportTargets": [
     "json",

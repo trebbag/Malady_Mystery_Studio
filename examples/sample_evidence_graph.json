@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "egr.hcc.001",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "nodes": [
+    {
+      "nodeId": "nod.clm.hcc.001",
+      "claimId": "clm.hcc.001",
+      "claimText": "Chronic liver injury increases malignant transformation risk.",
+      "claimType": "pathophysiology",
+      "certaintyLevel": "high",
+      "sourceIds": [
+        "src.hcc.guideline.001"
+      ]
+    },
+    {
+      "nodeId": "nod.clm.hcc.006",
+      "claimId": "clm.hcc.006",
+      "claimText": "Multiphasic liver imaging can support diagnosis when interpreted in context.",
+      "claimType": "diagnostic-support",
+      "certaintyLevel": "moderate",
+      "sourceIds": [
+        "src.hcc.guideline.001"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "edgeId": "edg.hcc.001",
+      "fromClaimId": "clm.hcc.001",
+      "toClaimId": "clm.hcc.006",
+      "relationshipType": "chronology",
+      "status": "resolved",
+      "notes": "Chronic injury context explains why lesion-directed imaging becomes meaningful."
+    }
+  ]
+}

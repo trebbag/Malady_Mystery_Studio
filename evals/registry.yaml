@@ -1,6 +1,8 @@
 datasets:
 - path: evals/datasets/medical_accuracy_cases.jsonl
   family: medical_accuracy
+- path: evals/datasets/evidence_traceability_cases.jsonl
+  family: evidence_traceability
 - path: evals/datasets/mystery_integrity_cases.jsonl
   family: mystery_integrity
 - path: evals/datasets/educational_sequencing_cases.jsonl
@@ -13,6 +15,7 @@ datasets:
   family: governance_release
 graders:
 - evals/graders/medical_accuracy_rubric.md
+- evals/graders/evidence_traceability_rubric.md
 - evals/graders/mystery_integrity_rubric.md
 - evals/graders/educational_sequencing_rubric.md
 - evals/graders/panelization_rubric.md

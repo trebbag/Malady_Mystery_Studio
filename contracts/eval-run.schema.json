@@ -69,6 +69,7 @@
             "type": "string",
             "enum": [
               "medical_accuracy",
+              "evidence_traceability",
               "mystery_integrity",
               "educational_sequencing",
               "panelization",
@@ -173,7 +174,8 @@
         "applicableCaseCount",
         "passedCaseCount",
         "failedCaseCount",
-        "allThresholdsMet"
+        "allThresholdsMet",
+        "familyScores"
       ],
       "properties": {
         "applicableFamilyCount": {
@@ -202,6 +204,56 @@
         },
         "allThresholdsMet": {
           "type": "boolean"
+        },
+        "familyScores": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "medical_accuracy",
+            "evidence_traceability",
+            "mystery_integrity",
+            "educational_sequencing",
+            "panelization",
+            "render_readiness",
+            "governance_release"
+          ],
+          "properties": {
+            "medical_accuracy": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "evidence_traceability": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "mystery_integrity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "educational_sequencing": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "panelization": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "render_readiness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "governance_release": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
         }
       }
     }

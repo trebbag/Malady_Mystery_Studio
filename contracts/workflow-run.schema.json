@@ -163,6 +163,10 @@
               "canonical-disease",
               "canonicalization-resolution",
               "disease-packet",
+              "fact-table",
+              "evidence-graph",
+              "clinical-teaching-points",
+              "visual-anchor-catalog",
               "story-workbook",
               "story-memory",
               "narrative-review-trace",
@@ -204,6 +208,13 @@
     "lastEventId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "pauseReason": {
+      "type": "string",
+      "enum": [
+        "clinical-governance-review-required",
+        "clinical-governance-blocked"
+      ]
     },
     "latestEvalRunId": {
       "type": "string",

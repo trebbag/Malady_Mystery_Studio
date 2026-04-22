@@ -5,6 +5,7 @@ This directory defines how the project measures quality.
 ## Eval families
 
 - `medical_accuracy`
+- `evidence_traceability`
 - `mystery_integrity`
 - `educational_sequencing`
 - `panelization`

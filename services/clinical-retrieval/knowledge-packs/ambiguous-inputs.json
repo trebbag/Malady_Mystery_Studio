@@ -1,0 +1,14 @@
+{
+  "mg": [
+    {
+      "canonicalDiseaseName": "Myasthenia gravis",
+      "ontologyId": "ICD-10-CM:G70.00",
+      "matchType": "ambiguous-suggestion"
+    },
+    {
+      "canonicalDiseaseName": "Magnesium-related disorder",
+      "ontologyId": "SNOMED-CT:190855004",
+      "matchType": "ambiguous-suggestion"
+    }
+  ]
+}

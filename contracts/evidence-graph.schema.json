@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/evidence-graph.schema.json",
+  "title": "EvidenceGraph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "canonicalDiseaseName",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "nodeId",
+          "claimId",
+          "claimText",
+          "claimType",
+          "certaintyLevel",
+          "sourceIds"
+        ],
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "claimId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "claimText": {
+            "type": "string"
+          },
+          "claimType": {
+            "type": "string"
+          },
+          "certaintyLevel": {
+            "type": "string",
+            "enum": [
+              "high",
+              "moderate",
+              "guarded"
+            ]
+          },
+          "sourceIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "edgeId",
+          "fromClaimId",
+          "toClaimId",
+          "relationshipType",
+          "status"
+        ],
+        "properties": {
+          "edgeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "fromClaimId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "toClaimId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "relationshipType": {
+            "type": "string",
+            "enum": [
+              "supports",
+              "chronology",
+              "contradicts",
+              "qualifies"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "monitor",
+              "blocking",
+              "resolved"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

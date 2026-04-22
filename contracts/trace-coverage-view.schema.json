@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/trace-coverage-view.schema.json",
+  "title": "TraceCoverageView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "score",
+    "verdict",
+    "validClaimCount",
+    "suspendedSourceCount",
+    "staleSourceCount",
+    "blockingContradictions",
+    "artifactSummaries",
+    "blockers"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "validClaimCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "suspendedSourceCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "staleSourceCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "blockingContradictions": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "artifactSummaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifactType",
+          "itemCount",
+          "linkedItemCount",
+          "validItemCount",
+          "missingLinkCount",
+          "invalidLinkCount",
+          "coverageScore"
+        ],
+        "properties": {
+          "artifactType": {
+            "type": "string"
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "linkedItemCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "validItemCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "missingLinkCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "invalidLinkCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "coverageScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

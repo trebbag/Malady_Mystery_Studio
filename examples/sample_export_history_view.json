@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "run.hcc.001",
+  "entries": [
+    {
+      "schemaVersion": "1.0.0",
+      "id": "exp.hcc.001",
+      "releaseId": "rel.hcc.001",
+      "workflowRunId": "run.hcc.001",
+      "tenantId": "tenant.local",
+      "exportedBy": "local-operator",
+      "exportedAt": "2026-04-21T00:10:00Z",
+      "status": "completed",
+      "bundleLocation": "examples/sample_release_bundle.json",
+      "bundleIndexLocation": "examples/release_bundle_index.md",
+      "evalRunId": "evr.hcc.001",
+      "exportTargets": [
+        "json",
+        "human-readable-bundle"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 medical_accuracy:
   minimum: 0.97
   release_gate: Gate 2
+evidence_traceability:
+  minimum: 0.95
+  release_gate: Gate 2, Gate 4, and Gate 5
 mystery_integrity:
   minimum: 0.88
   release_gate: Gate 3

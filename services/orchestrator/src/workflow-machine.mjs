@@ -306,7 +306,33 @@ export function applyWorkflowEvent(workflowSpec, workflowRun, eventInput, eventI
       );
       break;
     }
+    case 'REQUEST_REVIEW': {
+      nextStages = updateStage(
+        nextStages,
+        workflowRun.currentStage,
+        {
+          endedAt: timestamp,
+          notes: eventInput.notes,
+          startedAt: workflowRun.stages.find((/** @type {any} */ stage) => stage.name === workflowRun.currentStage)?.startedAt,
+          status: 'blocked',
+        },
+      );
+      break;
+    }
     case 'RETRY_STAGE': {
+      nextStages = updateStage(
+        nextStages,
+        workflowRun.currentStage,
+        {
+          endedAt: undefined,
+          notes: eventInput.notes,
+          startedAt: timestamp,
+          status: 'running',
+        },
+      );
+      break;
+    }
+    case 'RESUME_STAGE': {
       nextStages = updateStage(
         nextStages,
         workflowRun.currentStage,
