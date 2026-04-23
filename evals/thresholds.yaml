@@ -18,10 +18,10 @@ render_readiness:
   release_gate: Gate 4
 rendering_guide_quality:
   minimum: 0.95
-  release_gate: Gate 4 and Gate 5
+  release_gate: Secondary guide support
 render_output_quality:
   minimum: 0.9
-  release_gate: Optional manual Gate 5
+  release_gate: Gate 5
 governance_release:
   minimum: 1.0
   release_gate: Gate 5 and Gate 6

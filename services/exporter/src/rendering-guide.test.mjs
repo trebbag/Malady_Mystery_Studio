@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { buildRenderingGuide, renderRenderingGuideMarkdown } from './rendering-guide.mjs';
 
-test('rendering guide compiler preserves panel order and provider-specific prompt blocks', () => {
+test('rendering guide compiler preserves panel order and emits OpenAI panel prompt blocks', () => {
   const guide = buildRenderingGuide({
     workflowRun: {
       id: 'run.demo.001',
@@ -138,14 +138,13 @@ test('rendering guide compiler preserves panel order and provider-specific promp
     panels.map((panel) => panel.panelId),
     ['pnl.demo.001', 'pnl.demo.002'],
   );
-  assert.match(guide.panels[0].nanoBananaPrompt.prompt, /^Create /);
-  assert.equal(guide.panels[0].gensparkSlide.slideNumber, 1);
-  assert.equal(guide.panels[1].gensparkSlide.useOnlyProvidedContent, true);
-  assert.equal(guide.panels[1].gensparkSlide.forbidLiveResearch, true);
+  assert.match(guide.panels[0].openAiImagePrompt.prompt, /^Create /);
+  assert.equal(guide.providerTargets.includes('openai-gpt-image'), true);
+  assert.equal(guide.panelExecutionStrategy.separateLetteringRequired, true);
   assert.equal(guide.panels[1].claimReferences.length, 1);
 
   const markdown = renderRenderingGuideMarkdown(guide);
   assert.match(markdown, /## Panel 1\.1/);
-  assert.match(markdown, /### Nano Banana Pro Prompt/);
-  assert.match(markdown, /### Genspark AI Slides Block/);
+  assert.match(markdown, /### OpenAI Image Prompt/);
+  assert.match(markdown, /## OpenAI Panel Execution Prompt/);
 });

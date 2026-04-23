@@ -53,6 +53,20 @@ test('applicability filtering matches disease-specific and global cases', () => 
   assert.equal(isCaseApplicable(nonMatchingCase, context), false);
 });
 
+test('render-output cases stay applicable when rendered assets are still missing', () => {
+  const renderOutputCase = {
+    evalFamily: 'render_output_quality',
+    input: {
+      disease: 'community-acquired pneumonia',
+      artifact: 'rendered-asset-manifest',
+    },
+  };
+
+  assert.equal(isCaseApplicable(renderOutputCase, {
+    canonicalDiseaseName: 'community-acquired pneumonia',
+  }), true);
+});
+
 test('stale eval detection trips when a newer relevant artifact exists', () => {
   const workflowRun = {
     updatedAt: '2026-04-22T00:04:00Z',

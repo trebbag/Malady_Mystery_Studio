@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "ntf.run.001",
+  "tenantId": "tenant.local",
+  "targetActorId": "local-operator",
+  "workflowRunId": "run.lch.001",
+  "threadId": "thr.run.001",
+  "workItemId": "wrk.run.001",
+  "notificationType": "promotion-ready",
+  "status": "unread",
+  "message": "The provisional knowledge pack for Langerhans Cell Histiocytosis is ready for review.",
+  "subjectType": "disease-knowledge-pack",
+  "subjectId": "kp.lch.001",
+  "createdBy": "system",
+  "createdAt": "2026-04-23T13:05:00Z",
+  "updatedAt": "2026-04-23T13:05:00Z"
+}

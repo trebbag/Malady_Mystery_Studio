@@ -87,6 +87,39 @@ const queueView = {
   ],
 };
 
+const queueAnalyticsView = {
+  schemaVersion: '1.0.0',
+  summary: {
+    totalItemCount: 1,
+    overdueItemCount: 0,
+    escalatedItemCount: 0,
+    overdueRate: 0,
+    escalationRate: 0,
+    medianAgeHours: 2,
+  },
+  countsByWorkType: [{ workType: 'run-review', count: 1 }],
+  countsByStatus: [{ status: 'queued', count: 1 }],
+  countsByPriority: [{ priority: 'medium', count: 1 }],
+  assigneeLoad: [{ assignee: 'Local Operator', count: 1 }],
+  runBlockersByStage: [{ stage: 'review', count: 1 }],
+};
+
+const notifications = [
+  {
+    schemaVersion: '1.0.0',
+    id: 'ntf.local.001',
+    tenantId: 'tenant.local',
+    targetActorId: 'local-operator',
+    workflowRunId: 'run.local.001',
+    threadId: 'thr.local.001',
+    notificationType: 'mention',
+    status: 'unread',
+    message: 'You were mentioned on run.local.001',
+    createdAt: '2026-04-22T12:00:00Z',
+    updatedAt: '2026-04-22T12:00:00Z',
+  },
+];
+
 const workflowRun = {
   id: 'run.local.001',
   projectId: 'prj.local.001',
@@ -340,14 +373,14 @@ const reviewRunView = {
       styleLocks: ['comic mystery', 'clean staging'],
       letteringPolicy: 'Keep lettering separate from art.',
     },
-    slideStrategy: {
-      onePanelPerSlide: true,
-      sequentialGenerationRequired: true,
-      firstSlideStyleLockRequired: true,
-      forbidLiveResearch: true,
+    panelExecutionStrategy: {
+      sequentialPanelExecutionRecommended: true,
+      continuityReferenceRequired: true,
+      separateLetteringRequired: true,
+      manualReviewRequired: true,
     },
     globalNegativeConstraints: ['no labels', 'no text in art'],
-    gensparkDeckBootstrapPrompt: 'Create the outline first, then generate one panel per slide in sequence.',
+    openAiPanelExecutionPrompt: 'Create one final image per panel, keep the order stable, and keep lettering out of the art.',
     retryGuidance: ['Reuse slide 1 as the style lock for the remaining slides.'],
     panels: [
       {
@@ -384,7 +417,7 @@ const reviewRunView = {
             purpose: 'Teaching overlay',
           },
         ],
-        nanoBananaPrompt: {
+        openAiImagePrompt: {
           aspectRatio: '4:3',
           prompt: 'Create a detailed comic-book illustration of detectives hovering beside crowded air sacs.',
           negativePrompt: 'no labels, no text in art',
@@ -392,17 +425,6 @@ const reviewRunView = {
           characterLocks: ['Detective A short', 'Detective B tall'],
           anatomyLocks: ['alveoli readable', 'no generic cave interiors'],
           notes: ['Keep lettering separate.'],
-        },
-        gensparkSlide: {
-          slideNumber: 1,
-          title: 'Panel 1.1',
-          creationPrompt: 'Create one slide for this panel only and keep the deck sequential.',
-          styleLockInstruction: 'Use slide 1 as the style lock.',
-          sequentialInstruction: 'Do not generate slides in parallel.',
-          overlayInstructions: ['caption: The air sacs are crowding with inflammatory fluid.'],
-          useOnlyProvidedContent: true,
-          forbidLiveResearch: true,
-          notes: ['Keep text editable.'],
         },
       },
     ],
@@ -418,7 +440,7 @@ const reviewRunView = {
       queueName: 'render-execution',
       provider: 'stub-image',
       model: 'stub-image-v1',
-      renderTargetProfileId: 'rtp.gemini-image-default',
+      renderTargetProfileId: 'rtp.openai-image-default',
       renderPromptIds: ['rnd.local.001'],
       attemptIds: ['ratm.local.001'],
       renderedAssetManifestId: 'rman.local.001',
@@ -513,6 +535,7 @@ const localRuntimeView = {
     objectStoreDir: 'var/object-store',
   },
   platform: {
+    runtimeMode: 'local',
     metadataStore: 'sqlite',
     objectStore: 'filesystem',
     queueBackend: 'in-process',
@@ -581,6 +604,14 @@ function mockFetch(url: string) {
     return Response.json(queueView);
   }
 
+  if (parsed.pathname === '/api/v1/review-queue/analytics') {
+    return Response.json(queueAnalyticsView);
+  }
+
+  if (parsed.pathname === '/api/v1/notifications') {
+    return Response.json(notifications);
+  }
+
   if (parsed.pathname === '/api/v1/workflow-runs/run.local.001') {
     return Response.json(workflowRun);
   }
@@ -641,7 +672,7 @@ function mockFetch(url: string) {
     });
   }
 
-  if (parsed.pathname.endsWith('/approvals') || parsed.pathname.endsWith('/canonicalization-resolution') || parsed.pathname.endsWith('/rebuild') || parsed.pathname.endsWith('/governance-decisions') || parsed.pathname.endsWith('/contradiction-resolutions') || parsed.pathname.endsWith('/exports') || parsed.pathname.endsWith('/comments') || parsed.pathname.endsWith('/assignments') || parsed.pathname.endsWith('/rendering-guide/regenerate') || parsed.pathname.endsWith('/rendered-assets/attach')) {
+  if (parsed.pathname.endsWith('/approvals') || parsed.pathname.endsWith('/canonicalization-resolution') || parsed.pathname.endsWith('/rebuild') || parsed.pathname.endsWith('/governance-decisions') || parsed.pathname.endsWith('/contradiction-resolutions') || parsed.pathname.endsWith('/exports') || parsed.pathname.endsWith('/comments') || parsed.pathname.endsWith('/assignments') || parsed.pathname.endsWith('/rendering-guide/regenerate') || parsed.pathname.endsWith('/rendered-assets/attach') || parsed.pathname.endsWith('/threads') || parsed.pathname.includes('/review-threads/')) {
     return Response.json({});
   }
 
@@ -708,12 +739,12 @@ describe('web app routes', () => {
     expect(screen.getAllByText('Local Operator').length).toBeGreaterThan(0);
   });
 
-  it('shows the rendering guide page with provider-fitted prompt content', async () => {
+  it('shows the rendering guide page with OpenAI prompt content', async () => {
     renderRoute('/runs/run.local.001/rendering-guide');
     await waitFor(async () => {
       expect(await screen.findByText('Rendering Guide')).toBeInTheDocument();
     });
-    expect(screen.getByText(/One master handoff guide/i)).toBeInTheDocument();
-    expect(screen.getByText(/Genspark deck bootstrap/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Secondary OpenAI Image support guide/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/OpenAI panel execution brief/i)).toBeInTheDocument();
   });
 });

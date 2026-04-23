@@ -75,6 +75,7 @@
       "enum": [
         "workflow-run",
         "artifact",
+        "disease-knowledge-pack",
         "source-record",
         "render-job",
         "ops-drill"

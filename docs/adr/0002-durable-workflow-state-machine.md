@@ -13,7 +13,7 @@ The product creates many intermediate artifacts: disease packet, story workbook,
 
 Model the system as a durable workflow with explicit states, stage transitions, and append-only event logging. Every transition should create a typed event and update a typed workflow-run object.
 
-The workflow stage order still includes an optional `render-execution` branch for secondary art-attachment or legacy provider flows, but the default success path now hands off from `render-prep` directly into human review with a compiled `rendering-guide`. This keeps guide-first export visible in the event log without forcing in-app image generation to define “done.”
+The workflow stage order now accepts arbitrary disease input, compiles provisional clinical evidence when no governed pack exists yet, and treats `render-execution` as the default path to done. A compiled `rendering-guide` still exists, but as a secondary QA, retry, and manual handoff artifact rather than the definition of completion.
 
 ## Consequences
 
@@ -22,13 +22,14 @@ The workflow stage order still includes an optional `render-execution` branch fo
 - better auditability
 - easier human-in-the-loop review
 - better traceability for eval failures
-- explicit guide-first release gating before pilot release assembly
-- optional rendered-output handling can remain auditable without blocking the default handoff path
+- explicit rendered-output release gating before pilot release assembly
+- open-disease research assembly can be inspected and replayed before the run advances into story and panel work
+- prompt and rendering-guide artifacts remain auditable secondary support assets
 
 ### Tradeoffs
 - more up-front engineering work than a simple queue chain
 - requires discipline around idempotency and status transitions
-- requires migration logic for older rendered-output runs so they remain readable beside the newer guide-first flow
+- requires migration logic for older guide-first runs so they remain readable beside the current rendered-output flow
 
 ## Alternatives considered
 - loosely coupled async jobs with implicit state in the database: rejected for low observability

@@ -59,8 +59,15 @@
     "platform": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["metadataStore", "objectStore", "queueBackend", "telemetryBackend"],
+      "required": ["runtimeMode", "metadataStore", "objectStore", "queueBackend", "telemetryBackend"],
       "properties": {
+        "runtimeMode": {
+          "type": "string",
+          "enum": [
+            "local",
+            "managed"
+          ]
+        },
         "metadataStore": {
           "type": "string"
         },

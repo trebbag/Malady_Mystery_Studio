@@ -325,20 +325,28 @@ export interface RenderingGuide {
   tenantId: string;
   projectTitle: string;
   canonicalDiseaseName: string;
+  providerTargets: string[];
   generatedAt: string;
   markdownDocumentId: string;
   markdownLocation: string;
   runSummary: Record<string, unknown>;
   franchiseRules: string[];
   continuityBible: Record<string, unknown>;
-  slideStrategy: {
+  panelExecutionStrategy?: {
+    sequentialPanelExecutionRecommended: boolean;
+    continuityReferenceRequired: boolean;
+    separateLetteringRequired: boolean;
+    manualReviewRequired: boolean;
+  };
+  slideStrategy?: {
     onePanelPerSlide: boolean;
     sequentialGenerationRequired: boolean;
     firstSlideStyleLockRequired: boolean;
     forbidLiveResearch: boolean;
   };
   globalNegativeConstraints: string[];
-  gensparkDeckBootstrapPrompt: string;
+  openAiPanelExecutionPrompt?: string;
+  gensparkDeckBootstrapPrompt?: string;
   retryGuidance: string[];
   panels: Array<Record<string, unknown>>;
 }
@@ -498,6 +506,7 @@ export interface LocalRuntimeView {
     objectStoreDir: string;
   };
   platform: {
+    runtimeMode: 'local' | 'managed';
     metadataStore: string;
     objectStore: string;
     queueBackend: string;

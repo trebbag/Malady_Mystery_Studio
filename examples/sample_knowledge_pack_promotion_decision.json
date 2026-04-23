@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "kpd.lch.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.lch.001",
+  "knowledgePackId": "kp.lch.001",
+  "decision": "approved-run-only",
+  "notes": "Approved for this run while broader source governance remains provisional.",
+  "decidedBy": "local-operator",
+  "decidedByRoles": [
+    "Local Operator"
+  ],
+  "decidedAt": "2026-04-23T13:00:00Z"
+}

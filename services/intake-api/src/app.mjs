@@ -90,7 +90,7 @@ const SCHEMA_VERSION = '1.0.0';
 const WEB_ROUTE_ARTIFACT_GROUPS = Object.freeze({
   workbooks: ['story-workbook', 'narrative-review-trace', 'qa-report'],
   scenes: ['scene-card'],
-  panels: ['panel-plan', 'render-prompt', 'rendering-guide', 'lettering-map', 'qa-report'],
+  panels: ['panel-plan', 'render-prompt', 'render-job', 'render-attempt', 'rendered-asset', 'rendered-asset-manifest', 'rendering-guide', 'lettering-map', 'qa-report'],
 });
 const MANUAL_RENDER_TARGET_PROFILE_ID = 'rtp.external-manual';
 const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
@@ -100,7 +100,11 @@ const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
       percentComplete: 97,
     },
     {
-      label: 'Clinical truth layer',
+      label: 'Open disease intake and research assembly',
+      percentComplete: 84,
+    },
+    {
+      label: 'Clinical truth layer and governance',
       percentComplete: 94,
     },
     {
@@ -108,8 +112,8 @@ const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
       percentComplete: 76,
     },
     {
-      label: 'Scene, panel, and rendering-guide prep',
-      percentComplete: 90,
+      label: 'Scene, panel, and rendered-output flow',
+      percentComplete: 92,
     },
     {
       label: 'Review, eval, and export workflow',
@@ -129,16 +133,16 @@ const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
     },
   ],
   overall: {
-    localMvpReadiness: 96,
-    pilotReadiness: 72,
+    localMvpReadiness: 95,
+    pilotReadiness: 68,
   },
   remainingWork: [
-    'Broaden governed disease and source coverage beyond the current starter and primary-care tranches.',
-    'Deepen source refresh ownership automation, contradiction triage, and queue analytics for reviewer collaboration.',
+    'Broaden governed disease and source coverage through promoted packs, stronger source refresh ownership, and contradiction triage for newly typed diseases.',
+    'Deepen reviewer collaboration with richer mention delivery, thread ergonomics, and queue analytics beyond the current in-app baseline.',
     'Finish the real managed runtime cutover from local SQLite/filesystem fallback to PostgreSQL plus Blob in the live execution path.',
     'Run live Azure deployment, backup, restore, and observability drills with tenant credentials and production-grade secrets handling.',
     'Integrate external auth at the frontend or gateway layer when the app moves beyond local-open mode.',
-    'Add optional downstream publishing/export integrations after the rendering-guide-first handoff path is stable.',
+    'Add optional downstream publishing and distribution integrations after the rendered-panel export path is stable.',
   ],
 });
 const CONTENT_TYPES = new Map([
@@ -474,7 +478,7 @@ function isSourceCatalogPath(pathname) {
 
 /**
  * @param {string} pathname
- * @returns {{ runId: string } | null}
+ * @returns {boolean}
  */
 function isNotificationsPath(pathname) {
   return pathname === '/api/v1/notifications';
@@ -1768,12 +1772,7 @@ function buildClinicalPackageForRun(options) {
 
   return {
     ...clinicalPackage,
-    evidenceRelationships: options.clinicalService.listEvidenceRelationships(
-      knowledgePack.canonicalDiseaseName,
-      {
-        contradictionResolutions: governanceState.contradictionResolutions,
-      },
-    ),
+    evidenceRelationships: clinicalPackage.evidenceGraph.edges,
     knowledgePack,
     ...governanceState,
   };
@@ -1834,12 +1833,7 @@ function loadClinicalPackageForRun(options) {
     knowledgePack,
     sourceRecords: generatedClinicalPackage.sourceRecords,
     evidenceRecords: generatedClinicalPackage.evidenceRecords,
-    evidenceRelationships: options.clinicalService.listEvidenceRelationships(
-      knowledgePack.canonicalDiseaseName,
-      {
-        contradictionResolutions: governanceState.contradictionResolutions,
-      },
-    ),
+    evidenceRelationships: evidenceGraph.edges,
     governanceDecisions: governanceState.governanceDecisions,
     contradictionResolutions: governanceState.contradictionResolutions,
     traceCoverage: diseasePacket
@@ -2684,9 +2678,10 @@ function continueStoryPipeline(options) {
  *   workflowRun: any,
  *   workflowInput: WorkflowInput,
  *   canonicalDisease: any,
-  *   clinicalService: any,
+ *   clinicalService: any,
   *   storyEngineService: any,
  *   knowledgePack?: any,
+ *   allowReviewRequiredStoryContinuation?: boolean,
   *   actor?: any,
  * }} options
  * @returns {any}
@@ -2744,7 +2739,9 @@ function continueClinicalStage(options) {
     );
   }
 
-  if (clinicalPackage.diseasePacket.evidenceSummary.governanceVerdict === 'review-required') {
+  const allowsProvisionalContinuation = options.allowReviewRequiredStoryContinuation === true;
+
+  if (clinicalPackage.diseasePacket.evidenceSummary.governanceVerdict === 'review-required' && !allowsProvisionalContinuation) {
     workflowRun = transitionWorkflow(
       options.store,
       options.schemaRegistry,
@@ -2790,7 +2787,9 @@ function continueClinicalStage(options) {
         evidenceGraphId: clinicalPackage.evidenceGraph.id,
         factTableId: clinicalPackage.factTable.id,
       },
-      notes: 'Clinical package generated and approved for downstream story work.',
+      notes: allowsProvisionalContinuation
+        ? 'Clinical package generated from a provisional knowledge pack and cleared the draft threshold for downstream story work.'
+        : 'Clinical package generated and approved for downstream story work.',
     },
   );
 
@@ -3024,6 +3023,7 @@ async function continueNewDiseasePipeline(options) {
     clinicalService: options.clinicalService,
     storyEngineService: options.storyEngineService,
     knowledgePack: researchAssembly.knowledgePack,
+    allowReviewRequiredStoryContinuation: true,
     actor: options.actor,
   });
 }
@@ -5085,7 +5085,10 @@ function syncLatestEvalMetadata(store, schemaRegistry, workflowRun) {
  *   telemetryBackend?: string,
  *   serviceBusConnectionString?: string,
  *   renderProvider?: string,
- *   geminiApiKey?: string,
+ *   researchAssemblyService?: any,
+ *   openaiApiKey?: string,
+ *   researchModel?: string,
+ *   renderProviderApiKey?: string,
  * }} [options]
  * @returns {Promise<{ server: import('node:http').Server, store: PlatformStore }>}
  */
@@ -5101,10 +5104,14 @@ export async function createApp(options = {}) {
     telemetryBackend: options.telemetryBackend,
     serviceBusConnectionString: options.serviceBusConnectionString,
   });
+  if (!options.store && platformRuntime.metadataStoreKind !== 'sqlite') {
+    throw new Error(`METADATA_STORE_BACKEND=${platformRuntime.metadataStoreKind} is not yet supported by the live app. Keep metadata on sqlite for now or inject a compatible custom store.`);
+  }
   const store = options.store ?? new PlatformStore({
     rootDir,
     dbFilePath,
     objectStoreDir,
+    objectStorage: platformRuntime.objectStorage,
   });
   const schemaRegistry = await createSchemaRegistry(rootDir);
   const workflowSpec = await loadWorkflowSpec(rootDir);
@@ -6512,6 +6519,7 @@ export async function createApp(options = {}) {
             objectStoreDir: store.objectStoreDir,
           },
           platform: {
+            runtimeMode: platformRuntime.runtimeMode,
             metadataStore: platformRuntime.metadataStoreKind,
             objectStore: platformRuntime.objectStorageKind,
             queueBackend: platformRuntime.queueBackend,

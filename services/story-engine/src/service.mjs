@@ -267,12 +267,36 @@ function createStoryWorkbook(diseasePacket, profile, toneProfile) {
   const firstLab = diseasePacket.diagnostics.labs[0];
   const firstImaging = diseasePacket.diagnostics.imaging[0];
   const firstTherapy = diseasePacket.management.definitiveTherapies[0];
-  const primaryPathophysiology = diseasePacket.pathophysiology[0];
-  const secondaryPathophysiology = diseasePacket.pathophysiology[1] ?? diseasePacket.pathophysiology[0];
+  const fallbackClaimIds = diseasePacket.evidence.slice(0, 2).map((/** @type {{ claimId: string }} */ evidenceRecord) => evidenceRecord.claimId);
+  const primaryPathophysiology = diseasePacket.pathophysiology[0] ?? {
+    order: 1,
+    event: 'Primary disease mechanism',
+    mechanism: diseasePacket.clinicalSummary.keyMechanism,
+    scale: 'tissue',
+    linkedClaimIds: fallbackClaimIds,
+  };
+  const secondaryPathophysiology = diseasePacket.pathophysiology[1] ?? {
+    order: 2,
+    event: 'Clinical consequence',
+    mechanism: diseasePacket.clinicalSummary.oneSentence,
+    scale: 'organ',
+    linkedClaimIds: primaryPathophysiology.linkedClaimIds ?? fallbackClaimIds,
+  };
   const storyTitle = `The Hidden Signal Above the ${toTitleCase(profile.locationLabel)}`;
   const openingSetup = selectVariant(profile.openingSetups, diseasePacket.canonicalDiseaseName);
   const sideJokeSeed = selectVariant(profile.sideJokes, diseasePacket.canonicalDiseaseName);
   const patientPattern = summarizeSymptoms(diseasePacket);
+  const redHerrings = diseasePacket.diagnostics.differentials.length > 0
+    ? diseasePacket.diagnostics.differentials.slice(0, 2).map((/** @type {{ disease: string, whyConsidered: string, whyLessLikely: string }} */ differential) => ({
+      misleadingInterpretation: differential.disease,
+      whyItSeemsPlausible: differential.whyConsidered,
+      whyItFallsApart: differential.whyLessLikely,
+    }))
+    : [{
+      misleadingInterpretation: 'A broader but incomplete mimic',
+      whyItSeemsPlausible: diseasePacket.presentation.historyClues[0] ?? diseasePacket.clinicalSummary.patientExperienceSummary,
+      whyItFallsApart: diseasePacket.diagnostics.diagnosticLogic[0] ?? 'The full evidence trail points to a more specific mechanism than the early symptoms suggested.',
+    }];
 
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -323,11 +347,7 @@ function createStoryWorkbook(diseasePacket, profile, toneProfile) {
         linkedClaimIds: firstImaging?.claimIds ?? diseasePacket.diagnostics.pathology[0]?.claimIds ?? [],
       },
     ],
-    redHerrings: diseasePacket.diagnostics.differentials.slice(0, 2).map((/** @type {{ disease: string, whyConsidered: string, whyLessLikely: string }} */ differential) => ({
-      misleadingInterpretation: differential.disease,
-      whyItSeemsPlausible: differential.whyConsidered,
-      whyItFallsApart: differential.whyLessLikely,
-    })),
+    redHerrings,
     midpointReversal: profile.midpointReversal,
     grandReveal: {
       diagnosisName: diseasePacket.canonicalDiseaseName,
@@ -1383,7 +1403,7 @@ function createRenderPrompt(panel, storyWorkbook, diseasePacket, options) {
     schemaVersion: SCHEMA_VERSION,
     id: createId('rpr'),
     panelId: panel.panelId,
-    modelFamily: 'nano-banana-2',
+    modelFamily: 'openai-gpt-image',
     aspectRatio: panel.storyFunction === 'diagnosis reveal' ? '16:9' : '4:3',
     positivePrompt: `Comic-book panel art with readable ${panel.bodyScale} geography. ${panel.actionSummary} Location: ${panel.location}. Story purpose: ${panel.storyFunction}. Lighting: ${panel.lightingMood}. Keep ${panel.renderIntent.toLowerCase()} while preserving medical clarity and no visible text.`,
     negativePrompt: 'no speech bubbles, no captions, no labels, no medical chart overlays, no large text blocks, no duplicate characters, no anatomy contradictions, no generic sci-fi background, no illegible signage',

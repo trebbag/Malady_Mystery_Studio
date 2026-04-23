@@ -44,6 +44,14 @@ const VAGUE_DISEASE_INPUTS = new Set([
   'syndrome',
   'unknown',
 ]);
+const NON_DISEASE_INPUT_TOKENS = new Set([
+  'anything',
+  'choose',
+  'help',
+  'pick',
+  'please',
+  'something',
+]);
 
 /**
  * @param {string} rawInput
@@ -57,6 +65,10 @@ function isResearchableDiseaseInput(rawInput) {
   }
 
   if (VAGUE_DISEASE_INPUTS.has(normalizedInput)) {
+    return false;
+  }
+
+  if (normalizedInput.split(' ').some((token) => NON_DISEASE_INPUT_TOKENS.has(token))) {
     return false;
   }
 
@@ -277,28 +289,102 @@ function evidenceNeedsReview(sourceRecord, evidenceRecord) {
 }
 
 /**
+ * @param {any} presentation
+ * @param {{ timeScale?: string }} [clinicalSummary]
+ * @returns {{ commonSymptoms: string[], commonSigns: string[], historyClues: string[], physicalExamClues: string[], complications: string[], typicalTimecourse?: string }}
+ */
+function normalizePresentation(presentation = {}, clinicalSummary = {}) {
+  const commonSymptoms = Array.isArray(presentation.commonSymptoms)
+    ? clone(presentation.commonSymptoms)
+    : clone(presentation.hallmarkSymptoms ?? []);
+  const commonSigns = Array.isArray(presentation.commonSigns)
+    ? clone(presentation.commonSigns)
+    : clone(presentation.hallmarkSigns ?? presentation.signs ?? []);
+  const historyClues = Array.isArray(presentation.historyClues)
+    ? clone(presentation.historyClues)
+    : clone(presentation.history ?? presentation.hallmarkSymptoms ?? []);
+  const physicalExamClues = Array.isArray(presentation.physicalExamClues)
+    ? clone(presentation.physicalExamClues)
+    : clone(presentation.examFindings ?? commonSigns);
+  const complications = Array.isArray(presentation.complications)
+    ? clone(presentation.complications)
+    : clone(presentation.redFlags ?? []);
+  const typicalTimecourse = typeof presentation.typicalTimecourse === 'string'
+    ? presentation.typicalTimecourse
+    : (typeof presentation.timecourse === 'string' ? presentation.timecourse : clinicalSummary.timeScale);
+
+  return {
+    commonSymptoms,
+    commonSigns,
+    historyClues,
+    physicalExamClues,
+    complications,
+    ...(typeof typicalTimecourse === 'string' && typicalTimecourse ? { typicalTimecourse } : {}),
+  };
+}
+
+/**
+ * @param {string} testName
+ * @returns {boolean}
+ */
+function looksLikeImagingTest(testName) {
+  return /(ct|mri|x-?ray|ultrasound|scan|pet|imaging)/i.test(testName);
+}
+
+/**
+ * @param {string} testName
+ * @returns {boolean}
+ */
+function looksLikePathologyTest(testName) {
+  return /(biopsy|pathology|histology|cytology|immunostain|flow cytometry)/i.test(testName);
+}
+
+/**
+ * @param {string[]} tests
+ * @param {string} purpose
+ * @param {string} expectedFinding
+ * @returns {any[]}
+ */
+function normalizeDiagnosticItems(tests, purpose, expectedFinding) {
+  return tests.map((testName) => ({
+    name: testName,
+    purpose,
+    expectedFinding,
+    claimIds: [],
+  }));
+}
+
+/**
  * @param {any} management
  * @returns {{ acuteStabilization: string[], definitiveTherapies: any[], monitoring: string[], notes: string[] }}
  */
 function normalizeManagement(management = {}) {
   const acuteStabilization = Array.isArray(management.acuteStabilization)
     ? clone(management.acuteStabilization)
-    : clone(management.firstLine ?? []);
-  const definitiveTherapies = Array.isArray(management.definitiveTherapies) && management.definitiveTherapies.length > 0
-    ? clone(management.definitiveTherapies)
-    : (Array.isArray(management.escalation)
-      ? management.escalation.map((/** @type {string} */ step, /** @type {number} */ index) => ({
-        name: `Escalation step ${index + 1}`,
-        mechanismOfAction: step,
-        whenUsed: 'Use when the clinical picture escalates beyond initial stabilization.',
-      }))
-      : []);
+    : clone(management.stabilization ?? management.firstLine ?? []);
+  let definitiveTherapies = [];
+
+  if (Array.isArray(management.definitiveTherapies) && management.definitiveTherapies.length > 0) {
+    definitiveTherapies = clone(management.definitiveTherapies);
+  } else if (Array.isArray(management.diseaseDirectedCare) && management.diseaseDirectedCare.length > 0) {
+    definitiveTherapies = management.diseaseDirectedCare.map((/** @type {string} */ therapyName) => ({
+      name: therapyName,
+      mechanismOfAction: `Use ${therapyName} as part of the disease-directed treatment plan once the diagnosis is supported.`,
+      whenUsed: 'Use after the workup supports the diagnosis and specialty-directed care is appropriate.',
+    }));
+  } else if (Array.isArray(management.escalation)) {
+    definitiveTherapies = management.escalation.map((/** @type {string} */ step, /** @type {number} */ index) => ({
+      name: `Escalation step ${index + 1}`,
+      mechanismOfAction: step,
+      whenUsed: 'Use when the clinical picture escalates beyond initial stabilization.',
+    }));
+  }
 
   return {
     acuteStabilization,
     definitiveTherapies,
     monitoring: clone(management.monitoring ?? []),
-    notes: clone(management.notes ?? []),
+    notes: clone(management.notes ?? management.diseaseDirectedCare ?? []),
   };
 }
 
@@ -306,14 +392,47 @@ function normalizeManagement(management = {}) {
  * @param {any} diagnostics
  * @returns {any}
  */
-function normalizeDiagnostics(diagnostics) {
+function normalizeDiagnostics(diagnostics = {}) {
+  const firstLineTests = Array.isArray(diagnostics.firstLineTests) ? diagnostics.firstLineTests : [];
+  const confirmatoryTests = Array.isArray(diagnostics.confirmatoryTests) ? diagnostics.confirmatoryTests : [];
+  const derivedImaging = firstLineTests.filter((/** @type {string} */ testName) => looksLikeImagingTest(testName));
+  const derivedPathology = confirmatoryTests.filter((/** @type {string} */ testName) => looksLikePathologyTest(testName));
+  const derivedLabs = firstLineTests.filter((/** @type {string} */ testName) => !looksLikeImagingTest(testName) && !looksLikePathologyTest(testName));
+  const diagnosticLogic = Array.isArray(diagnostics.diagnosticLogic) && diagnostics.diagnosticLogic.length > 0
+    ? clone(diagnostics.diagnosticLogic)
+    : [
+      firstLineTests[0] ? `Start with ${firstLineTests[0]} to narrow the diagnosis and establish the main clinical clue.` : 'Start with the most informative initial test to narrow the diagnosis.',
+      confirmatoryTests[0] ? `Use ${confirmatoryTests[0]} to confirm the mechanism and separate this disease from close mimics.` : 'Use confirmatory testing to prove the mechanism and rule out close mimics.',
+    ];
+
   return {
-    ...clone(diagnostics),
-    pathology: (diagnostics.pathology ?? []).map((/** @type {any} */ item) => ({
-      name: item.name,
-      expectedFinding: item.expectedFinding,
-      claimIds: clone(item.claimIds ?? []),
-    })),
+    labs: Array.isArray(diagnostics.labs) && diagnostics.labs.length > 0
+      ? clone(diagnostics.labs)
+      : normalizeDiagnosticItems(
+        derivedLabs,
+        'Establish the initial diagnostic signal for the suspected disease.',
+        'Findings should support the suspected diagnosis or show the expected physiologic disturbance.',
+      ),
+    imaging: Array.isArray(diagnostics.imaging) && diagnostics.imaging.length > 0
+      ? clone(diagnostics.imaging)
+      : normalizeDiagnosticItems(
+        derivedImaging,
+        'Visualize the most likely anatomic or organ-level clue.',
+        'Imaging should show a finding that supports the suspected disease process.',
+      ),
+    pathology: Array.isArray(diagnostics.pathology) && diagnostics.pathology.length > 0
+      ? diagnostics.pathology.map((/** @type {any} */ item) => ({
+        name: item.name,
+        expectedFinding: item.expectedFinding,
+        claimIds: clone(item.claimIds ?? []),
+      }))
+      : derivedPathology.map((/** @type {string} */ testName) => ({
+        name: testName,
+        expectedFinding: 'Pathology should confirm the disease-defining tissue or cellular finding.',
+        claimIds: [],
+      })),
+    diagnosticLogic,
+    differentials: clone(diagnostics.differentials ?? []),
   };
 }
 
@@ -670,7 +789,7 @@ export class ClinicalRetrievalService {
       clinicalSummary: clone(knowledgePack.clinicalSummary),
       physiologyPrerequisites: clone(knowledgePack.physiologyPrerequisites),
       pathophysiology: clone(knowledgePack.pathophysiology),
-      presentation: clone(knowledgePack.presentation),
+      presentation: normalizePresentation(knowledgePack.presentation, knowledgePack.clinicalSummary),
       diagnostics: normalizeDiagnostics(knowledgePack.diagnostics),
       management: normalizeManagement(knowledgePack.management),
       evidence: evidenceRecords,

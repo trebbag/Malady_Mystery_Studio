@@ -25,8 +25,8 @@ export function BundlesPage() {
   );
   const exportDisabledReason = workflowRun.latestEvalStatus !== 'passed'
     ? 'Export is blocked until the latest eval run is fresh and passing.'
-    : (!reviewState.data?.renderingGuide
-      ? 'Export is blocked until a rendering guide exists for this run.'
+    : (!workflowRun.artifacts.some((artifact) => artifact.artifactType === 'rendered-asset-manifest')
+      ? 'Export is blocked until rendered panel assets and a rendered asset manifest exist for this run.'
       : undefined);
   const renderedAssetManifestId = bundleState.data?.renderedAssetManifestId;
   const renderedManifestLink = renderedAssetManifestId
@@ -66,8 +66,8 @@ export function BundlesPage() {
       </Card>
       {reviewState.data?.renderingGuide ? (
         <Card>
-          <CardTitle>Guide-first bundle readiness</CardTitle>
-          <CardDescription>The default release path exports the master rendering guide. External art manifests are optional secondary attachments.</CardDescription>
+          <CardTitle>Rendered-panel bundle readiness</CardTitle>
+          <CardDescription>The default release path exports rendered panels. The rendering guide remains a secondary prompt and retry artifact.</CardDescription>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <Metric label="Guide id" value={reviewState.data.renderingGuide.id} />
             <Metric label="Guide updated" value={formatDateTime(reviewState.data.renderingGuide.generatedAt)} />

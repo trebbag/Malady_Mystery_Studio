@@ -173,6 +173,17 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/review-queue-view.schema.json'
+  /api/v1/review-queue/analytics:
+    get:
+      summary: Get queue analytics for cross-run review and operations work
+      operationId: getReviewQueueAnalytics
+      responses:
+        '200':
+          description: Review queue analytics view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-queue-analytics-view.schema.json'
   /api/v1/workflow-runs/{runId}/review-run-view:
     get:
       summary: Get the frontend review-run read model
@@ -190,9 +201,114 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/review-run-view.schema.json'
+  /api/v1/workflow-runs/{runId}/research-brief:
+    get:
+      summary: Get the research brief for a workflow run
+      operationId: getWorkflowRunResearchBrief
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Research brief
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/research-brief.schema.json'
+  /api/v1/workflow-runs/{runId}/knowledge-pack-build-report:
+    get:
+      summary: Get the provisional knowledge-pack build report for a workflow run
+      operationId: getWorkflowRunKnowledgePackBuildReport
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Knowledge-pack build report
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/knowledge-pack-build-report.schema.json'
+  /api/v1/workflow-runs/{runId}/knowledge-pack/regenerate:
+    post:
+      summary: Regenerate a provisional knowledge pack and rebuild downstream clinical artifacts
+      operationId: regenerateWorkflowRunKnowledgePack
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated workflow run
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/workflow-run.schema.json'
+  /api/v1/workflow-runs/{runId}/knowledge-pack/approve:
+    post:
+      summary: Approve a provisional knowledge pack for the current run only
+      operationId: approveWorkflowRunKnowledgePack
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Updated workflow run
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/workflow-run.schema.json'
+  /api/v1/workflow-runs/{runId}/knowledge-pack/promote:
+    post:
+      summary: Promote a provisional knowledge pack into the shared governed library
+      operationId: promoteWorkflowRunKnowledgePack
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Updated workflow run
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/workflow-run.schema.json'
   /api/v1/workflow-runs/{runId}/rendering-guide:
     get:
-      summary: Get the rendering-guide read model for a workflow run
+      summary: Get the secondary rendering-guide read model for a workflow run
       operationId: getWorkflowRunRenderingGuide
       parameters:
         - in: path
@@ -209,7 +325,7 @@ paths:
                 $ref: '../contracts/rendering-guide-view.schema.json'
   /api/v1/workflow-runs/{runId}/rendering-guide/regenerate:
     post:
-      summary: Regenerate the master rendering guide from the latest panel pipeline artifacts
+      summary: Regenerate the secondary rendering guide from the latest panel pipeline artifacts
       operationId: regenerateWorkflowRunRenderingGuide
       parameters:
         - in: path
@@ -582,6 +698,48 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/artifact-diff-view.schema.json'
+  /api/v1/notifications:
+    get:
+      summary: List in-app notifications for the current operator
+      operationId: listNotifications
+      responses:
+        '200':
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/notification.schema.json'
+  /api/v1/notifications/{notificationId}:
+    patch:
+      summary: Update a notification status
+      operationId: updateNotification
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [unread, read, archived]
+      responses:
+        '200':
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/notification.schema.json'
   /api/v1/local-runtime-view:
     get:
       summary: Get the local runtime read model for the settings page
@@ -956,6 +1114,11 @@ paths:
                 oneOf:
                   - $ref: '../contracts/canonical-disease.schema.json'
                   - $ref: '../contracts/canonicalization-resolution.schema.json'
+                  - $ref: '../contracts/research-brief.schema.json'
+                  - $ref: '../contracts/source-harvest.schema.json'
+                  - $ref: '../contracts/knowledge-pack-build-report.schema.json'
+                  - $ref: '../contracts/disease-knowledge-pack.schema.json'
+                  - $ref: '../contracts/knowledge-pack-promotion-decision.schema.json'
                   - $ref: '../contracts/disease-packet.schema.json'
                   - $ref: '../contracts/fact-table.schema.json'
                   - $ref: '../contracts/evidence-graph.schema.json'
@@ -974,6 +1137,7 @@ paths:
                   - $ref: '../contracts/work-item.schema.json'
                   - $ref: '../contracts/review-thread.schema.json'
                   - $ref: '../contracts/review-message.schema.json'
+                  - $ref: '../contracts/notification.schema.json'
                   - $ref: '../contracts/render-job.schema.json'
                   - $ref: '../contracts/render-attempt.schema.json'
                   - $ref: '../contracts/rendered-asset.schema.json'

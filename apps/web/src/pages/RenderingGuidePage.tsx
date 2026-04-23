@@ -46,7 +46,7 @@ export function RenderingGuidePage() {
       <PageHeader
         eyebrow="Rendering Guide"
         title="Rendering Guide"
-        description="One master handoff guide for Nano Banana Pro and Genspark AI Slides, with one-panel-per-slide instructions and separate lettering overlays."
+        description="Secondary OpenAI Image support guide with run-level execution instructions, per-panel prompts, retry guidance, and separate lettering overlays."
         actions={(
           <div className="flex flex-wrap gap-2">
             <Button
@@ -92,7 +92,7 @@ export function RenderingGuidePage() {
         <>
           <Card>
             <CardTitle>Guide overview</CardTitle>
-            <CardDescription>The active release path now ends at this guide, not in-app rendering. External art attachment remains optional.</CardDescription>
+            <CardDescription>Rendered panels are the primary deliverable. This guide stays available as a prompt, QA, and retry artifact.</CardDescription>
             <div className="mt-4 grid gap-3 md:grid-cols-4">
               <Metric label="Guide id" value={renderingGuideState.data.renderingGuide.id} />
               <Metric label="Attachment mode" value={renderingGuideState.data.attachmentSummary.attachmentMode} />
@@ -102,10 +102,10 @@ export function RenderingGuidePage() {
           </Card>
 
           <Card>
-            <CardTitle>Genspark deck bootstrap</CardTitle>
-            <CardDescription>Use this once at the start of the deck, then generate slides sequentially one panel at a time.</CardDescription>
+            <CardTitle>OpenAI panel execution brief</CardTitle>
+            <CardDescription>Use this as the run-level instruction set before generating or regenerating individual panels.</CardDescription>
             <pre className="mt-4 overflow-x-auto rounded-2xl bg-shell-950 p-4 text-xs text-slate-100">
-              {renderingGuideState.data.renderingGuide.gensparkDeckBootstrapPrompt}
+              {renderingGuideState.data.renderingGuide.openAiPanelExecutionPrompt ?? renderingGuideState.data.renderingGuide.gensparkDeckBootstrapPrompt}
             </pre>
           </Card>
 
@@ -113,7 +113,7 @@ export function RenderingGuidePage() {
             <div className="flex flex-col gap-2">
               <CardTitle>Optional external art attachment</CardTitle>
               <CardDescription>
-                Attach externally rendered panel art back to this run by reference only. The guide remains the primary delivery artifact.
+                Attach externally rendered panel art back to this run by reference only. The rendered panels remain the primary delivery artifact.
               </CardDescription>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -207,15 +207,9 @@ export function RenderingGuidePage() {
                   <CardDescription>{String(panel.storyFunction)} · page {String(panel.pageNumber)}</CardDescription>
                   <div className="mt-4 space-y-4">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nano Banana Pro</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">OpenAI Image Prompt</p>
                       <pre className="mt-2 overflow-x-auto rounded-2xl bg-shell-950 p-4 text-xs text-slate-100">
-                        {String((panel.nanoBananaPrompt as Record<string, unknown>).prompt ?? '')}
-                      </pre>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Genspark Slide</p>
-                      <pre className="mt-2 overflow-x-auto rounded-2xl bg-shell-950 p-4 text-xs text-slate-100">
-                        {String((panel.gensparkSlide as Record<string, unknown>).creationPrompt ?? '')}
+                        {String(((panel.openAiImagePrompt ?? panel.nanoBananaPrompt) as Record<string, unknown>).prompt ?? '')}
                       </pre>
                     </div>
                   </div>

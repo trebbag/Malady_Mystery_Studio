@@ -35,7 +35,7 @@ export const webRouteManifest = [
     path: '/runs/:runId/review',
     screen: 'ReviewPage',
     viewContract: 'contracts/review-run-view.schema.json',
-    sections: ['assignments', 'comments', 'approvals', 'eval-summary', 'work-items', 'threads', 'rendering-guide'],
+    sections: ['assignments', 'comments', 'approvals', 'eval-summary', 'work-items', 'threads', 'knowledge-pack-review', 'rendering-guide'],
     actions: ['assign-reviewer', 'record-review-comment', 'record-approval', 'run-evaluations', 'export-bundle'],
     states: ['loading', 'blocked', 'review-ready', 'export-ready', 'error'],
   },
@@ -45,7 +45,7 @@ export const webRouteManifest = [
     viewContract: 'contracts/rendering-guide-view.schema.json',
     sections: ['guide-overview', 'deck-bootstrap', 'markdown-preview', 'panel-prompt-preview', 'external-art-attachment'],
     actions: ['regenerate-rendering-guide', 'copy-rendering-guide-markdown', 'download-rendering-guide-markdown', 'attach-rendered-assets'],
-    states: ['loading', 'guide-only', 'external-art-attached', 'error'],
+    states: ['loading', 'support-artifact-ready', 'external-art-attached', 'error'],
   },
   {
     path: '/review/runs/:runId',

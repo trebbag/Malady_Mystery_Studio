@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "shr.lch.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.lch.001",
+  "targetCanonicalDiseaseName": "Langerhans Cell Histiocytosis",
+  "sources": [
+    {
+      "sourceId": "src.lch.001",
+      "sourceLabel": "PubMed review",
+      "sourceType": "review",
+      "origin": "agent-web",
+      "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/example",
+      "retrievedAt": "2026-04-23T12:00:00Z",
+      "captureMethod": "responses-web-search",
+      "status": "provisional"
+    }
+  ],
+  "droppedSources": [
+    {
+      "label": "Unattributed blog post",
+      "reason": "Dropped because the source lacked governed medical provenance."
+    }
+  ],
+  "generatedAt": "2026-04-23T12:00:00Z"
+}

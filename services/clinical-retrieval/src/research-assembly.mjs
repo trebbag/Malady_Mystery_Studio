@@ -234,7 +234,7 @@ function buildResearchBrief(options) {
  * @returns {any}
  */
 function buildSourceHarvest(responseSources, knowledgePack, options) {
-  const sources = (knowledgePack.sourceCatalog ?? []).map((sourceEntry) => ({
+  const sources = (knowledgePack.sourceCatalog ?? []).map((/** @type {any} */ sourceEntry) => ({
     sourceId: sourceEntry.id,
     sourceLabel: sourceEntry.sourceLabel,
     sourceType: sourceEntry.sourceType,
@@ -244,7 +244,7 @@ function buildSourceHarvest(responseSources, knowledgePack, options) {
     captureMethod: sourceEntry.captureMethod ?? 'responses-web-search',
     status: sourceEntry.reviewState ?? 'provisional',
   }));
-  const knownUrls = new Set(sources.map((entry) => entry.sourceUrl).filter(Boolean));
+  const knownUrls = new Set(sources.map((/** @type {{ sourceUrl?: string }} */ entry) => entry.sourceUrl).filter(Boolean));
 
   for (const responseSource of responseSources) {
     const url = String(responseSource.url ?? '');

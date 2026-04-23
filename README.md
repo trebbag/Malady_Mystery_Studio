@@ -1,6 +1,6 @@
 # Disease Comic Platform
 
-Local-first starter platform for turning a disease or condition into a medically traceable comic production package with workbook, scene, panel, rendering-guide, review, eval, and export artifacts.
+Local-first platform for turning any typed disease or condition into a medically traceable comic production pipeline with research assembly, workbook, scene, panel, rendered-output, review, eval, and export artifacts.
 
 ## Local runtime
 
@@ -63,23 +63,24 @@ pnpm ops:restore-smoke
 ## Current local MVP status
 
 - Foundation and local runtime: `97%`
-- Clinical truth layer: `94%`
+- Open disease intake and research assembly: `84%`
+- Clinical truth layer and governance: `94%`
 - Workbook and guardrails: `76%`
-- Scene, panel, and rendering-guide prep: `90%`
+- Scene, panel, and rendered-output flow: `92%`
 - Review, eval, and export workflow: `98%`
 - Frontend structure and UX implementation: `95%`
 - Managed platform and pilot ops: `64%`
 - Optional external-art attachment and downstream publishing: `48%`
 
 Overall:
-- Prompt-handoff MVP readiness: `96%`
-- Prompt-handoff pilot readiness: `72%`
+- Local MVP readiness: `95%`
+- Pilot readiness: `68%`
 
 ## What remains before MVP and pilot
 
-- Broaden governed disease and source coverage beyond the current starter, expansion, and primary-care tranches.
-- Deepen source refresh ownership automation, contradiction triage, queue analytics, and richer reviewer collaboration.
+- Broaden governed disease and source coverage through promoted packs, stronger source refresh ownership, and contradiction triage for newly typed diseases.
+- Deepen reviewer collaboration with richer mention delivery, stronger thread UX, notification polish, and queue analytics.
 - Finish the real managed runtime cutover from local SQLite/filesystem fallback to PostgreSQL plus Blob in the live execution path.
 - Harden Azure deployment, secrets wiring, restore drills, and operational observability beyond the current scaffold.
 - Integrate external auth and gateway identity when the product moves beyond local-open operator mode.
-- Add optional downstream publishing/export integrations after the rendering-guide-first handoff path is stable.
+- Add optional downstream publishing/export integrations after the rendered-panel export path is stable.

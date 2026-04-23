@@ -842,21 +842,23 @@ The product should treat image generation as a **downstream production stage** r
 
 ### 17.2 Current model assumptions (as of April 2026)
 
-The default product path now ends at a compiled rendering guide rather than in-app provider execution. External tools may still be used downstream, so the platform keeps prompt-fitting guidance for currently relevant targets. Google documents Nano Banana 2 as Gemini 3.1 Flash Image Preview, the high-efficiency counterpart to Gemini 3 Pro Image, optimized for speed and high-volume image generation. Google’s developer guide lists it as a preview model with a 128k input / 32k output context window and a January 2025 knowledge cutoff. Google’s model card states that it can support clear text and localized text rendering in some use cases, but also notes limitations with small text, long paragraphs, character consistency, and occasional left/right spatial confusion. These facts mean the system should preserve a separate lettering and continuity layer, avoid depending on the model to invent or remember medical truth, and emit provider-fitted prompt blocks inside the rendering guide instead of treating provider execution as the source of truth. [R1][R2][R3]
+The default product path now ends in rendered panels generated through OpenAI’s image API path, with the compiled `rendering-guide` retained as a secondary QA and retry artifact. OpenAI’s current image-generation guidance and model docs position GPT Image as the primary image family for the Images API, with `gpt-image-1.5` documented as the latest flagship model and `gpt-image-1` / `gpt-image-1-mini` as related options. [R1][R2][R3]
+
+These facts mean the system should preserve a separate lettering and continuity layer, avoid depending on the image model to invent or remember medical truth, and keep clinically meaningful facts inside governed upstream artifacts even when the rendered panels are the final end product. [R1][R3]
 
 ### 17.3 Practical render requirements derived from model behavior
 
-Because current official guidance says the model can generate legible text in some formats but struggles with small text and long paragraphs, the platform shall:
+Because current official guidance emphasizes strong instruction following and text-rendering capability, the platform shall still:
 - treat speech balloons and teaching captions as separate overlay assets by default,
 - avoid asking the image model to embed dense educational text,
 - generate panel art with either no text or only minimal nonessential diegetic text,
 - use structured panel inputs and continuity anchors instead of long free-form story dumps.
 
-Because the model card notes imperfect character consistency and occasional spatial confusion, the platform shall:
+Because panel continuity and medical consistency remain product responsibilities rather than model guarantees, the platform shall:
 - maintain locked character sheets,
 - include explicit subject counts and identity anchors,
 - favor one panel per request over batch narrative prompts for important pages,
-- run continuity QA after art generation. [R2][R4]
+- run continuity QA after art generation. [R1][R3]
 
 ### 17.4 Prompt engineering requirements
 
@@ -865,11 +867,11 @@ The render subsystem shall:
 - preserve hierarchy of content: subject -> action -> setting -> composition -> style -> exclusions,
 - avoid ambiguous directional language unless anchored by composition,
 - support alternate prompt strategies for failed renders,
-- store prompt template versions and output quality metrics.
+- store prompt template versions and output quality metrics. [R1]
 
 ### 17.5 Render target abstraction
 
-Even if Nano Banana 2 is an initial external image target, the application must abstract rendering so that another model can be swapped in later with minimal business-logic change, and so that the rendering guide remains the stable handoff contract regardless of which external tool is used.
+Even though OpenAI GPT Image is the initial in-app render target, the application must abstract rendering so that another model can be swapped in later with minimal business-logic change, and so that the rendering guide remains a stable secondary support artifact regardless of which external tool is used.
 
 The render target profile should include:
 - input limits,
@@ -1788,7 +1790,7 @@ Use a model router that chooses among:
 
 ### 31.2 Structured outputs
 
-Where supported, the agent runtime should require structured outputs against explicit JSON schemas. Google’s structured-output docs note that streamed chunks can be valid partial JSON strings that concatenate into a final object, which is useful for long-running structured generations and progressive UI updates. [R13]
+Where supported, the agent runtime should require structured outputs against explicit JSON schemas. OpenAI’s structured-outputs guide emphasizes schema-constrained responses for reliable typed output, which is useful for long-running structured generations and progressive UI updates. [R13]
 
 ### 31.3 Prompt registry
 
@@ -1810,7 +1812,7 @@ All prompts shall be stored as versioned artifacts with:
 - clinical prompts must require evidence-bound responses,
 - story prompts must consume structured upstream artifacts rather than re-derive facts.
 
-Google’s prompt guidance emphasizes clear, specific instructions and iterative prompt refinement, which aligns with this staged design. [R4]
+OpenAI’s guidance likewise emphasizes clear, specific instructions and schema-backed outputs, which aligns with this staged design. [R4]
 
 ### 31.5 Context packing
 
@@ -2357,10 +2359,10 @@ If those layers are built well, the platform can become more than a single app. 
 
 ## 44. External References Informing Architecture Assumptions
 
-**[R1]** Google AI for Developers. *Gemini 3.1 Flash Image Preview.*  
-**[R2]** Google DeepMind. *Gemini 3.1 Flash Image Model Card.*  
-**[R3]** Google AI for Developers. *Gemini 3 Developer Guide.*  
-**[R4]** Google AI for Developers. *Prompt design strategies.*  
+**[R1]** OpenAI. *Image generation guide.*  
+**[R2]** OpenAI. *GPT Image 1.5 model page.*  
+**[R3]** OpenAI. *Images API reference.*  
+**[R4]** OpenAI. *Structured outputs guide.*  
 **[R5]** HHS. *Summary of the HIPAA Security Rule.*  
 **[R6]** HHS. *Summary of the HIPAA Privacy Rule.*  
 **[R7]** FDA. *Clinical Decision Support Software Guidance for Industry and Food and Drug Administration Staff (January 2026).*  
@@ -2369,7 +2371,7 @@ If those layers are built well, the platform can become more than a single app. 
 **[R10]** OWASP. *Application Security Verification Standard (ASVS).*  
 **[R11]** HL7. *SMART App Launch v2.2.0 Overview.*  
 **[R12]** HL7. *FHIR R4 specification.*  
-**[R13]** Google AI for Developers. *Structured outputs.*
+**[R13]** OpenAI. *Structured outputs guide.*
 
 For a publication-grade business requirements package, the next best companion artifacts would be:
 1. an OpenAPI specification,
@@ -2901,17 +2903,17 @@ If the platform gets the schemas, workflow, quality gates, and governance right,
 
 ## 61. Reference URLs
 
-- **[R1]** Google AI for Developers. *Gemini 3.1 Flash Image Preview.*  
-  https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-image-preview
+- **[R1]** OpenAI. *Image generation guide.*  
+  https://platform.openai.com/docs/guides/image-generation
 
-- **[R2]** Google DeepMind. *Gemini 3.1 Flash Image Model Card.*  
-  https://deepmind.google/models/model-cards/gemini-3-1-flash-image/
+- **[R2]** OpenAI. *GPT Image 1.5 model page.*  
+  https://platform.openai.com/docs/models/gpt-image-1.5
 
-- **[R3]** Google AI for Developers. *Gemini 3 Developer Guide.*  
-  https://ai.google.dev/gemini-api/docs/gemini-3
+- **[R3]** OpenAI. *Images API reference.*  
+  https://platform.openai.com/docs/api-reference/images/generate
 
-- **[R4]** Google AI for Developers. *Prompt design strategies.*  
-  https://ai.google.dev/gemini-api/docs/prompting-strategies
+- **[R4]** OpenAI. *Structured outputs guide.*  
+  https://platform.openai.com/docs/guides/structured-outputs
 
 - **[R5]** HHS. *Summary of the HIPAA Security Rule.*  
   https://www.hhs.gov/hipaa/for-professionals/security/laws-regulations/index.html
@@ -2937,5 +2939,5 @@ If the platform gets the schemas, workflow, quality gates, and governance right,
 - **[R12]** HL7. *FHIR R4 specification.*  
   https://www.hl7.org/fhir/R4/
 
-- **[R13]** Google AI for Developers. *Structured outputs.*  
-  https://ai.google.dev/gemini-api/docs/structured-output
+- **[R13]** OpenAI. *Structured outputs guide.*  
+  https://platform.openai.com/docs/guides/structured-outputs

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "rbr.lch.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.lch.001",
+  "rawDiseaseInput": "Langerhans cell histiocytosis",
+  "normalizedDiseaseInput": "langerhans cell histiocytosis",
+  "targetCanonicalDiseaseName": "Langerhans Cell Histiocytosis",
+  "audienceTier": "provider-education",
+  "lengthProfile": "standard",
+  "qualityProfile": "commercial-grade",
+  "styleProfile": "alien-detective-clinical-mystery",
+  "researchIntent": "Compile a medically traceable provisional disease knowledge pack that can support downstream comic production artifacts.",
+  "allowedDomains": [
+    "pubmed.ncbi.nlm.nih.gov",
+    "www.cdc.gov"
+  ],
+  "createdAt": "2026-04-23T12:00:00Z"
+}

@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0.0",
-  "id": "rtp.gemini-image-default",
-  "provider": "gemini-image",
-  "model": "gemini-3.1-flash-image-preview",
+  "id": "rtp.openai-image-default",
+  "provider": "openai-image",
+  "model": "gpt-image-1.5",
   "supportedAspectRatios": [
     "4:3",
     "16:9",
@@ -14,9 +14,9 @@
     "tight-anatomy"
   ],
   "textHandlingPolicy": "Never request visible lettering in generated art; preserve lettering as a separate overlay.",
-  "watermarkPolicy": "Provider output includes SynthID watermarking metadata at generation time.",
+  "watermarkPolicy": "Provider output may include vendor safety metadata; do not rely on the generated image as the text layer.",
   "notes": [
-    "Gemini image output must be continuity anchored and medically constrained.",
+    "OpenAI image output must be continuity anchored and medically constrained.",
     "Fallback prompts should simplify composition before weakening anatomy locks."
   ]
 }

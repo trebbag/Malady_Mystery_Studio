@@ -1,4 +1,4 @@
-# ADR 0007: Keep managed render execution as an optional secondary branch
+# ADR 0007: Keep managed render execution as the primary panel-delivery branch behind a provider abstraction
 
 - **Status:** Accepted
 - **Date:** 2026-04-23
@@ -7,25 +7,25 @@
 
 ## Context
 
-The platform already produces panel plans, render prompts, lettering maps, and now a first-class `rendering-guide`. Direct provider execution is no longer the default product path, but externally attached art and legacy managed render flows still need typed contracts, retry history, and provider abstraction so older runs remain readable.
+The platform already produces panel plans, render prompts, lettering maps, and a first-class `rendering-guide`. The product now treats actual rendered panels as the default finished output again, while keeping the render provider behind a stable abstraction so the workflow, QA, and export contracts do not collapse into vendor-specific code.
 
 ## Decision
 
-Keep a dedicated `render-execution` workflow stage and provider-abstracted render services only as an optional secondary branch. Prompt generation and lettering remain separate concerns, but the active export path now ends at a `rendering-guide` artifact. Rendered assets and manifests remain readable and attachable, but they are no longer required for default release export.
+Keep a dedicated `render-execution` workflow stage and provider-abstracted render services as the default visual-delivery branch. Prompt generation and lettering remain separate concerns. The active export path now ends at a rendered-asset manifest, while the `rendering-guide` remains a secondary support artifact for QA, retries, and manual reuse.
 
 ## Consequences
 
 ### Positive
-- externally rendered assets remain first-class, reviewable, and attachable artifacts
+- rendered panel assets remain first-class, reviewable, and exportable artifacts
 - retry logic and failure reasons stay auditable for teams that still need managed render execution
 - provider logic stays behind a stable render-service boundary
-- the default product path no longer depends on vendor-specific runtime image generation
+- the system can swap image providers later without rewriting workflow or review semantics
 
 ### Tradeoffs
-- managed render infrastructure still exists in the codebase and must be maintained as a secondary path
-- teams can confuse optional rendered-output quality with the default guide-first release path if docs drift
-- provider-specific failure modes remain a maintenance cost even though they are no longer core to MVP completion
+- managed render infrastructure is back on the critical path and must be kept reliable
+- provider-specific failure modes are again part of release readiness
+- docs and UI must stay clear that the rendering guide is a support artifact, not the shipped end product
 
 ## Alternatives considered
-- remove render execution entirely: rejected because externally attached assets and older rendered runs still need typed support
+- remove render execution entirely: rejected because the product must ship finished panels, not just prompts
 - wire provider calls directly inside the review/export flow: rejected because it couples workflow logic to one vendor and obscures retries

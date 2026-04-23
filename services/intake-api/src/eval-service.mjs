@@ -315,13 +315,8 @@ function artifactIsAvailable(artifactType, context) {
  */
 export function isCaseApplicable(evaluationCase, context) {
   const caseDisease = normalizeName(evaluationCase.input?.disease);
-  const artifactType = evaluationCase.input?.artifact;
 
   if (caseDisease && caseDisease !== context.canonicalDiseaseName) {
-    return false;
-  }
-
-  if (evaluationCase.evalFamily === 'render_output_quality' && typeof artifactType === 'string' && !artifactIsAvailable(artifactType, context)) {
     return false;
   }
 
@@ -417,20 +412,14 @@ function scoreRenderingGuideQuality(context) {
 
   let score = 1;
 
-  if (!renderingGuide.slideStrategy?.onePanelPerSlide || !renderingGuide.slideStrategy?.sequentialGenerationRequired) {
-    score -= 0.2;
-  }
-
-  if (!renderingGuide.slideStrategy?.firstSlideStyleLockRequired || renderingGuide.slideStrategy?.forbidLiveResearch !== true) {
-    score -= 0.15;
-  }
-
-  if (!renderingGuide.gensparkDeckBootstrapPrompt) {
+  if (!renderingGuide.openAiPanelExecutionPrompt && !renderingGuide.gensparkDeckBootstrapPrompt) {
     score -= 0.1;
   }
 
   for (const panel of renderingGuide.panels ?? []) {
-    if (!panel.nanoBananaPrompt?.prompt || !panel.gensparkSlide?.creationPrompt) {
+    const openAiPrompt = panel.openAiImagePrompt ?? panel.nanoBananaPrompt;
+
+    if (!openAiPrompt?.prompt) {
       score -= 0.2;
     }
 
@@ -438,7 +427,7 @@ function scoreRenderingGuideQuality(context) {
       score -= 0.08;
     }
 
-    if ((panel.nanoBananaPrompt?.anatomyLocks ?? []).length < 2) {
+    if ((openAiPrompt?.anatomyLocks ?? []).length < 2) {
       score -= 0.08;
     }
 
@@ -448,10 +437,6 @@ function scoreRenderingGuideQuality(context) {
 
     if ((panel.claimReferences ?? []).length === 0) {
       score -= 0.12;
-    }
-
-    if (!panel.gensparkSlide?.useOnlyProvidedContent || !panel.gensparkSlide?.forbidLiveResearch) {
-      score -= 0.15;
     }
   }
 

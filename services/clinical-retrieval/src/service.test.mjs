@@ -41,6 +41,20 @@ test('reviewer override must target an approved disease entry', () => {
   );
 });
 
+test('researchable but unknown disease input enters the new-disease path', () => {
+  const canonicalDisease = service.canonicalizeDiseaseInput('Langerhans cell histiocytosis');
+
+  assert.equal(canonicalDisease.resolutionStatus, 'new-disease');
+  assert.equal(canonicalDisease.normalizedInput, 'langerhans cell histiocytosis');
+  assert.equal(canonicalDisease.candidateMatches.length, 0);
+});
+
+test('vague non-disease input remains unresolved', () => {
+  const canonicalDisease = service.canonicalizeDiseaseInput('help me pick something');
+
+  assert.equal(canonicalDisease.resolutionStatus, 'unresolved');
+});
+
 test('resolved canonical disease can build a traceable disease packet', () => {
   const canonicalDisease = service.canonicalizeDiseaseInput('community-acquired pneumonia');
   const diseasePacket = service.buildDiseasePacket(canonicalDisease);

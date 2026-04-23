@@ -4,7 +4,7 @@
   "tenantId": "tenant.local",
   "workflowRunId": "run.hcc.001",
   "renderJobId": "rjob.hcc.001",
-  "renderTargetProfileId": "rtp.gemini-image-default",
+  "renderTargetProfileId": "rtp.openai-image-default",
   "allPanelsRendered": true,
   "renderedAssets": [
     {

@@ -37,7 +37,7 @@ function selectPrimaryQaReport(qaReports) {
  * @param {any[]} qaReports
  * @param {any} diseasePacket
  * @param {any | undefined} evaluationSummary
- * @param {Array<{ artifactType: string }>} artifactManifest
+ * @param {Array<{ artifactType: string, artifactId?: string }>} artifactManifest
  * @returns {{ medicalAccuracy: number, evidenceTraceability: number, mysteryIntegrity: number, educationalSequencing: number, panelization: number, renderReadiness: number, renderingGuideQuality: number, renderOutputQuality: number, sourceFreshness: number, contradictionStatus: string, releaseVerdict: string }}
  */
 function buildQualitySummary(qaReports, diseasePacket, evaluationSummary, artifactManifest) {
@@ -74,7 +74,7 @@ function buildQualitySummary(qaReports, diseasePacket, evaluationSummary, artifa
 
 /**
  * @param {any} workflowRun
- * @param {Array<{ artifactType: string }>} artifactManifest
+ * @param {Array<{ artifactType: string, artifactId?: string }>} artifactManifest
  * @param {any[]} qaReports
  * @param {any} diseasePacket
  * @returns {Array<{ name: string, status: string, details: string }>}

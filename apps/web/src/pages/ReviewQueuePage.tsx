@@ -9,7 +9,7 @@ import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Table, Td, Th } from '@/components/ui/table';
-import { fetchReviewQueue, updateWorkItem } from '@/lib/api';
+import { fetchReviewQueue, fetchReviewQueueAnalytics, updateWorkItem } from '@/lib/api';
 import { useRefreshContext, useRefreshSignal } from '@/lib/refresh-context';
 import { useRemoteData } from '@/lib/use-remote-data';
 import { formatDateTime } from '@/lib/utils';
@@ -30,6 +30,7 @@ export function ReviewQueuePage() {
     () => fetchReviewQueue(filters),
     [filters.workType, filters.status, filters.priority, filters.queueName, filters.assignee, refreshSignal],
   );
+  const analyticsState = useRemoteData(() => fetchReviewQueueAnalytics(), [refreshSignal]);
 
   const updateFilter = (name: string, value: string) => {
     const nextSearchParams = new URLSearchParams(searchParams);
@@ -91,6 +92,25 @@ export function ReviewQueuePage() {
 
       {queueState.data ? (
         <>
+          {analyticsState.data ? (
+            <Card>
+              <CardTitle>Queue analytics</CardTitle>
+              <CardDescription>Escalation and workload metrics across run review, source refresh, render retry, and operational follow-through.</CardDescription>
+              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <MetricCard label="Total items" value={analyticsState.data.summary.totalItemCount} />
+                <MetricCard label="Overdue rate" value={Math.round(analyticsState.data.summary.overdueRate * 100)} suffix="%" />
+                <MetricCard label="Escalation rate" value={Math.round(analyticsState.data.summary.escalationRate * 100)} suffix="%" />
+                <MetricCard label="Median age" value={Math.round(analyticsState.data.summary.medianAgeHours)} suffix="h" />
+                <MetricCard label="Overdue items" value={analyticsState.data.summary.overdueItemCount} />
+              </div>
+              <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                <MetricList title="By work type" rows={analyticsState.data.countsByWorkType.map((row) => ({ label: row.workType, value: row.count }))} />
+                <MetricList title="Assignee load" rows={analyticsState.data.assigneeLoad.map((row) => ({ label: row.assignee, value: row.count }))} />
+                <MetricList title="Run blockers by stage" rows={analyticsState.data.runBlockersByStage.map((row) => ({ label: row.stage, value: row.count }))} />
+              </div>
+            </Card>
+          ) : null}
+
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <MetricCard label="Visible items" value={queueState.data.stats.visibleItemCount} />
             <MetricCard label="Overdue items" value={queueState.data.stats.overdueItemCount} />
@@ -166,11 +186,27 @@ export function ReviewQueuePage() {
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: number }) {
+function MetricCard({ label, value, suffix = '' }: { label: string; value: number; suffix?: string }) {
   return (
     <Card className="bg-white/85">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <p className="mt-2 font-display text-3xl font-semibold text-shell-950">{value}</p>
+      <p className="mt-2 font-display text-3xl font-semibold text-shell-950">{value}{suffix}</p>
+    </Card>
+  );
+}
+
+function MetricList({ title, rows }: { title: string; rows: Array<{ label: string; value: number }> }) {
+  return (
+    <Card className="bg-white/85">
+      <CardTitle>{title}</CardTitle>
+      <div className="mt-4 space-y-2">
+        {rows.length > 0 ? rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between rounded-xl border border-black/10 bg-slate-50 px-3 py-2 text-sm">
+            <span className="text-slate-600">{row.label}</span>
+            <span className="font-semibold text-shell-950">{row.value}</span>
+          </div>
+        )) : <p className="text-sm text-slate-500">No data yet.</p>}
+      </div>
     </Card>
   );
 }

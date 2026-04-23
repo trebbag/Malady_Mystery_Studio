@@ -27,7 +27,7 @@ test('createDraftWorkflowRun seeds the starter stage and approvals', () => {
   );
 });
 
-test('workflow stages advance into review through explicit guide handoff after render prep', () => {
+test('workflow stages advance through research assembly and render execution before review', () => {
   let workflowRun = createDraftWorkflowRun(workflowSpec, baseProject, 'run.demo.002', initialTimestamp);
 
   ({ workflowRun } = applyWorkflowEvent(
@@ -44,7 +44,8 @@ test('workflow stages advance into review through explicit guide handoff after r
     '2026-04-21T00:00:01Z',
   ));
 
-  for (let index = 0; index < 6; index += 1) {
+  for (let index = 0; index < 9; index += 1) {
+    const timestamp = `2026-04-21T00:00:${String(index + 2).padStart(2, '0')}Z`;
     ({ workflowRun } = applyWorkflowEvent(
       workflowSpec,
       workflowRun,
@@ -56,33 +57,23 @@ test('workflow stages advance into review through explicit guide handoff after r
         },
       },
       createId('evt'),
-      `2026-04-21T00:00:0${index + 2}Z`,
+      timestamp,
     ));
   }
 
-  ({ workflowRun } = applyWorkflowEvent(
-    workflowSpec,
-    workflowRun,
-    {
-      eventType: 'ENTER_REVIEW',
-      actor: {
-        type: 'system',
-        id: 'render-guide-handoff',
-      },
-    },
-    createId('evt'),
-    '2026-04-21T00:00:08Z',
-  ));
-
   assert.equal(workflowRun.state, 'review');
   assert.equal(workflowRun.currentStage, 'review');
+  assert.equal(
+    workflowRun.stages.find((/** @type {{ name: string, status: string }} */ stage) => stage.name === 'research-assembly')?.status,
+    'passed',
+  );
   assert.equal(
     workflowRun.stages.find((/** @type {{ name: string, status: string }} */ stage) => stage.name === 'render-prep')?.status,
     'passed',
   );
   assert.equal(
     workflowRun.stages.find((/** @type {{ name: string, status: string }} */ stage) => stage.name === 'render-execution')?.status,
-    'pending',
+    'passed',
   );
   assert.equal(
     workflowRun.stages.find((/** @type {{ name: string, status: string }} */ stage) => stage.name === 'review')?.status,
@@ -128,7 +119,8 @@ test('approval completion requires all configured reviewer roles', () => {
     '2026-04-21T00:00:01Z',
   ));
 
-  for (let index = 0; index < 6; index += 1) {
+  for (let index = 0; index < 9; index += 1) {
+    const timestamp = `2026-04-21T00:00:${String(index + 10).padStart(2, '0')}Z`;
     ({ workflowRun } = applyWorkflowEvent(
       workflowSpec,
       workflowRun,
@@ -140,23 +132,9 @@ test('approval completion requires all configured reviewer roles', () => {
         },
       },
       createId('evt'),
-      `2026-04-21T00:00:1${index}Z`,
+      timestamp,
     ));
   }
-
-  ({ workflowRun } = applyWorkflowEvent(
-    workflowSpec,
-    workflowRun,
-    {
-      eventType: 'ENTER_REVIEW',
-      actor: {
-        type: 'system',
-        id: 'render-guide-handoff',
-      },
-    },
-    createId('evt'),
-    '2026-04-21T00:00:16Z',
-  ));
 
   for (const role of ['clinical', 'editorial', 'product']) {
     ({ workflowRun } = applyWorkflowEvent(

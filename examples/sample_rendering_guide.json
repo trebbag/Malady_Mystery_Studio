@@ -6,8 +6,7 @@
   "projectTitle": "Hepatocellular carcinoma starter project",
   "canonicalDiseaseName": "Hepatocellular carcinoma",
   "providerTargets": [
-    "nano-banana-pro",
-    "genspark-ai-slides"
+    "openai-gpt-image"
   ],
   "generatedAt": "2026-04-23T15:00:00Z",
   "markdownDocumentId": "rgd.hcc.001",
@@ -55,12 +54,6 @@
     ],
     "letteringPolicy": "Never request visible dialogue, captions, labels, or teaching copy inside the generated art. Apply all text from the separate lettering layer after image generation or slide placement."
   },
-  "slideStrategy": {
-    "onePanelPerSlide": true,
-    "sequentialGenerationRequired": true,
-    "firstSlideStyleLockRequired": true,
-    "forbidLiveResearch": true
-  },
   "globalNegativeConstraints": [
     "no speech bubbles",
     "no captions",
@@ -68,12 +61,11 @@
     "no medical chart overlays",
     "no gore"
   ],
-  "gensparkDeckBootstrapPrompt": "Create a slide deck for the run \"run.hcc.001\" from the attached rendering guide \"rgd.hcc.001\". Use exactly 1 slides, with one comic panel per slide and no parallel slide generation. Build the outline first, then create slides sequentially. Lock slide 1 style and require every later slide to match it. Use only the supplied panel content for Hepatocellular carcinoma. Do not replace the medical content with live web research or new claims. Keep all visible text editable and sourced from the provided lettering entries, not embedded in the art. The final deck should preserve the project title \"Hepatocellular carcinoma starter project\" and remain clinically traceable to the supplied claim references.",
   "retryGuidance": [
     "If a panel loses anatomy clarity, simplify the composition before weakening the medical objective.",
-    "If character continuity drifts, explicitly restate the detective locks and reuse the first successful slide or image as the style reference.",
+    "If character continuity drifts, explicitly restate the detective locks and reuse the first successful panel as the style reference.",
     "If the model adds visible text, remove all requested text from the art prompt and keep overlays in the lettering instructions only.",
-    "If Genspark drifts slide style across the deck, regenerate sequentially and lock slide 1 as the reference for every remaining slide."
+    "If a panel fails repeatedly, keep the clinical objective fixed and tighten only composition, continuity, and anatomy locks."
   ],
   "panels": [
     {
@@ -135,7 +127,7 @@
           ]
         }
       ],
-      "nanoBananaPrompt": {
+      "openAiImagePrompt": {
         "aspectRatio": "4:3",
         "prompt": "Create a detailed comic-book illustration. Subject and action: They hover near a district of cells whose architecture breaks the surrounding pattern.. Story purpose: first major clue. Medical purpose: Suggest autonomous abnormal growth without naming the diagnosis.. Environment and background: adjacent to suspicious liver region at tissue scale with ominous discovery lighting. Composition: medium shot with focal push-in, slightly canted, Contrast the suspicious region against more orderly surrounding tissue.. Continuity anchors: case tablet hologram; jet pack glow; distorted tissue geometry. Character locks: Detective A is shorter and more impulsive; Detective B is taller and more analytical. Anatomy and mechanism locks: liver-inspired tissue geometry; focal abnormal district contrasts with surrounding tissue; avoid generic intestine-like visuals. Style and quality locks: action-packed whimsical comic mystery; high clarity; panel composition optimized for later lettering. Leave clean space for later lettering and do not render any visible text in the image.",
         "negativePrompt": "no speech bubbles, no captions, no labels, no medical chart overlays, no gore, no photoreal pathology slide, no extra detectives, no duplicate limbs, no illegible background text",
@@ -158,24 +150,14 @@
           "If anatomy becomes ambiguous, restate the medical objective and anatomy locks before changing style.",
           "Do not include speech bubbles, captions, or labels inside the generated art."
         ]
-      },
-      "gensparkSlide": {
-        "slideNumber": 1,
-        "title": "Panel 9.3 · first major clue",
-        "creationPrompt": "Create slide 1 only for a comic production deck. Use one slide for exactly one panel and keep the deck in sequential mode, not parallel generation. Visual content: They hover near a district of cells whose architecture breaks the surrounding pattern.. Location and scale: adjacent to suspicious liver region at tissue scale. Composition and camera: medium shot with focal push-in, slightly canted, Contrast the suspicious region against more orderly surrounding tissue.. Lighting and tone: ominous discovery. Use these continuity anchors: case tablet hologram; jet pack glow; distorted tissue geometry. Use these anatomy locks: liver-inspired tissue geometry; focal abnormal district contrasts with surrounding tissue; avoid generic intestine-like visuals. Leave text editable in slide elements instead of baking it into the image. Use only the supplied panel content and do not research the web or replace clinical details.",
-        "styleLockInstruction": "Match the first approved slide style for every subsequent slide in the deck.",
-        "sequentialInstruction": "Outline first, then generate slides one by one in panel order. Do not generate slides in parallel.",
-        "overlayInstructions": [
-          "dialogue by Detective B: \"That district is rewriting the neighborhood. Follow it, but do not name it yet.\" placed at right-side stacked balloons"
-        ],
-        "useOnlyProvidedContent": true,
-        "forbidLiveResearch": true,
-        "notes": [
-          "Keep visible text editable and sourced from the lettering instructions only.",
-          "Do not paraphrase or embellish medically meaningful content beyond the provided panel and claim references.",
-          "If layout overflow occurs, preserve the image composition first and move text into editable overlay boxes."
-        ]
       }
     }
-  ]
+  ],
+  "panelExecutionStrategy": {
+    "sequentialPanelExecutionRecommended": true,
+    "continuityReferenceRequired": true,
+    "separateLetteringRequired": true,
+    "manualReviewRequired": true
+  },
+  "openAiPanelExecutionPrompt": "Create the final panel set for workflow run \"run.hcc.001\" from rendering guide \"rgd.hcc.001\". Generate one final image per panel, keep panel order stable, use only supplied panel content for Hepatocellular carcinoma, and keep all visible text out of the art so lettering can be overlaid separately."
 }

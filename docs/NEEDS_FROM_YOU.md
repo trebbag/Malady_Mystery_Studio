@@ -1,6 +1,16 @@
 # Needs From You
 
-The current repo still runs locally without any external credentials. The items below are only required to complete the managed Azure pilot path and any optional downstream integrations beyond the default rendering-guide export path.
+The current repo still runs locally without any external credentials if you are comfortable using stub rendering. The items below are required to complete the real OpenAI rendered-panel path and the managed Azure pilot path.
+
+## OpenAI Render and Research Runtime
+
+- `OPENAI_API_KEY` for real disease research assembly and real panel rendering through the OpenAI APIs.
+- Confirmation that your OpenAI org is verified for GPT Image usage if the image endpoint requires it.
+- Optional model override if you want something other than the default `OPENAI_RENDER_MODEL=gpt-image-1.5`.
+- The approved public-source policy for agent web research on unseen diseases:
+  - allowed public domains beyond the current medical allowlist
+  - whether user-supplied documents should outrank public web evidence by default
+  - whether provisional packs may continue into story and rendering automatically when they pass draft gates
 
 ## Azure Pilot Foundations
 
@@ -30,7 +40,7 @@ The current repo still runs locally without any external credentials. The items 
 - Confirmation of whether externally rendered art should stay reference-only or also support mirrored binary ingestion later.
 - Confirmation of the first downstream manual-attachment review policy:
   - who can approve externally attached rendered-output quality
-  - whether optional rendered-output review should ever block guide-first export
+  - whether optional externally attached rendered-output review should ever block export when the in-app rendered panels already pass
 
 ## Clinical Governance and Ownership
 
@@ -39,7 +49,10 @@ The current repo still runs locally without any external credentials. The items 
   - source refresh
   - contradiction resolution
   - render-retry review when medical fidelity is at issue
-- Confirmation of any additional primary-care diseases that must be added immediately after the current tranche.
+- Confirmation of who can:
+  - approve provisional run-scoped disease packs for a single run
+  - promote a provisional pack into the shared governed library
+- Confirmation of any additional diseases that must be prioritized immediately after the current tranche.
 
 ## Identity and Access
 

@@ -20,7 +20,7 @@ export function PanelsPage() {
 
   return (
     <SectionStack>
-      <PageHeader eyebrow="Panels" title="Panels Page" description="Panel plans, provider-fitted render prompts, the master rendering guide, and optional attached art artifacts." />
+      <PageHeader eyebrow="Panels" title="Panels Page" description="Panel plans, OpenAI-ready render prompts, rendered assets, the rendered manifest, lettering maps, and panel QA." />
       {(artifactsState.data?.artifacts ?? []).map((artifact) => (
         <ArtifactJsonCard key={artifact.artifactId} title={`${artifact.artifactType} · ${artifact.artifactId}`} value={artifact.payload ?? {}} />
       ))}

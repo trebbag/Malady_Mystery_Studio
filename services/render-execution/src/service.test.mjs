@@ -57,7 +57,7 @@ test('stub render service creates queueable jobs and rendered asset manifests', 
   assert.equal(renderedAssetManifest.renderTargetProfileId, DEFAULT_RENDER_TARGET_PROFILE.id);
 });
 
-test('gemini render service uses generateContent with text and image modalities', async (t) => {
+test('openai image render service uses the image generations endpoint', async (t) => {
   const originalFetch = globalThis.fetch;
   /** @type {any[]} */
   const requests = [];
@@ -68,16 +68,9 @@ test('gemini render service uses generateContent with text and image modalities'
     });
 
     return new Response(JSON.stringify({
-      responseId: 'greq.test.001',
-      candidates: [{
-        content: {
-          parts: [{
-            inlineData: {
-              mimeType: 'image/png',
-              data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WwZ0iQAAAAASUVORK5CYII=',
-            },
-          }],
-        },
+      id: 'imgreq.test.001',
+      data: [{
+        b64_json: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WwZ0iQAAAAASUVORK5CYII=',
       }],
     }), {
       status: 200,
@@ -91,18 +84,21 @@ test('gemini render service uses generateContent with text and image modalities'
   });
 
   const renderService = createRenderExecutionService({
-    provider: 'gemini-image',
+    provider: 'openai-image',
     apiKey: 'test-api-key',
   });
   const renderedImage = await renderService.renderSinglePrompt({
     id: 'rnd.local.001',
     positivePrompt: 'Render a continuity-safe pancreatic islet scene with no visible text.',
+    aspectRatio: '16:9',
+    negativePrompt: 'no labels, no visible text',
   }, 'simplified-composition');
 
-  assert.equal(renderedImage.provider, 'gemini-image');
+  assert.equal(renderedImage.provider, 'openai-image');
   assert.equal(requests.length, 1);
-  assert.match(requests[0].url, /generateContent/);
+  assert.match(requests[0].url, /images\/generations/);
   const body = JSON.parse(String(requests[0].init?.body));
-  assert.deepEqual(body.generationConfig.responseModalities, ['TEXT', 'IMAGE']);
-  assert.match(body.contents[0].parts[0].text, /Simplify the composition/);
+  assert.equal(body.model, 'gpt-image-1.5');
+  assert.equal(body.size, '1536x1024');
+  assert.match(body.prompt, /Simplify the composition/);
 });

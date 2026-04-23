@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildReviewQueueAnalyticsView,
   buildReviewQueueView,
   buildWorkItem,
   escalateOverdueWorkItems,
@@ -123,4 +124,69 @@ test('review queue view summarizes queue state across runs', () => {
   assert.equal(queueView.items.length, 1);
   assert.equal(queueView.stats.sourceRefreshCount, 1);
   assert.equal(queueView.items[0].threadCount, 1);
+});
+
+test('queue analytics summarize overdue load, work types, and run blockers', () => {
+  const store = createFakeStore({
+    'work-item': [
+      {
+        schemaVersion: '1.0.0',
+        id: 'wrk.local.001',
+        tenantId: 'tenant.local',
+        workflowRunId: 'run.local.001',
+        workType: 'run-review',
+        status: 'queued',
+        priority: 'high',
+        queueName: 'review-queue',
+        subjectType: 'workflow-run',
+        subjectId: 'run.local.001',
+        assignedActorDisplayName: 'Local Operator',
+        slaHours: 4,
+        dueAt: '2026-04-20T10:00:00Z',
+        createdAt: '2026-04-20T04:00:00Z',
+        updatedAt: '2026-04-20T04:00:00Z',
+      },
+      {
+        schemaVersion: '1.0.0',
+        id: 'wrk.local.002',
+        tenantId: 'tenant.local',
+        workflowRunId: 'run.local.002',
+        workType: 'source-refresh',
+        status: 'escalated',
+        priority: 'critical',
+        queueName: 'source-governance',
+        subjectType: 'source-record',
+        subjectId: 'src.local.001',
+        assignedActorDisplayName: 'Clinical Reviewer',
+        slaHours: 120,
+        dueAt: '2026-04-19T10:00:00Z',
+        createdAt: '2026-04-18T04:00:00Z',
+        updatedAt: '2026-04-18T04:00:00Z',
+      },
+    ],
+  });
+
+  const analytics = buildReviewQueueAnalyticsView(
+    /** @type {any} */ (store),
+    [
+      {
+        id: 'run.local.001',
+        tenantId: 'tenant.local',
+        currentStage: 'review',
+        pauseReason: 'provisional-knowledge-pack-review-required',
+      },
+      {
+        id: 'run.local.002',
+        tenantId: 'tenant.local',
+        currentStage: 'disease-packet',
+        pauseReason: 'clinical-governance-review-required',
+      },
+    ],
+  );
+
+  assert.equal(analytics.summary.totalItemCount, 2);
+  assert.equal(analytics.summary.overdueItemCount, 2);
+  assert.equal(analytics.countsByWorkType.some((/** @type {{ workType: string }} */ row) => row.workType === 'run-review'), true);
+  assert.equal(analytics.assigneeLoad.some((/** @type {{ assignee: string }} */ row) => row.assignee === 'Local Operator'), true);
+  assert.equal(analytics.runBlockersByStage.some((/** @type {{ stage: string }} */ row) => row.stage === 'review'), true);
 });

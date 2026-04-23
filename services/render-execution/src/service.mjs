@@ -19,7 +19,7 @@ export const DEFAULT_RENDER_TARGET_PROFILE = Object.freeze({
   schemaVersion: '1.0.0',
   id: 'rtp.openai-image-default',
   provider: 'openai-image',
-  model: 'gpt-image-2',
+  model: 'gpt-image-1.5',
   supportedAspectRatios: ['4:3', '16:9', '1:1'],
   fallbackStrategies: ['baseline', 'simplified-composition', 'tight-anatomy'],
   textHandlingPolicy: 'Never request visible lettering in generated art; preserve lettering as a separate overlay.',
@@ -31,7 +31,7 @@ export const DEFAULT_RENDER_TARGET_PROFILE = Object.freeze({
 });
 
 /**
- * @param {{ positivePrompt: string }} renderPrompt
+ * @param {{ positivePrompt: string, aspectRatio?: string, negativePrompt?: string }} renderPrompt
  * @param {string} strategy
  * @returns {string}
  */
@@ -59,7 +59,7 @@ class StubRenderProvider {
   }
 
   /**
-   * @param {{ id: string, positivePrompt: string }} renderPrompt
+   * @param {{ id: string, positivePrompt: string, aspectRatio?: string, negativePrompt?: string }} renderPrompt
    * @param {string} strategy
    * @returns {Promise<any>}
    */
@@ -77,12 +77,16 @@ class StubRenderProvider {
   }
 }
 
+/**
+ * @param {string | undefined} aspectRatio
+ * @returns {string}
+ */
 function mapAspectRatioToSize(aspectRatio) {
   switch (aspectRatio) {
     case '16:9':
       return '1536x1024';
     case '4:3':
-      return '1024x1024';
+      return '1536x1024';
     default:
       return '1024x1024';
   }
@@ -100,7 +104,7 @@ class OpenAiImageProvider {
   }
 
   /**
-   * @param {{ id: string, positivePrompt: string }} renderPrompt
+   * @param {{ id: string, positivePrompt: string, aspectRatio?: string, negativePrompt?: string }} renderPrompt
    * @param {string} strategy
    * @returns {Promise<any>}
    */

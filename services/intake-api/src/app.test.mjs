@@ -22,7 +22,7 @@ async function createSandbox() {
 }
 
 /**
- * @param {{ dbFilePath: string, objectStoreDir: string, webDistDir?: string }} options
+ * @param {{ dbFilePath: string, objectStoreDir: string, webDistDir?: string, researchAssemblyService?: any, openaiApiKey?: string, renderProviderApiKey?: string }} options
  * @returns {Promise<{ baseUrl: string, close: () => Promise<void>, store: any }>}
  */
 async function startServer(options) {
@@ -30,6 +30,9 @@ async function startServer(options) {
     dbFilePath: options.dbFilePath,
     objectStoreDir: options.objectStoreDir,
     webDistDir: options.webDistDir,
+    researchAssemblyService: options.researchAssemblyService,
+    openaiApiKey: options.openaiApiKey,
+    renderProviderApiKey: options.renderProviderApiKey,
   });
 
   await new Promise((resolve) => {
@@ -60,6 +63,31 @@ async function startServer(options) {
     },
   };
 }
+
+test('createApp fails fast when a managed metadata backend is requested without a live adapter', async () => {
+  const sandbox = await createSandbox();
+  const previousMetadataStoreBackend = process.env.METADATA_STORE_BACKEND;
+
+  process.env.METADATA_STORE_BACKEND = 'postgres';
+
+  try {
+    await assert.rejects(
+      () => createApp({
+        dbFilePath: sandbox.dbFilePath,
+        objectStoreDir: sandbox.objectStoreDir,
+      }),
+      /not yet supported by the live app/,
+    );
+  } finally {
+    if (previousMetadataStoreBackend === undefined) {
+      delete process.env.METADATA_STORE_BACKEND;
+    } else {
+      process.env.METADATA_STORE_BACKEND = previousMetadataStoreBackend;
+    }
+
+    await sandbox.cleanup();
+  }
+});
 
 /**
  * @param {string} directory
@@ -461,7 +489,7 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
 
     assert.equal(evaluationPayload.workflowRun.latestEvalStatus, 'passed');
     assert.equal(evaluationPayload.evaluation.summary.allThresholdsMet, true);
-    assert.equal(evaluationPayload.evaluation.summary.familyScores.rendering_guide_quality, 1);
+    assert.equal(evaluationPayload.evaluation.summary.familyScores.render_output_quality, 1);
 
     const evaluationListResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/evaluations`);
     assert.equal(evaluationListResponse.status, 200);
@@ -485,8 +513,7 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
 
     assert.equal(exportPayload.releaseBundle.evaluationSummary.evalRunId, evaluationPayload.evaluation.id);
     assert.equal(exportPayload.exportHistoryEntry.evalRunId, evaluationPayload.evaluation.id);
-    assert.ok(exportPayload.releaseBundle.renderingGuideId);
-    assert.equal(exportPayload.releaseBundle.renderedAssetManifestId ?? null, null);
+    assert.ok(exportPayload.releaseBundle.renderedAssetManifestId);
 
     const reviewRunViewResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/review-run-view`);
     assert.equal(reviewRunViewResponse.status, 200);
@@ -516,7 +543,7 @@ test('rendering guide endpoints and manual rendered-asset attachment remain avai
     const renderingGuideView = await renderingGuideResponse.json();
 
     assert.equal(renderingGuideView.runId, workflowRun.id);
-    assert.equal(renderingGuideView.attachmentSummary.attachmentMode, 'guide-only');
+    assert.equal(renderingGuideView.attachmentSummary.attachmentMode, 'external-art-attached');
 
     const attachmentResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/rendered-assets/attach`, {
       method: 'POST',
@@ -540,11 +567,292 @@ test('rendering guide endpoints and manual rendered-asset attachment remain avai
     const attachedGuideView = await attachmentResponse.json();
 
     assert.equal(attachedGuideView.attachmentSummary.attachmentMode, 'external-art-attached');
-    assert.equal(attachedGuideView.attachmentSummary.attachedRenderedAssetCount, 1);
+    assert.equal(attachedGuideView.attachmentSummary.attachedRenderedAssetCount, 25);
 
     const refreshedRunResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}`);
     const refreshedRun = await refreshedRunResponse.json();
     assert.equal(refreshedRun.artifacts.some((/** @type {any} */ artifact) => artifact.artifactType === 'rendered-asset-manifest'), true);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});
+
+test('free-text disease input can compile through agent research into a provisional knowledge pack', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer({
+    ...sandbox,
+    researchAssemblyService: {
+      async compileProvisionalKnowledgePack(/** @type {{ workflowRun: any, workflowInput: any, canonicalDisease: any }} */ { workflowRun, workflowInput, canonicalDisease }) {
+        return {
+          researchBrief: {
+            schemaVersion: '1.0.0',
+            id: 'rbr.local.001',
+            tenantId: workflowRun.tenantId,
+            workflowRunId: workflowRun.id,
+            rawDiseaseInput: workflowInput.diseaseName,
+            normalizedDiseaseInput: 'langerhans cell histiocytosis',
+            targetCanonicalDiseaseName: canonicalDisease.canonicalDiseaseName,
+            audienceTier: workflowInput.audienceTier ?? 'provider-education',
+            lengthProfile: 'standard',
+            qualityProfile: 'commercial-grade',
+            styleProfile: 'alien-detective-clinical-mystery',
+            researchIntent: 'Compile a provisional pack.',
+            allowedDomains: ['pubmed.ncbi.nlm.nih.gov'],
+            createdAt: '2026-04-23T12:00:00Z',
+          },
+          sourceHarvest: {
+            schemaVersion: '1.0.0',
+            id: 'shr.local.001',
+            tenantId: workflowRun.tenantId,
+            workflowRunId: workflowRun.id,
+            targetCanonicalDiseaseName: canonicalDisease.canonicalDiseaseName,
+            sources: [
+              {
+                sourceId: 'src.local.001',
+                sourceLabel: 'PubMed review',
+                sourceType: 'review',
+                origin: 'agent-web',
+                sourceUrl: 'https://pubmed.ncbi.nlm.nih.gov/example',
+                retrievedAt: '2026-04-23T12:00:00Z',
+                captureMethod: 'responses-web-search',
+                status: 'provisional',
+              },
+            ],
+            droppedSources: [],
+            generatedAt: '2026-04-23T12:00:00Z',
+          },
+          knowledgePack: {
+            schemaVersion: '1.0.0',
+            id: 'kp.local.001',
+            canonicalDiseaseName: 'Langerhans Cell Histiocytosis',
+            packStatus: 'provisional',
+            packScope: 'run',
+            generationMode: 'agent-generated',
+            derivedFromRunId: workflowRun.id,
+            sourceOrigins: {
+              seeded: 0,
+              'user-doc': 0,
+              'agent-web': 1,
+            },
+            aliases: ['Langerhans cell histiocytosis'],
+            ontologyId: 'prov:langerhans-cell-histiocytosis',
+            diseaseCategory: 'provisional-research-needed',
+            educationalFocus: ['immune dysregulation'],
+            clinicalSummary: {
+              oneSentence: 'A rare clonal immune-cell disorder should still compile into a traceable mystery.',
+              patientExperienceSummary: 'Symptoms vary by organ involvement and require cautious review.',
+              keyMechanism: 'Pathologic Langerhans-cell accumulation injures involved tissue.',
+              timeScale: 'variable',
+            },
+            physiologyPrerequisites: [],
+            pathophysiology: [],
+            presentation: {
+              hallmarkSymptoms: ['rash', 'bone pain'],
+              riskFactors: [],
+            },
+            diagnostics: {
+              firstLineTests: ['targeted imaging'],
+              confirmatoryTests: ['biopsy'],
+            },
+            management: {
+              stabilization: ['organ-specific support'],
+              diseaseDirectedCare: ['specialty referral'],
+            },
+            evidence: [
+              {
+                claimId: 'clm.lch.001',
+                claimText: 'Pathologic Langerhans-cell accumulation injures involved tissue.',
+                sourceId: 'src.local.001',
+                sourceLabel: 'PubMed review',
+                sourceType: 'review',
+                sourceLocator: 'discussion',
+                confidence: 0.82,
+                claimType: 'mechanism',
+                certaintyLevel: 'moderate',
+                diseaseStageApplicability: 'general',
+                patientSubgroupApplicability: 'general',
+                importanceRank: 1,
+              },
+            ],
+            sourceCatalog: [
+              {
+                id: 'src.local.001',
+                canonicalDiseaseName: 'Langerhans Cell Histiocytosis',
+                sourceLabel: 'PubMed review',
+                sourceType: 'review',
+                sourceTier: 'tenant-pack',
+                origin: 'agent-web',
+                retrievedAt: '2026-04-23T12:00:00Z',
+                captureMethod: 'responses-web-search',
+                reviewState: 'provisional',
+                defaultApprovalStatus: 'conditional',
+                owner: 'clinical-governance',
+                primaryOwnerRole: 'Clinical Reviewer',
+                backupOwnerRole: 'Product Editor',
+                refreshCadenceDays: 180,
+                governanceNotes: [],
+                topics: ['immune dysregulation'],
+                sourceUrl: 'https://pubmed.ncbi.nlm.nih.gov/example',
+                lastReviewedAt: '2026-04-23T12:00:00Z',
+              },
+            ],
+            clinicalTeachingPoints: [
+              {
+                order: 1,
+                title: 'Immune-cell accumulation',
+                teachingPoint: 'Clonal Langerhans-cell accumulation can affect multiple organs and should stay evidence-bound.',
+                linkedClaimIds: ['clm.lch.001'],
+              },
+            ],
+            visualAnchors: [
+              {
+                anchorId: 'vanchor.lch.001',
+                title: 'Abnormal immune-cell cluster',
+                bodyScale: 'tissue',
+                location: 'multiorgan tissue interface',
+                description: 'Show a focal cluster of abnormal immune cells disrupting normal tissue geometry.',
+                linkedClaimIds: ['clm.lch.001'],
+              },
+            ],
+            evidenceRelationships: [],
+            generatedAt: '2026-04-23T12:00:00Z',
+            generatedBy: 'research-assembly-agent',
+          },
+          buildReport: {
+            schemaVersion: '1.0.0',
+            id: 'kbr.local.001',
+            tenantId: workflowRun.tenantId,
+            workflowRunId: workflowRun.id,
+            targetCanonicalDiseaseName: 'Langerhans Cell Histiocytosis',
+            status: 'ready',
+            claimCount: 1,
+            sourceCount: 1,
+            blockingIssues: [],
+            warnings: ['Rare disease review is still provisional.'],
+            missingEvidenceAreas: [],
+            fitForStoryContinuation: true,
+            generatedAt: '2026-04-23T12:00:00Z',
+          },
+          responseSources: [],
+        };
+      },
+    },
+  });
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'Langerhans cell histiocytosis',
+      audienceTier: 'provider-education',
+    });
+    const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+
+    assert.equal(workflowRun.state, 'review');
+    assert.equal(workflowRun.currentStage, 'review');
+    assert.equal(workflowRun.pauseReason, 'provisional-knowledge-pack-review-required');
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'research-brief'), true);
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'disease-knowledge-pack'), true);
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'rendered-asset-manifest'), true);
+
+    const researchBriefResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/research-brief`);
+    assert.equal(researchBriefResponse.status, 200);
+    const researchBrief = await researchBriefResponse.json();
+    assert.equal(researchBrief.rawDiseaseInput, 'Langerhans cell histiocytosis');
+
+    const buildReportResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/knowledge-pack-build-report`);
+    assert.equal(buildReportResponse.status, 200);
+    const buildReport = await buildReportResponse.json();
+    assert.equal(buildReport.fitForStoryContinuation, true);
+
+    const blockedExportResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/exports`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ version: 'lch-local-1' }),
+    });
+    assert.equal(blockedExportResponse.status, 409);
+
+    const approvePackResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/knowledge-pack/approve`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        decision: 'approved',
+        reason: 'Local reviewer approved the provisional pack for this run.',
+      }),
+    });
+    assert.equal(approvePackResponse.status, 200);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});
+
+test('mentions and assignments create notifications, and queue analytics summarize work', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer(sandbox);
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'community-acquired pneumonia',
+    });
+    const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+
+    const assignmentResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/assignments`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        reviewRole: 'clinical',
+        assigneeDisplayName: 'Local Operator',
+        assigneeId: 'local-operator',
+        status: 'queued',
+        notes: 'Review provisional findings.',
+      }),
+    });
+    assert.equal(assignmentResponse.status, 201);
+
+    const threadResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/threads`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Clinical follow-up',
+        scopeType: 'run',
+      }),
+    });
+    assert.equal(threadResponse.status, 201);
+    const thread = await threadResponse.json();
+
+    const messageResponse = await fetch(`${app.baseUrl}/api/v1/review-threads/${encodeURIComponent(thread.id)}/messages`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        body: 'Please review this run next. @local-operator',
+        mentions: ['local-operator'],
+      }),
+    });
+    assert.equal(messageResponse.status, 201);
+
+    const notificationsResponse = await fetch(`${app.baseUrl}/api/v1/notifications`);
+    assert.equal(notificationsResponse.status, 200);
+    const notifications = await notificationsResponse.json();
+
+    assert.equal(notifications.some((/** @type {{ notificationType: string }} */ notification) => notification.notificationType === 'assignment'), true);
+    assert.equal(notifications.some((/** @type {{ notificationType: string }} */ notification) => notification.notificationType === 'mention'), true);
+
+    const analyticsResponse = await fetch(`${app.baseUrl}/api/v1/review-queue/analytics`);
+    assert.equal(analyticsResponse.status, 200);
+    const analytics = await analyticsResponse.json();
+
+    assert.equal(analytics.summary.totalItemCount >= 1, true);
+    assert.equal(analytics.countsByWorkType.some((/** @type {{ workType: string }} */ row) => row.workType === 'run-review'), true);
   } finally {
     await app.close();
     await sandbox.cleanup();

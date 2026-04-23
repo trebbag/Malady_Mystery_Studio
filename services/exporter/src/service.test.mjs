@@ -116,6 +116,7 @@ test('exporter assembles a release bundle from an approved run', () => {
     'rendering-guide',
     'lettering-map',
     'qa-report',
+    'rendered-asset-manifest',
   ].map((artifactType, index) => ({
     artifactType,
     artifactId: `${artifactType}.${index}`,
@@ -178,7 +179,7 @@ test('exporter blocks release when required artifacts are missing', () => {
   );
 });
 
-test('exporter no longer requires rendered output when a rendering guide is present', () => {
+test('exporter requires rendered output and records the manifest in the bundle', () => {
   const exporter = createExporterService();
   const artifactManifest = [
     'disease-packet',
@@ -189,6 +190,7 @@ test('exporter no longer requires rendered output when a rendering guide is pres
     'rendering-guide',
     'lettering-map',
     'qa-report',
+    'rendered-asset-manifest',
   ].map((artifactType, index) => ({
     artifactType,
     artifactId: `${artifactType}.${index}`,
@@ -214,13 +216,9 @@ test('exporter no longer requires rendered output when a rendering guide is pres
   /** @type {any[]} */
   const releaseGateChecks = assembled.releaseBundle.releaseGateChecks;
 
-  assert.equal(assembled.releaseBundle.renderedAssetManifestId ?? null, null);
+  assert.equal(typeof assembled.releaseBundle.renderedAssetManifestId, 'string');
   assert.equal(
-    releaseGateChecks.some((gateCheck) => gateCheck.name === 'rendered-output-manual'),
-    false,
-  );
-  assert.equal(
-    releaseGateChecks.some((gateCheck) => gateCheck.name === 'rendering-guide' && gateCheck.status === 'passed'),
+    releaseGateChecks.some((gateCheck) => gateCheck.name === 'rendered-output' && gateCheck.status === 'passed'),
     true,
   );
 });

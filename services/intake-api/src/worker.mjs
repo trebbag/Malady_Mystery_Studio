@@ -16,8 +16,16 @@ const platformRuntime = createPlatformRuntime({
   objectStoreDir,
 });
 
-if (platformRuntime.metadataStoreKind !== 'sqlite' || platformRuntime.objectStorageKind !== 'filesystem') {
-  console.warn('Managed metadata/object-store adapters are scaffolded, but the worker still executes against the local SQLite/filesystem runtime in this tranche.');
+if (platformRuntime.metadataStoreKind !== 'sqlite') {
+  throw new Error(`METADATA_STORE_BACKEND=${platformRuntime.metadataStoreKind} is not yet supported by the live worker. Keep metadata on sqlite for now or add a managed metadata adapter.`);
+}
+
+if (
+  platformRuntime.objectStorageKind !== 'filesystem'
+  || platformRuntime.queueBackend !== 'in-process'
+  || (process.env.TELEMETRY_BACKEND ?? 'stdout') !== 'stdout'
+) {
+  console.warn('Managed runtime services are partially enabled. The worker is using managed object storage, queue, or telemetry adapters while metadata remains on the local SQLite store.');
 }
 
 if (typeof platformRuntime.queueAdapter?.createReceiver !== 'function') {
@@ -29,6 +37,7 @@ const store = new PlatformStore({
   rootDir,
   dbFilePath,
   objectStoreDir,
+  objectStorage: platformRuntime.objectStorage,
 });
 const schemaRegistry = await createSchemaRegistry(rootDir);
 const workflowSpec = await loadWorkflowSpec(rootDir);

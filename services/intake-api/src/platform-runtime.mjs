@@ -55,11 +55,9 @@ export function createObjectStorage(options = {}) {
  */
 export function createPlatformRuntime(options = {}) {
   const rootDir = options.rootDir ?? findRepoRoot(import.meta.url);
-  const runtimeMode = options.runtimeMode
-    ?? process.env.RUNTIME_MODE
-    ?? ((options.metadataStoreKind ?? process.env.METADATA_STORE_BACKEND ?? 'sqlite') !== 'sqlite'
-      ? 'managed'
-      : 'local');
+  const metadataStoreKind = options.metadataStoreKind ?? process.env.METADATA_STORE_BACKEND ?? 'sqlite';
+  const queueBackend = options.queueBackend ?? process.env.ASYNC_QUEUE_BACKEND ?? 'in-process';
+  const telemetryBackend = options.telemetryBackend ?? process.env.TELEMETRY_BACKEND ?? 'stdout';
   const objectStorage = options.objectStorage ?? createObjectStorage({
     objectStoreBackend: options.objectStoreBackend,
     objectStoreDir: options.objectStoreDir,
@@ -67,6 +65,16 @@ export function createPlatformRuntime(options = {}) {
     blobContainerName: options.blobContainerName,
     blobPrefix: options.blobPrefix,
   });
+  const runtimeMode = options.runtimeMode
+    ?? process.env.RUNTIME_MODE
+    ?? (
+      metadataStoreKind !== 'sqlite'
+      || objectStorage.kind !== 'filesystem'
+      || queueBackend !== 'in-process'
+      || telemetryBackend !== 'stdout'
+        ? 'managed'
+        : 'local'
+    );
   const queueAdapter = options.queueAdapter ?? createQueueAdapter({
     backend: options.queueBackend,
     connectionString: options.serviceBusConnectionString,
@@ -78,10 +86,10 @@ export function createPlatformRuntime(options = {}) {
   return {
     rootDir,
     runtimeMode,
-    metadataStoreKind: options.metadataStoreKind ?? process.env.METADATA_STORE_BACKEND ?? 'sqlite',
+    metadataStoreKind,
     objectStorageKind: objectStorage.kind,
     objectStorage: objectStorage.client,
-    queueBackend: options.queueBackend ?? process.env.ASYNC_QUEUE_BACKEND ?? 'in-process',
+    queueBackend,
     queueAdapter,
     telemetry,
   };

@@ -18,9 +18,9 @@
     "runSummary",
     "franchiseRules",
     "continuityBible",
-    "slideStrategy",
+    "panelExecutionStrategy",
     "globalNegativeConstraints",
-    "gensparkDeckBootstrapPrompt",
+    "openAiPanelExecutionPrompt",
     "retryGuidance",
     "panels"
   ],
@@ -48,10 +48,12 @@
     },
     "providerTargets": {
       "type": "array",
-      "minItems": 2,
+      "minItems": 1,
       "items": {
         "type": "string",
         "enum": [
+          "openai-gpt-image",
+          "openai-image-2",
           "nano-banana-pro",
           "genspark-ai-slides"
         ]
@@ -154,6 +156,30 @@
         }
       }
     },
+    "panelExecutionStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequentialPanelExecutionRecommended",
+        "continuityReferenceRequired",
+        "separateLetteringRequired",
+        "manualReviewRequired"
+      ],
+      "properties": {
+        "sequentialPanelExecutionRecommended": {
+          "type": "boolean"
+        },
+        "continuityReferenceRequired": {
+          "type": "boolean"
+        },
+        "separateLetteringRequired": {
+          "type": "boolean"
+        },
+        "manualReviewRequired": {
+          "type": "boolean"
+        }
+      }
+    },
     "slideStrategy": {
       "type": "object",
       "additionalProperties": false,
@@ -183,6 +209,9 @@
       "items": {
         "type": "string"
       }
+    },
+    "openAiPanelExecutionPrompt": {
+      "type": "string"
     },
     "gensparkDeckBootstrapPrompt": {
       "type": "string"
@@ -218,8 +247,7 @@
           "acceptanceChecks",
           "claimReferences",
           "letteringEntries",
-          "nanoBananaPrompt",
-          "gensparkSlide"
+          "openAiImagePrompt"
         ],
         "properties": {
           "panelId": {
@@ -366,6 +394,54 @@
                     "type": "string",
                     "pattern": "^[A-Za-z0-9._:-]+$"
                   }
+                }
+              }
+            }
+          },
+          "openAiImagePrompt": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "aspectRatio",
+              "prompt",
+              "negativePrompt",
+              "styleLocks",
+              "characterLocks",
+              "anatomyLocks",
+              "notes"
+            ],
+            "properties": {
+              "aspectRatio": {
+                "type": "string"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "negativePrompt": {
+                "type": "string"
+              },
+              "styleLocks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "characterLocks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "anatomyLocks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
                 }
               }
             }

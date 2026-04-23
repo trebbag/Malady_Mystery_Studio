@@ -163,6 +163,7 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
       objectStoreDir: 'var/object-store',
     },
     platform: {
+      runtimeMode: 'local',
       metadataStore: 'sqlite',
       objectStore: 'filesystem',
       queueBackend: 'in-process',

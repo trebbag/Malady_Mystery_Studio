@@ -123,7 +123,7 @@ export function createWorkflowArtifactListView(options) {
 }
 
 /**
- * @param {{ actor: any, tenantId: string, serverBaseUrl: string, storage: { dbFilePath: string, objectStoreDir: string }, platform: { metadataStore: string, objectStore: string, queueBackend: string, telemetryBackend: string }, availableCommands: string[], readiness: any }} options
+ * @param {{ actor: any, tenantId: string, serverBaseUrl: string, storage: { dbFilePath: string, objectStoreDir: string }, platform: { runtimeMode: string, metadataStore: string, objectStore: string, queueBackend: string, telemetryBackend: string }, availableCommands: string[], readiness: any }} options
  * @returns {any}
  */
 export function createLocalRuntimeView(options) {

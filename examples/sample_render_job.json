@@ -6,9 +6,9 @@
   "status": "completed",
   "approvalStatus": "approved",
   "queueName": "external-art-attachment",
-  "provider": "external-manual",
-  "model": "external-handoff",
-  "renderTargetProfileId": "rtp.external-manual",
+  "provider": "openai-image",
+  "model": "gpt-image-1.5",
+  "renderTargetProfileId": "rtp.openai-image-default",
   "renderPromptIds": [
     "rpr.hcc.004.03"
   ],

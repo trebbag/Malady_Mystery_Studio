@@ -17,7 +17,8 @@
     "metadataStore": "sqlite",
     "objectStore": "filesystem",
     "queueBackend": "in-process",
-    "telemetryBackend": "structured-stdout"
+    "telemetryBackend": "structured-stdout",
+    "runtimeMode": "local"
   },
   "availableCommands": [
     "pnpm dev:api",
@@ -75,7 +76,7 @@
       "Finish the real managed runtime cutover from local SQLite/filesystem fallback to PostgreSQL plus Blob in the live execution path.",
       "Run live Azure deployment, backup, restore, and observability drills with tenant credentials and production-grade secrets handling.",
       "Integrate external auth at the frontend or gateway layer when the app moves beyond local-open mode.",
-      "Add optional downstream publishing/export integrations after the rendering-guide-first handoff path is stable."
+      "Add optional downstream publishing and distribution integrations after the rendered-panel export path is stable."
     ]
   }
 }

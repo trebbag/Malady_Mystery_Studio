@@ -105,6 +105,7 @@
           "enum": [
             "intake",
             "canonicalization",
+            "research-assembly",
             "disease-packet",
             "story-workbook",
             "scene-planning",
@@ -120,6 +121,7 @@
           "enum": [
             "intake",
             "canonicalization",
+            "research-assembly",
             "disease-packet",
             "story-workbook",
             "scene-planning",

@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0.0",
+  "summary": {
+    "totalItemCount": 6,
+    "overdueItemCount": 1,
+    "escalatedItemCount": 1,
+    "overdueRate": 0.167,
+    "escalationRate": 0.167,
+    "medianAgeHours": 18
+  },
+  "countsByWorkType": [
+    {
+      "workType": "run-review",
+      "count": 3
+    },
+    {
+      "workType": "source-refresh",
+      "count": 2
+    },
+    {
+      "workType": "render-retry",
+      "count": 1
+    }
+  ],
+  "countsByStatus": [
+    {
+      "status": "queued",
+      "count": 4
+    },
+    {
+      "status": "escalated",
+      "count": 1
+    },
+    {
+      "status": "in-progress",
+      "count": 1
+    }
+  ],
+  "countsByPriority": [
+    {
+      "priority": "critical",
+      "count": 1
+    },
+    {
+      "priority": "high",
+      "count": 2
+    },
+    {
+      "priority": "medium",
+      "count": 3
+    }
+  ],
+  "assigneeLoad": [
+    {
+      "assignee": "Local Operator",
+      "count": 4
+    },
+    {
+      "assignee": "Clinical Reviewer",
+      "count": 2
+    }
+  ],
+  "runBlockersByStage": [
+    {
+      "stage": "review",
+      "count": 4
+    },
+    {
+      "stage": "disease-packet",
+      "count": 2
+    }
+  ]
+}

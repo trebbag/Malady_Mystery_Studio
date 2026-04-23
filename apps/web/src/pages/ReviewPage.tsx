@@ -14,19 +14,24 @@ import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  approveKnowledgePack,
   createReviewAssignment,
   createReviewComment,
   createReviewThread,
   createThreadMessage,
   exportBundle,
-  fetchRenderingGuideView,
+  fetchNotifications,
   fetchLocalRuntimeView,
+  fetchRenderingGuideView,
   fetchReviewRunView,
   fetchWorkflowArtifacts,
+  promoteKnowledgePack,
+  regenerateKnowledgePack,
   regenerateRenderingGuide,
   resolveCanonicalization,
   runEvaluations,
   submitApproval,
+  updateNotification,
   updateWorkItem,
 } from '@/lib/api';
 import { useRefreshSignal } from '@/lib/refresh-context';
@@ -42,19 +47,50 @@ export function ReviewPage() {
   const [threadTitle, setThreadTitle] = useState('Run review thread');
   const [threadScopeType, setThreadScopeType] = useState('run');
   const [messageByThreadId, setMessageByThreadId] = useState<Record<string, string>>({});
+  const [mentionsByThreadId, setMentionsByThreadId] = useState<Record<string, string>>({});
   const reviewRunState = useRemoteData(() => fetchReviewRunView(runId), [runId, refreshSignal]);
   const renderingGuideState = useRemoteData(() => fetchRenderingGuideView(runId), [runId, refreshSignal]);
   const runtimeViewState = useRemoteData(() => fetchLocalRuntimeView(), [refreshSignal]);
+  const notificationsState = useRemoteData(() => fetchNotifications(), [refreshSignal]);
   const canonicalArtifactState = useRemoteData(
     () => fetchWorkflowArtifacts(runId, ['canonical-disease'], true),
     [runId, refreshSignal],
   );
-  const exportDisabledReason = workflowRun.latestEvalStatus !== 'passed'
+  const knowledgePackArtifactsState = useRemoteData(
+    () => fetchWorkflowArtifacts(runId, ['disease-knowledge-pack', 'research-brief', 'knowledge-pack-build-report'], true),
+    [runId, refreshSignal],
+  );
+  const latestKnowledgePack = knowledgePackArtifactsState.data?.artifacts
+    ?.filter((artifact) => artifact.artifactType === 'disease-knowledge-pack')
+    .at(-1)?.payload as Record<string, unknown> | undefined;
+  const latestResearchBrief = knowledgePackArtifactsState.data?.artifacts
+    ?.filter((artifact) => artifact.artifactType === 'research-brief')
+    .at(-1)?.payload as Record<string, unknown> | undefined;
+  const latestBuildReport = knowledgePackArtifactsState.data?.artifacts
+    ?.filter((artifact) => artifact.artifactType === 'knowledge-pack-build-report')
+    .at(-1)?.payload as Record<string, unknown> | undefined;
+  const renderedAssetManifestPresent = workflowRun.artifacts.some((artifact) => artifact.artifactType === 'rendered-asset-manifest');
+  const exportDisabledReason = workflowRun.pauseReason === 'provisional-knowledge-pack-review-required'
+    ? 'Export stays blocked until the provisional disease knowledge pack is approved for this run or promoted.'
+    : workflowRun.latestEvalStatus !== 'passed'
     ? 'Export requires a fresh passing eval run.'
-    : (!reviewRunState.data?.renderingGuide
-      ? 'Export requires a current rendering guide for external handoff.'
+    : (!renderedAssetManifestPresent
+      ? 'Export requires rendered panel assets and a rendered asset manifest.'
       : undefined);
   const artifactTypes = uniqueStrings(workflowRun.artifacts.map((artifact) => artifact.artifactType));
+  const unreadNotifications = (notificationsState.data ?? []).filter((notification) => notification.status === 'unread');
+  const sourceOriginSummary = latestKnowledgePack && typeof latestKnowledgePack.sourceOrigins === 'object' && latestKnowledgePack.sourceOrigins
+    ? Object.entries(latestKnowledgePack.sourceOrigins as Record<string, unknown>)
+      .map(([origin, count]) => `${origin}:${String(count)}`)
+      .join(', ')
+    : 'seeded';
+
+  const parseMentionDraft = (value: string) => uniqueStrings(
+    value
+      .split(',')
+      .map((entry) => entry.trim().replace(/^@/, ''))
+      .filter(Boolean),
+  );
 
   return (
     <SectionStack>
@@ -169,8 +205,107 @@ export function ReviewPage() {
               }}
             />
             <Card>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <CardTitle>Open disease compilation</CardTitle>
+                  <CardDescription>
+                    Unknown diseases now compile into a run-scoped provisional knowledge pack. Review can approve the pack for this run or promote it for reuse.
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    disabled={!latestKnowledgePack}
+                    onClick={() => void regenerateKnowledgePack(runId).then(() => refreshRun())}
+                  >
+                    Rebuild pack
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={!latestKnowledgePack || latestKnowledgePack.packStatus === 'promoted'}
+                    onClick={() => void approveKnowledgePack(runId, {
+                      decision: 'approved',
+                      reason: 'Local reviewer approved the provisional pack for this run.',
+                    }).then(() => refreshRun())}
+                  >
+                    Approve for run
+                  </Button>
+                  <Button
+                    disabled={!latestKnowledgePack || latestKnowledgePack.packStatus === 'promoted'}
+                    onClick={() => void promoteKnowledgePack(runId, {
+                      reason: 'Local reviewer promoted the run-scoped pack into the governed library.',
+                    }).then(() => refreshRun())}
+                  >
+                    Promote globally
+                  </Button>
+                </div>
+              </div>
+              {latestKnowledgePack ? (
+                <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-black/10 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pack status</p>
+                      <p className="mt-2 text-sm font-medium text-shell-950">
+                        {String(latestKnowledgePack.packStatus ?? 'seeded')} · {String(latestKnowledgePack.generationMode ?? 'seeded')}
+                      </p>
+                      <p className="mt-2 text-xs text-slate-500">
+                        scope: {String(latestKnowledgePack.packScope ?? 'library')} · origins: {sourceOriginSummary}
+                      </p>
+                    </div>
+                    {workflowRun.pauseReason === 'provisional-knowledge-pack-review-required' ? (
+                      <Alert tone="warning">
+                        This run rendered panels, but export is still blocked until the provisional disease pack is approved or promoted.
+                      </Alert>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-3">
+                    {latestResearchBrief ? (
+                      <pre className="overflow-x-auto rounded-2xl bg-shell-950 p-4 text-xs text-slate-100">
+                        {JSON.stringify(latestResearchBrief, null, 2)}
+                      </pre>
+                    ) : null}
+                    {latestBuildReport ? (
+                      <pre className="overflow-x-auto rounded-2xl bg-shell-950 p-4 text-xs text-slate-100">
+                        {JSON.stringify(latestBuildReport, null, 2)}
+                      </pre>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <Alert tone="info">This run is using an existing governed pack, so no provisional knowledge-pack review is required.</Alert>
+              )}
+            </Card>
+            <Card>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle>Notifications</CardTitle>
+                  <CardDescription>In-app reviewer notifications track mentions, assignments, and promotion-ready pack events.</CardDescription>
+                </div>
+                <p className="rounded-full bg-shell-950 px-3 py-1 text-xs font-semibold text-white">{unreadNotifications.length} unread</p>
+              </div>
+              <div className="mt-4 space-y-3">
+                {unreadNotifications.map((notification) => (
+                  <div key={notification.id} className="rounded-2xl border border-black/10 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-shell-950">{notification.notificationType}</p>
+                        <p className="text-sm text-slate-700">{notification.message}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        onClick={() => void updateNotification(notification.id, { status: 'read' }).then(() => refreshRun())}
+                      >
+                        Mark read
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {unreadNotifications.length === 0 ? <Alert tone="info">No unread notifications for the local operator.</Alert> : null}
+              </div>
+            </Card>
+            <Card>
               <CardTitle>Cross-run work items</CardTitle>
-              <CardDescription>Assignments now project onto queue-backed work items with due dates and escalation state.</CardDescription>
+              <CardDescription>Assignments now project onto queue-backed work items with due dates, escalation state, and linked reviewer threads.</CardDescription>
               <div className="mt-4 space-y-3">
                 {(reviewRunState.data.workItems ?? []).map((workItem) => (
                   <div key={workItem.id} className="rounded-2xl border border-black/10 bg-slate-50 p-4">
@@ -227,7 +362,13 @@ export function ReviewPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="font-medium text-shell-950">{thread.title}</p>
-                        <p className="text-xs text-slate-500">{thread.scopeType}{thread.scopeId ? ` · ${thread.scopeId}` : ''}</p>
+                        <p className="text-xs text-slate-500">
+                          {thread.scopeType}{thread.scopeId ? ` · ${thread.scopeId}` : ''}
+                          {thread.latestMessageAt ? ` · updated ${formatDateTime(thread.latestMessageAt)}` : ''}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          unread {thread.unreadCount ?? 0} · open actions {thread.openActionCount ?? 0} · linked work items {(thread.linkedWorkItemIds ?? []).length}
+                        </p>
                       </div>
                       <Button
                         variant="ghost"
@@ -244,23 +385,32 @@ export function ReviewPage() {
                         <div key={message.id} className="rounded-xl border border-black/10 bg-white p-3">
                           <p className="text-xs text-slate-500">{message.authorDisplayName} · {formatDateTime(message.updatedAt)}</p>
                           <p className="mt-1 text-sm text-slate-800">{message.body}</p>
+                          {(message.mentions?.length ?? 0) > 0 ? <p className="mt-2 text-xs text-slate-500">mentions: {message.mentions?.join(', ')}</p> : null}
                         </div>
                       ))}
                     </div>
-                    <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="mt-3 grid gap-3">
                       <Textarea
                         className="min-h-20"
                         placeholder="Add a threaded reply"
                         value={messageByThreadId[thread.id] ?? ''}
                         onChange={(event) => setMessageByThreadId((current) => ({ ...current, [thread.id]: event.target.value }))}
                       />
-                      <Button
-                        onClick={() => void createThreadMessage(thread.id, {
-                          body: messageByThreadId[thread.id] || 'Local follow-up.',
-                        }).then(() => refreshRun())}
-                      >
-                        Reply
-                      </Button>
+                      <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                        <Input
+                          value={mentionsByThreadId[thread.id] ?? ''}
+                          onChange={(event) => setMentionsByThreadId((current) => ({ ...current, [thread.id]: event.target.value }))}
+                          placeholder="@local-operator, @clinical-reviewer"
+                        />
+                        <Button
+                          onClick={() => void createThreadMessage(thread.id, {
+                            body: messageByThreadId[thread.id] || 'Local follow-up.',
+                            mentions: parseMentionDraft(mentionsByThreadId[thread.id] ?? ''),
+                          }).then(() => refreshRun())}
+                        >
+                          Reply
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -271,8 +421,8 @@ export function ReviewPage() {
             <Card>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <CardTitle>Rendering guide delivery</CardTitle>
-                  <CardDescription>The active product path ends at a provider-fitted handoff guide. External rendered art can still be attached later, but it is now secondary.</CardDescription>
+                  <CardTitle>Rendered panel delivery</CardTitle>
+                  <CardDescription>The primary product path now ends in rendered comic panels. The rendering guide remains a secondary support artifact for retries, QA, and manual reuse.</CardDescription>
                 </div>
                 <Button variant="secondary" onClick={() => void regenerateRenderingGuide(runId).then(() => refreshRun())}>
                   Regenerate guide
@@ -284,9 +434,9 @@ export function ReviewPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="font-medium text-shell-950">{reviewRunState.data.renderingGuide.id}</p>
-                        <p className="text-xs text-slate-500">Guide-first export path · markdown handoff ready</p>
+                        <p className="text-xs text-slate-500">Secondary render support artifact · prompt and retry guidance ready</p>
                         <p className="mt-2 text-sm text-slate-700">
-                          Panel prompts are now fitted for Nano Banana Pro and Genspark AI Slides, with one panel per slide and separate lettering overlays.
+                          Use this guide when a panel needs manual regeneration or a reviewer wants the full OpenAI Image prompt set in one place.
                         </p>
                       </div>
                     </div>
@@ -296,7 +446,7 @@ export function ReviewPage() {
                 )}
                 {renderingGuideState.data?.attachmentSummary.attachedRenderedAssetCount ? (
                   <Alert tone="info">
-                    Optional external art is attached for {renderingGuideState.data.attachmentSummary.attachedRenderedAssetCount} panel assets.
+                    Rendered art is attached for {renderingGuideState.data.attachmentSummary.attachedRenderedAssetCount} panel assets.
                   </Alert>
                 ) : null}
               </div>

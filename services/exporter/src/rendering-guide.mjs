@@ -117,9 +117,9 @@ function buildRunSummary(workflowRun, diseasePacket) {
 function buildGlobalRetryGuidance() {
   return [
     'If a panel loses anatomy clarity, simplify the composition before weakening the medical objective.',
-    'If character continuity drifts, explicitly restate the detective locks and reuse the first successful slide or image as the style reference.',
+    'If character continuity drifts, explicitly restate the detective locks and reuse the first successful panel as the style reference.',
     'If the model adds visible text, remove all requested text from the art prompt and keep overlays in the lettering instructions only.',
-    'If Genspark drifts slide style across the deck, regenerate sequentially and lock slide 1 as the reference for every remaining slide.',
+    'If a panel fails repeatedly, keep the clinical objective fixed and tighten only composition, continuity, and anatomy locks.',
   ];
 }
 
@@ -131,14 +131,14 @@ function buildGlobalRetryGuidance() {
  * @param {number} panelCount
  * @returns {string}
  */
-function buildDeckBootstrapPrompt(project, workflowRun, diseasePacket, renderingGuideId, panelCount) {
+function buildOpenAiPanelExecutionPrompt(project, workflowRun, diseasePacket, renderingGuideId, panelCount) {
   return [
-    `Create a slide deck for the run "${workflowRun.id}" from the attached rendering guide "${renderingGuideId}".`,
-    `Use exactly ${panelCount} slides, with one comic panel per slide and no parallel slide generation.`,
-    `Build the outline first, then create slides sequentially. Lock slide 1 style and require every later slide to match it.`,
-    `Use only the supplied panel content for ${diseasePacket.canonicalDiseaseName}. Do not replace the medical content with live web research or new claims.`,
-    `Keep all visible text editable and sourced from the provided lettering entries, not embedded in the art.`,
-    `The final deck should preserve the project title "${project.title}" and remain clinically traceable to the supplied claim references.`,
+    `Create a medically grounded comic-panel set for workflow run "${workflowRun.id}" from rendering guide "${renderingGuideId}".`,
+    `Generate exactly ${panelCount} final panel images, one image per panel, and keep panel order stable throughout the run.`,
+    'Treat the first approved successful panel as the visual continuity reference for later panels unless the guide explicitly says otherwise.',
+    `Use only the supplied panel content for ${diseasePacket.canonicalDiseaseName}. Do not add new medical facts, and do not replace the supplied content with live web research.`,
+    'Keep all visible dialogue, captions, labels, and teaching text out of the generated image. Those belong in the separate lettering overlay.',
+    `Preserve the project title "${project.title}" and keep every panel clinically traceable to the supplied claim references.`,
   ].join(' ');
 }
 
@@ -147,7 +147,7 @@ function buildDeckBootstrapPrompt(project, workflowRun, diseasePacket, rendering
  * @param {any} renderPrompt
  * @returns {{ aspectRatio: string, prompt: string, negativePrompt: string, styleLocks: string[], characterLocks: string[], anatomyLocks: string[], notes: string[] }}
  */
-function buildNanoBananaPrompt(panel, renderPrompt) {
+function buildOpenAiImagePrompt(panel, renderPrompt) {
   const continuityStatement = uniqueStrings(renderPrompt.continuityAnchors ?? []).join('; ');
   const characterStatement = uniqueStrings(renderPrompt.characterLocks ?? []).join('; ');
   const anatomyStatement = uniqueStrings(renderPrompt.anatomyLocks ?? []).join('; ');
@@ -156,7 +156,7 @@ function buildNanoBananaPrompt(panel, renderPrompt) {
   return {
     aspectRatio: renderPrompt.aspectRatio,
     prompt: [
-      'Create a detailed comic-book illustration.',
+      'Create a polished comic-book panel illustration.',
       `Subject and action: ${panel.actionSummary}.`,
       `Story purpose: ${panel.storyFunction}. Medical purpose: ${panel.medicalObjective}.`,
       `Environment and background: ${panel.location} at ${panel.bodyScale} scale with ${panel.lightingMood} lighting.`,
@@ -172,49 +172,9 @@ function buildNanoBananaPrompt(panel, renderPrompt) {
     characterLocks: renderPrompt.characterLocks ?? [],
     anatomyLocks: renderPrompt.anatomyLocks ?? [],
     notes: [
-      'Start with an explicit creation verb and keep the visual instruction concrete and image-first.',
+      'Start with an explicit image-creation instruction and keep the request concrete and visual.',
       'If anatomy becomes ambiguous, restate the medical objective and anatomy locks before changing style.',
-      'Do not include speech bubbles, captions, or labels inside the generated art.',
-    ],
-  };
-}
-
-/**
- * @param {any} panel
- * @param {any} renderPrompt
- * @param {any[]} letteringEntries
- * @param {number} slideNumber
- * @returns {{ slideNumber: number, title: string, creationPrompt: string, styleLockInstruction: string, sequentialInstruction: string, overlayInstructions: string[], useOnlyProvidedContent: true, forbidLiveResearch: true, notes: string[] }}
- */
-function buildGensparkSlide(panel, renderPrompt, letteringEntries, slideNumber) {
-  const overlayInstructions = letteringEntries.map((/** @type {any} */ entry) => (
-    `${entry.layerType}${entry.speaker ? ` by ${entry.speaker}` : ''}: "${entry.text}" placed at ${entry.placement}`
-  ));
-
-  return {
-    slideNumber,
-    title: `Panel ${panel.pageNumber}.${panel.order} · ${panel.storyFunction}`,
-    creationPrompt: [
-      `Create slide ${slideNumber} only for a comic production deck.`,
-      'Use one slide for exactly one panel and keep the deck in sequential mode, not parallel generation.',
-      `Visual content: ${panel.actionSummary}.`,
-      `Location and scale: ${panel.location} at ${panel.bodyScale} scale.`,
-      `Composition and camera: ${panel.cameraFraming}, ${panel.cameraAngle}, ${panel.compositionNotes}.`,
-      `Lighting and tone: ${panel.lightingMood}.`,
-      `Use these continuity anchors: ${uniqueStrings(renderPrompt.continuityAnchors ?? []).join('; ')}.`,
-      `Use these anatomy locks: ${uniqueStrings(renderPrompt.anatomyLocks ?? []).join('; ')}.`,
-      'Leave text editable in slide elements instead of baking it into the image.',
-      'Use only the supplied panel content and do not research the web or replace clinical details.',
-    ].join(' '),
-    styleLockInstruction: 'Match the first approved slide style for every subsequent slide in the deck.',
-    sequentialInstruction: 'Outline first, then generate slides one by one in panel order. Do not generate slides in parallel.',
-    overlayInstructions,
-    useOnlyProvidedContent: true,
-    forbidLiveResearch: true,
-    notes: [
-      'Keep visible text editable and sourced from the lettering instructions only.',
-      'Do not paraphrase or embellish medically meaningful content beyond the provided panel and claim references.',
-      'If layout overflow occurs, preserve the image composition first and move text into editable overlay boxes.',
+      'Do not include speech bubbles, captions, labels, or teaching copy inside the generated art.',
     ],
   };
 }
@@ -245,7 +205,7 @@ export function buildRenderingGuide(options) {
       sceneId: panelPlan.sceneId,
     })))
     .sort((/** @type {any} */ left, /** @type {any} */ right) => left.pageNumber - right.pageNumber || left.order - right.order)
-    .map((/** @type {any} */ panel, /** @type {number} */ index) => {
+    .map((/** @type {any} */ panel) => {
       const renderPrompt = renderPromptByPanel.get(panel.panelId);
 
       if (!renderPrompt) {
@@ -278,8 +238,7 @@ export function buildRenderingGuide(options) {
           .map((/** @type {string} */ claimId) => claimReferenceMap.get(claimId))
           .filter(Boolean),
         letteringEntries,
-        nanoBananaPrompt: buildNanoBananaPrompt(panel, renderPrompt),
-        gensparkSlide: buildGensparkSlide(panel, renderPrompt, letteringEntries, index + 1),
+        openAiImagePrompt: buildOpenAiImagePrompt(panel, renderPrompt),
       };
     });
 
@@ -290,21 +249,21 @@ export function buildRenderingGuide(options) {
     tenantId: options.workflowRun.tenantId,
     projectTitle: options.project.title,
     canonicalDiseaseName: options.diseasePacket.canonicalDiseaseName,
-    providerTargets: ['nano-banana-pro', 'genspark-ai-slides'],
+    providerTargets: ['openai-gpt-image'],
     generatedAt: options.generatedAt,
     markdownDocumentId: '',
     markdownLocation: '',
     runSummary: buildRunSummary(options.workflowRun, options.diseasePacket),
     franchiseRules: buildFranchiseRules(),
     continuityBible,
-    slideStrategy: {
-      onePanelPerSlide: true,
-      sequentialGenerationRequired: true,
-      firstSlideStyleLockRequired: true,
-      forbidLiveResearch: true,
+    panelExecutionStrategy: {
+      sequentialPanelExecutionRecommended: true,
+      continuityReferenceRequired: true,
+      separateLetteringRequired: true,
+      manualReviewRequired: true,
     },
     globalNegativeConstraints,
-    gensparkDeckBootstrapPrompt: buildDeckBootstrapPrompt(
+    openAiPanelExecutionPrompt: buildOpenAiPanelExecutionPrompt(
       options.project,
       options.workflowRun,
       options.diseasePacket,
@@ -315,7 +274,7 @@ export function buildRenderingGuide(options) {
     panels,
   };
 
-  guide.gensparkDeckBootstrapPrompt = buildDeckBootstrapPrompt(
+  guide.openAiPanelExecutionPrompt = buildOpenAiPanelExecutionPrompt(
     options.project,
     options.workflowRun,
     options.diseasePacket,
@@ -365,36 +324,23 @@ ${claimLines}
 ### Lettering Overlay
 ${letteringLines}
 
-### Nano Banana Pro Prompt
-Aspect ratio: ${panel.nanoBananaPrompt.aspectRatio}
+### OpenAI Image Prompt
+Aspect ratio: ${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).aspectRatio}
 
 \`\`\`
-${panel.nanoBananaPrompt.prompt}
+${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).prompt}
 \`\`\`
 
 Negative prompt:
 
 \`\`\`
-${panel.nanoBananaPrompt.negativePrompt}
+${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).negativePrompt}
 \`\`\`
 
 Locks:
-- Style: ${panel.nanoBananaPrompt.styleLocks.join('; ')}
-- Character: ${panel.nanoBananaPrompt.characterLocks.join('; ')}
-- Anatomy: ${panel.nanoBananaPrompt.anatomyLocks.join('; ')}
-
-### Genspark AI Slides Block
-Slide number: ${panel.gensparkSlide.slideNumber}
-Slide title: ${panel.gensparkSlide.title}
-
-\`\`\`
-${panel.gensparkSlide.creationPrompt}
-\`\`\`
-
-- Style lock: ${panel.gensparkSlide.styleLockInstruction}
-- Sequential instruction: ${panel.gensparkSlide.sequentialInstruction}
-- Overlay instructions:
-${panel.gensparkSlide.overlayInstructions.map((/** @type {string} */ instruction) => `  - ${instruction}`).join('\n')}
+- Style: ${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).styleLocks.join('; ')}
+- Character: ${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).characterLocks.join('; ')}
+- Anatomy: ${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).anatomyLocks.join('; ')}
 `;
   }).join('\n\n');
 
@@ -428,9 +374,9 @@ ${renderingGuide.franchiseRules.map((/** @type {string} */ rule) => `- ${rule}`)
 ## Global Negative Constraints
 ${renderingGuide.globalNegativeConstraints.map((/** @type {string} */ constraint) => `- ${constraint}`).join('\n')}
 
-## Genspark Deck Bootstrap Prompt
+## OpenAI Panel Execution Prompt
 \`\`\`
-${renderingGuide.gensparkDeckBootstrapPrompt}
+${renderingGuide.openAiPanelExecutionPrompt ?? renderingGuide.gensparkDeckBootstrapPrompt}
 \`\`\`
 
 ## Retry Guidance
