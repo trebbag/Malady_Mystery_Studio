@@ -55,6 +55,16 @@
     "owner": {
       "type": "string"
     },
+    "primaryOwnerRole": {
+      "type": "string"
+    },
+    "backupOwnerRole": {
+      "type": "string"
+    },
+    "refreshCadenceDays": {
+      "type": "integer",
+      "minimum": 1
+    },
     "governanceNotes": {
       "type": "array",
       "items": {
@@ -73,6 +83,14 @@
     "lastReviewedAt": {
       "type": "string",
       "format": "date-time"
+    },
+    "nextReviewDueAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supersededBy": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
     }
   }
 }

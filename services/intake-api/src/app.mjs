@@ -27,6 +27,7 @@ import {
   createDraftWorkflowRun,
   loadWorkflowSpec,
 } from '../../orchestrator/src/workflow-machine.mjs';
+import { createRenderExecutionService } from '../../render-execution/src/service.mjs';
 import { createStoryEngineService } from '../../story-engine/src/service.mjs';
 import {
   buildEvidenceTraceabilitySummary,
@@ -63,6 +64,18 @@ import {
   summarizeAssignmentDisplayNames,
   summarizeJsonDiff,
 } from './review-service.mjs';
+import {
+  buildReviewMessage,
+  buildReviewQueueView,
+  buildReviewThread,
+  buildWorkItem,
+  escalateOverdueWorkItems,
+  isWorkItemOverdue,
+  listMessagesForThread,
+  listReviewThreadsForRun,
+  listWorkItemsForRun,
+} from './work-item-service.mjs';
+import { createPlatformRuntime } from './platform-runtime.mjs';
 import { PlatformStore } from './store.mjs';
 
 const SCHEMA_VERSION = '1.0.0';
@@ -99,20 +112,28 @@ const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
     },
     {
       label: 'Operational pilot readiness',
-      percentComplete: 40,
+      percentComplete: 52,
+    },
+    {
+      label: 'Managed platform and pilot ops',
+      percentComplete: 54,
+    },
+    {
+      label: 'Live render execution',
+      percentComplete: 58,
     },
   ],
   overall: {
-    localMvpReadiness: 91,
-    pilotReadiness: 52,
+    localMvpReadiness: 93,
+    pilotReadiness: 60,
   },
   remainingWork: [
-    'Add reviewer queueing, due-date escalation, and cross-run assignment management.',
-    'Add live render integration and retry orchestration.',
-    'Move from local SQLite and filesystem storage to managed infrastructure for pilot use.',
-    'Add deployment, observability, retention execution, backup policy, and recovery drills.',
+    'Finish managed PostgreSQL metadata integration for runtime read/write paths, not just migration tooling and Azure scaffolding.',
+    'Deepen rendered-output review with richer visual QA and multi-provider retry strategies.',
+    'Expand governed primary-care coverage beyond the first tranche and add more source refresh ownership automation.',
+    'Run live Azure deployment, backup, restore, and worker drills with tenant credentials and production-grade secrets handling.',
     'Integrate external auth at the frontend or gateway layer when the app moves beyond local-open mode.',
-    'Expand governed disease and source coverage beyond the current local starter set.',
+    'Expand governed disease and source coverage beyond the current starter and first primary-care tranche.',
   ],
 });
 const CONTENT_TYPES = new Map([
@@ -130,6 +151,8 @@ const CONTENT_TYPES = new Map([
 const REVIEW_COMMENT_STATUSES = new Set(['open', 'resolved', 'note']);
 const REVIEW_COMMENT_SEVERITIES = new Set(['info', 'warning', 'critical']);
 const REVIEW_ASSIGNMENT_STATUSES = new Set(['queued', 'in-progress', 'completed', 'reassigned']);
+const WORK_ITEM_STATUSES = new Set(['queued', 'in-progress', 'completed', 'escalated', 'cancelled']);
+const THREAD_STATUSES = new Set(['open', 'resolved', 'archived']);
 
 /**
  * @typedef {{
@@ -262,6 +285,78 @@ function matchWorkflowRunArtifactDiffPath(pathname) {
 
 /**
  * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunThreadsPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/threads$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunRenderJobsPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/render-jobs$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ threadId: string } | null}
+ */
+function matchReviewThreadMessagesPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/review-threads\/([^/]+)\/messages$/);
+  return match ? { threadId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ workItemId: string } | null}
+ */
+function matchWorkItemPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/work-items\/([^/]+)$/);
+  return match ? { workItemId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ jobId: string } | null}
+ */
+function matchRenderJobPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/render-jobs\/([^/]+)$/);
+  return match ? { jobId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ jobId: string } | null}
+ */
+function matchRenderJobRetryPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/render-jobs\/([^/]+)\/retry$/);
+  return match ? { jobId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ sourceId: string } | null}
+ */
+function matchSourceRefreshTaskPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/source-catalog\/([^/]+)\/refresh-tasks$/);
+  return match ? { sourceId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ sourceId: string } | null}
+ */
+function matchSourceOwnershipPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/source-catalog\/([^/]+)\/ownership$/);
+  return match ? { sourceId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
  * @returns {boolean}
  */
 function isReviewDashboardViewPath(pathname) {
@@ -272,8 +367,24 @@ function isReviewDashboardViewPath(pathname) {
  * @param {string} pathname
  * @returns {boolean}
  */
+function isReviewQueueViewPath(pathname) {
+  return pathname === '/api/v1/review-queue';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
 function isLocalRuntimeViewPath(pathname) {
   return pathname === '/api/v1/local-runtime-view';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isSourceCatalogPath(pathname) {
+  return pathname === '/api/v1/source-catalog';
 }
 
 /**
@@ -318,6 +429,7 @@ function matchLegacyExportReviewPath(pathname) {
  */
 function isSpaShellPath(pathname) {
   return pathname === '/review'
+    || pathname === '/review/queue'
     || pathname === '/settings'
     || /^\/runs\/[^/]+\/(pipeline|review|packets|evidence|workbooks|scenes|panels|sources|governance|evals|bundles)$/.test(pathname);
 }
@@ -785,6 +897,30 @@ function upsertArtifactReference(workflowRun, artifactReference) {
 }
 
 /**
+ * @param {any} workflowRun
+ * @param {string} stageName
+ * @param {'pending' | 'running' | 'passed' | 'failed' | 'blocked'} status
+ * @param {string} [notes]
+ * @returns {any}
+ */
+function markWorkflowStage(workflowRun, stageName, status, notes = undefined) {
+  const timestamp = new Date().toISOString();
+
+  return {
+    ...workflowRun,
+    currentStage: stageName,
+    updatedAt: timestamp,
+    stages: workflowRun.stages.map((/** @type {any} */ stage) => stage.name === stageName ? {
+      ...stage,
+      status,
+      ...(status === 'running' ? { startedAt: stage.startedAt ?? timestamp } : {}),
+      ...(status === 'passed' || status === 'failed' || status === 'blocked' ? { endedAt: timestamp } : {}),
+      ...(notes ? { notes } : stage.notes ? { notes: stage.notes } : {}),
+    } : stage),
+  };
+}
+
+/**
  * @param {PlatformStore} store
  * @param {any} schemaRegistry
  * @param {{ event: any, workflowRun: any }} transition
@@ -950,6 +1086,57 @@ function listTenantArtifactsByType(store, artifactType, tenantId) {
   return store.listArtifactsByType(artifactType, {
     tenantId: normalizeTenantId(tenantId),
   });
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {any[]}
+ */
+function listRenderJobsForRun(store, workflowRun) {
+  return listTenantArtifactsByType(store, 'render-job', workflowRun.tenantId)
+    .filter((renderJob) => renderJob.workflowRunId === workflowRun.id)
+    .sort((left, right) => String(right.updatedAt).localeCompare(String(left.updatedAt)));
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {any | null}
+ */
+function getLatestRenderedAssetManifest(store, workflowRun) {
+  return loadLatestArtifact(store, workflowRun, 'rendered-asset-manifest');
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {number}
+ */
+function getActiveWorkItemCount(store, workflowRun) {
+  return listWorkItemsForRun(store, workflowRun)
+    .filter((workItem) => workItem.status === 'queued' || workItem.status === 'in-progress' || workItem.status === 'escalated')
+    .length;
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {number}
+ */
+function getOverdueWorkItemCount(store, workflowRun) {
+  return listWorkItemsForRun(store, workflowRun)
+    .filter((workItem) => isWorkItemOverdue(workItem))
+    .length;
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {number}
+ */
+function getThreadCount(store, workflowRun) {
+  return listReviewThreadsForRun(store, workflowRun).length;
 }
 
 /**
@@ -1383,6 +1570,93 @@ function saveContradictionResolution(options) {
 }
 
 /**
+ * @param {{ store: PlatformStore, schemaRegistry: any, actor: any, tenantId: string, sourceId: string, canonicalDiseaseName: string, primaryOwnerRole: string, backupOwnerRole: string, notes?: string[] }} options
+ * @returns {any}
+ */
+function saveSourceOwnerAssignment(options) {
+  const timestamp = new Date().toISOString();
+  const sourceOwnerAssignment = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('soa'),
+    tenantId: options.tenantId,
+    sourceId: options.sourceId,
+    canonicalDiseaseName: options.canonicalDiseaseName,
+    primaryOwnerRole: options.primaryOwnerRole,
+    backupOwnerRole: options.backupOwnerRole,
+    assignedBy: options.actor.id,
+    assignedAt: timestamp,
+    ...(Array.isArray(options.notes) && options.notes.length > 0 ? { notes: options.notes } : {}),
+  };
+
+  assertSchema(options.schemaRegistry, 'contracts/source-owner-assignment.schema.json', sourceOwnerAssignment);
+  options.store.saveArtifact('source-owner-assignment', sourceOwnerAssignment.id, sourceOwnerAssignment, {
+    tenantId: options.tenantId,
+  });
+
+  return sourceOwnerAssignment;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, actor: any, tenantId: string, workflowRunId?: string, sourceRecord: any, existingTask?: any | null, reason?: string }} options
+ * @returns {{ workItem: any, refreshTask: any }}
+ */
+function saveSourceRefreshTask(options) {
+  const actorId = options.actor?.id ?? 'clinical-governance-system';
+  const workItem = buildWorkItem({
+    tenantId: options.tenantId,
+    workflowRunId: options.workflowRunId,
+    workType: 'source-refresh',
+    queueName: 'source-governance',
+    subjectType: 'source-record',
+    subjectId: options.sourceRecord.id,
+    reason: options.sourceRecord.approvalStatus === 'suspended' ? 'blocked' : (options.sourceRecord.freshnessState ?? 'default'),
+    priority: options.sourceRecord.approvalStatus === 'suspended' ? 'critical' : 'high',
+    originType: 'source-refresh-task',
+    originId: options.existingTask?.id,
+    notes: options.reason ? [options.reason] : (options.sourceRecord.governanceNotes ?? []),
+    metadata: {
+      canonicalDiseaseName: options.sourceRecord.canonicalDiseaseName,
+      sourceLabel: options.sourceRecord.sourceLabel,
+      requestedBy: actorId,
+    },
+    existingWorkItem: options.existingTask?.workItemId
+      ? options.store.getArtifact('work-item', options.existingTask.workItemId)
+      : null,
+  });
+  assertSchema(options.schemaRegistry, 'contracts/work-item.schema.json', workItem);
+  options.store.saveArtifact('work-item', workItem.id, workItem, {
+    tenantId: options.tenantId,
+  });
+
+  const timestamp = new Date().toISOString();
+  const refreshTask = {
+    schemaVersion: SCHEMA_VERSION,
+    id: options.existingTask?.id ?? createId('srt'),
+    tenantId: options.tenantId,
+    workflowRunId: options.workflowRunId,
+    sourceId: options.sourceRecord.id,
+    canonicalDiseaseName: options.sourceRecord.canonicalDiseaseName,
+    status: options.existingTask?.status ?? 'open',
+    reason: options.reason ?? `Refresh ${options.sourceRecord.sourceLabel} for ${options.sourceRecord.freshnessState}.`,
+    freshnessState: options.sourceRecord.freshnessState,
+    workItemId: workItem.id,
+    nextReviewDueAt: options.sourceRecord.nextReviewDueAt,
+    createdAt: options.existingTask?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+    completedAt: options.existingTask?.completedAt,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/source-refresh-task.schema.json', refreshTask);
+  options.store.saveArtifact('source-refresh-task', refreshTask.id, refreshTask, {
+    tenantId: options.tenantId,
+  });
+
+  return {
+    workItem,
+    refreshTask,
+  };
+}
+
+/**
  * @param {{
  *   store: PlatformStore,
  *   schemaRegistry: any,
@@ -1435,6 +1709,7 @@ function rebuildClinicalPackageForRun(options) {
     canonicalDisease,
     clinicalService: options.clinicalService,
     storyEngineService: options.storyEngineService,
+    actor: options.actor,
   });
 }
 
@@ -1762,6 +2037,7 @@ function continueStoryPipeline(options) {
  *   canonicalDisease: any,
  *   clinicalService: any,
  *   storyEngineService: any,
+ *   actor?: any,
  * }} options
  * @returns {any}
  */
@@ -1778,6 +2054,13 @@ function continueClinicalStage(options) {
     store: options.store,
     schemaRegistry: options.schemaRegistry,
     workflowRun,
+    clinicalPackage,
+  });
+  ensureClinicalGovernanceTasks({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowRun,
+    actor: options.actor,
     clinicalPackage,
   });
 
@@ -1881,6 +2164,7 @@ function continueClinicalStage(options) {
  *   canonicalDisease: any,
  *   clinicalService: any,
  *   storyEngineService: any,
+ *   actor?: any,
  * }} options
  * @returns {any}
  */
@@ -1914,6 +2198,7 @@ function continueResolvedPipeline(options) {
     canonicalDisease: options.canonicalDisease,
     clinicalService: options.clinicalService,
     storyEngineService: options.storyEngineService,
+    actor: options.actor,
   });
 }
 
@@ -2115,6 +2400,7 @@ function resolveCanonicalizationForRun(options) {
     canonicalDisease: resolvedPackage.canonicalDisease,
     clinicalService: options.clinicalService,
     storyEngineService: options.storyEngineService,
+    actor: options.actor,
   });
 
   appendAuditLog(
@@ -2282,6 +2568,16 @@ function buildReviewArtifactGroups(store, workflowRun) {
       artifacts: groupedArtifacts.get('lettering-map') ?? [],
     },
     {
+      title: 'Render execution',
+      description: 'Queued jobs, retry attempts, rendered assets, and the latest manifest.',
+      artifacts: [
+        ...(groupedArtifacts.get('render-job') ?? []),
+        ...(groupedArtifacts.get('render-attempt') ?? []),
+        ...(groupedArtifacts.get('rendered-asset') ?? []),
+        ...(groupedArtifacts.get('rendered-asset-manifest') ?? []),
+      ],
+    },
+    {
       title: 'QA reports',
       artifacts: groupedArtifacts.get('qa-report') ?? [],
     },
@@ -2291,8 +2587,18 @@ function buildReviewArtifactGroups(store, workflowRun) {
 /**
  * @param {any[]} workflowRuns
  * @param {Map<string, any>} projectsById
- * @param {Map<string, { exportCount: number, latestEvalStatus: string, assignees: string[], openCommentCount: number, activeAssignmentCount: number, reviewAssignments: any[] }>} runSummaries
- * @param {{ disease?: string, state?: string, stage?: string, assignee?: string, exportStatus?: string, evalStatus?: string, sort?: string }} filters
+ * @param {Map<string, {
+ *   exportCount: number,
+ *   latestEvalStatus: string,
+ *   assignees: string[],
+ *   openCommentCount: number,
+ *   activeAssignmentCount: number,
+ *   activeWorkItemCount: number,
+ *   overdueWorkItemCount: number,
+ *   reviewAssignments: any[],
+ *   workItems?: any[],
+ * }>} runSummaries
+ * @param {{ disease?: string, state?: string, stage?: string, assignee?: string, exportStatus?: string, evalStatus?: string, queueStatus?: string, workType?: string, sort?: string }} filters
  * @returns {any[]}
  */
 function filterAndSortWorkflowRuns(workflowRuns, projectsById, runSummaries, filters) {
@@ -2306,7 +2612,10 @@ function filterAndSortWorkflowRuns(workflowRuns, projectsById, runSummaries, fil
       assignees: [],
       openCommentCount: 0,
       activeAssignmentCount: 0,
+      activeWorkItemCount: 0,
+      overdueWorkItemCount: 0,
       reviewAssignments: [],
+      workItems: [],
     };
 
     if (diseaseFilter && !diseaseName.includes(diseaseFilter)) {
@@ -2334,6 +2643,18 @@ function filterAndSortWorkflowRuns(workflowRuns, projectsById, runSummaries, fil
     }
 
     if (filters.evalStatus && runSummary.latestEvalStatus !== filters.evalStatus) {
+      return false;
+    }
+
+    if (filters.queueStatus === 'overdue' && runSummary.overdueWorkItemCount === 0) {
+      return false;
+    }
+
+    if (filters.queueStatus === 'active' && runSummary.activeWorkItemCount === 0) {
+      return false;
+    }
+
+    if (filters.workType && !(runSummary.workItems ?? []).some((workItem) => workItem.workType === filters.workType)) {
       return false;
     }
 
@@ -2372,12 +2693,14 @@ function filterAndSortWorkflowRuns(workflowRuns, projectsById, runSummaries, fil
 
 /**
  * @param {{ store: PlatformStore, schemaRegistry: any, actor: any, requestUrl: URL }} options
- * @returns {{ filters: Record<string, string>, projectsById: Map<string, any>, runSummaries: Map<string, { exportCount: number, latestEvalStatus: string, assignees: string[], openCommentCount: number, activeAssignmentCount: number, reviewAssignments: any[] }>, workflowRuns: any[] }}
+ * @returns {{ filters: Record<string, string>, projectsById: Map<string, any>, runSummaries: Map<string, { exportCount: number, latestEvalStatus: string, assignees: string[], openCommentCount: number, activeAssignmentCount: number, activeWorkItemCount: number, overdueWorkItemCount: number, threadCount: number, reviewAssignments: any[], workItems: any[] }>, workflowRuns: any[] }}
  */
 function buildReviewDashboardContext(options) {
   const accessibleProjects = options.store.listProjects().filter((project) => canAccessTenant(options.actor, getTenantId(project)));
   const accessibleWorkflowRuns = options.store.listWorkflowRuns()
     .filter((workflowRun) => canAccessTenant(options.actor, getTenantId(workflowRun)));
+  const tenantId = normalizeTenantId(options.actor.tenantId);
+  escalateOverdueWorkItems(options.store, tenantId);
   const projectsById = new Map(accessibleProjects.map((project) => [project.id, project]));
   const syncedWorkflowRuns = accessibleWorkflowRuns.map((workflowRun) => (
     syncLatestEvalMetadata(options.store, options.schemaRegistry, workflowRun)
@@ -2387,6 +2710,7 @@ function buildReviewDashboardContext(options) {
     (() => {
       const reviewAssignments = listReviewAssignmentsForRun(options.store, workflowRun);
       const reviewComments = listReviewCommentsForRun(options.store, workflowRun);
+      const workItems = listWorkItemsForRun(options.store, workflowRun);
 
       return {
         exportCount: options.store.listExportHistoryEntries(workflowRun.id).length,
@@ -2394,7 +2718,11 @@ function buildReviewDashboardContext(options) {
         assignees: summarizeAssignmentDisplayNames(reviewAssignments),
         openCommentCount: countOpenReviewComments(reviewComments),
         activeAssignmentCount: reviewAssignments.filter((assignment) => isActiveReviewAssignment(assignment)).length,
+        activeWorkItemCount: workItems.filter((workItem) => workItem.status === 'queued' || workItem.status === 'in-progress' || workItem.status === 'escalated').length,
+        overdueWorkItemCount: workItems.filter((workItem) => isWorkItemOverdue(workItem)).length,
+        threadCount: getThreadCount(options.store, workflowRun),
         reviewAssignments,
+        workItems,
       };
     })(),
   ]));
@@ -2405,6 +2733,8 @@ function buildReviewDashboardContext(options) {
     assignee: options.requestUrl.searchParams.get('assignee') ?? '',
     exportStatus: options.requestUrl.searchParams.get('exportStatus') ?? '',
     evalStatus: options.requestUrl.searchParams.get('evalStatus') ?? '',
+    queueStatus: options.requestUrl.searchParams.get('queueStatus') ?? '',
+    workType: options.requestUrl.searchParams.get('workType') ?? '',
     sort: options.requestUrl.searchParams.get('sort') ?? 'updated-desc',
   };
 
@@ -2418,7 +2748,7 @@ function buildReviewDashboardContext(options) {
 
 /**
  * @param {{ store: PlatformStore, schemaRegistry: any, clinicalService: any, actor: any, runId: string }} options
- * @returns {{ workflowRun: any, project: any, canonicalDisease: any, clinicalPackage: any, approvableRoles: string[], latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[], auditLogs: any[], artifactGroups: any[], reviewAssignments: any[], reviewComments: any[] }}
+ * @returns {{ workflowRun: any, project: any, canonicalDisease: any, clinicalPackage: any, approvableRoles: string[], latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[], auditLogs: any[], artifactGroups: any[], reviewAssignments: any[], reviewComments: any[], workItems: any[], reviewThreads: any[], renderJobs: any[] }}
  */
 function buildReviewRunContext(options) {
   let workflowRun = options.store.getWorkflowRun(options.runId);
@@ -2428,6 +2758,7 @@ function buildReviewRunContext(options) {
   }
 
   workflowRun = syncLatestEvalMetadata(options.store, options.schemaRegistry, workflowRun);
+  escalateOverdueWorkItems(options.store, getTenantId(workflowRun));
   assertTenantAccess(options.actor, getTenantId(workflowRun), options.store, options.schemaRegistry, 'review.view', 'workflow-run', workflowRun.id);
 
   const project = getProjectForRun(options.store, workflowRun);
@@ -2451,6 +2782,12 @@ function buildReviewRunContext(options) {
     ),
     reviewAssignments: listReviewAssignmentsForRun(options.store, workflowRun),
     reviewComments: listReviewCommentsForRun(options.store, workflowRun),
+    workItems: listWorkItemsForRun(options.store, workflowRun),
+    reviewThreads: listReviewThreadsForRun(options.store, workflowRun).map((reviewThread) => ({
+      ...reviewThread,
+      messages: listMessagesForThread(options.store, workflowRun.tenantId, reviewThread.id),
+    })),
+    renderJobs: listRenderJobsForRun(options.store, workflowRun),
     latestEvalRun: getLatestEvalRun(options.store, workflowRun),
     latestEvalStatus: getLatestEvalStatus(options.store, workflowRun),
     exportHistory: options.store.listExportHistoryEntries(workflowRun.id),
@@ -2753,6 +3090,606 @@ function buildReviewAssignmentRecord(options) {
 }
 
 /**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @param {string} scopeType
+ * @param {string | undefined} scopeId
+ * @returns {any | null}
+ */
+function findReviewThread(store, workflowRun, scopeType, scopeId = undefined) {
+  return listReviewThreadsForRun(store, workflowRun).find((thread) => thread.scopeType === scopeType && thread.scopeId === scopeId) ?? null;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, actor: any, title: string, scopeType: string, scopeId?: string }} options
+ * @returns {any}
+ */
+function ensureReviewThread(options) {
+  const existingThread = findReviewThread(options.store, options.workflowRun, options.scopeType, options.scopeId);
+  const reviewThread = buildReviewThread({
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    scopeType: options.scopeType,
+    scopeId: options.scopeId,
+    title: options.title,
+    actor: options.actor,
+    existingThread,
+  });
+  assertSchema(options.schemaRegistry, 'contracts/review-thread.schema.json', reviewThread);
+  options.store.saveArtifact('review-thread', reviewThread.id, reviewThread, {
+    tenantId: options.workflowRun.tenantId,
+  });
+  return reviewThread;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, thread: any, actor: any, body: string, parentMessageId?: string, mentions?: string[], resolutionNote?: string }} options
+ * @returns {any}
+ */
+function appendThreadMessage(options) {
+  const reviewMessage = buildReviewMessage({
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    threadId: options.thread.id,
+    body: options.body,
+    actor: options.actor,
+    parentMessageId: options.parentMessageId,
+    mentions: options.mentions,
+    resolutionNote: options.resolutionNote,
+  });
+  assertSchema(options.schemaRegistry, 'contracts/review-message.schema.json', reviewMessage);
+  options.store.saveArtifact('review-message', reviewMessage.id, reviewMessage, {
+    tenantId: options.workflowRun.tenantId,
+  });
+  return reviewMessage;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, reviewAssignment: any }} options
+ * @returns {any}
+ */
+function syncAssignmentWorkItem(options) {
+  const existingWorkItem = listWorkItemsForRun(options.store, options.workflowRun)
+    .find((workItem) => workItem.originType === 'review-assignment' && workItem.originId === options.reviewAssignment.id)
+    ?? null;
+  const workItem = buildWorkItem({
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    workType: 'run-review',
+    queueName: 'review-queue',
+    subjectType: 'workflow-run',
+    subjectId: options.workflowRun.id,
+    reason: options.workflowRun.pauseReason ?? 'export-blocker',
+    priority: options.reviewAssignment.reviewRole === 'clinical' ? 'high' : 'medium',
+    assignedActorId: options.reviewAssignment.assigneeId,
+    assignedActorDisplayName: options.reviewAssignment.assigneeDisplayName,
+    assignedActorRoles: options.reviewAssignment.assigneeRoles,
+    originType: 'review-assignment',
+    originId: options.reviewAssignment.id,
+    notes: typeof options.reviewAssignment.notes === 'string' ? [options.reviewAssignment.notes] : [],
+    metadata: {
+      reviewRole: options.reviewAssignment.reviewRole,
+      assignmentStatus: options.reviewAssignment.status,
+    },
+    existingWorkItem,
+  });
+
+  if (options.reviewAssignment.status === 'completed') {
+    workItem.status = 'completed';
+    workItem.completedAt = options.reviewAssignment.completedAt ?? new Date().toISOString();
+  } else if (options.reviewAssignment.status === 'in-progress') {
+    workItem.status = 'in-progress';
+  }
+
+  assertSchema(options.schemaRegistry, 'contracts/work-item.schema.json', workItem);
+  options.store.saveArtifact('work-item', workItem.id, workItem, {
+    tenantId: options.workflowRun.tenantId,
+  });
+  return workItem;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, reviewComment: any, actor: any }} options
+ * @returns {{ thread: any, message: any }}
+ */
+function syncCommentThread(options) {
+  const threadTitle = options.reviewComment.scopeType === 'artifact'
+    ? `${options.reviewComment.artifactType} discussion`
+    : 'Run discussion';
+  const reviewThread = ensureReviewThread({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowRun: options.workflowRun,
+    actor: options.actor,
+    title: threadTitle,
+    scopeType: options.reviewComment.scopeType === 'artifact' ? 'artifact' : 'run',
+    scopeId: options.reviewComment.scopeType === 'artifact'
+      ? `${options.reviewComment.artifactType}:${options.reviewComment.artifactId}`
+      : undefined,
+  });
+  const reviewMessage = appendThreadMessage({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowRun: options.workflowRun,
+    thread: reviewThread,
+    actor: options.actor,
+    body: options.reviewComment.body,
+    mentions: options.reviewComment.tags ?? [],
+    resolutionNote: options.reviewComment.status === 'resolved' ? 'Review comment marked resolved.' : undefined,
+  });
+
+  return {
+    thread: reviewThread,
+    message: reviewMessage,
+  };
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @param {string} sourceId
+ * @returns {any | null}
+ */
+function findExistingSourceRefreshTask(store, workflowRun, sourceId) {
+  return listTenantArtifactsByType(store, 'source-refresh-task', workflowRun.tenantId)
+    .find((task) => task.workflowRunId === workflowRun.id && task.sourceId === sourceId && task.status !== 'completed' && task.status !== 'cancelled')
+    ?? null;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, actor: any, clinicalPackage: any }} options
+ * @returns {void}
+ */
+function ensureClinicalGovernanceTasks(options) {
+  for (const sourceRecord of options.clinicalPackage.sourceRecords ?? []) {
+    const requiresRefresh = sourceRecord.freshnessState === 'stale'
+      || sourceRecord.approvalStatus === 'suspended'
+      || sourceRecord.contradictionStatus === 'blocking'
+      || sourceRecord.contradictionStatus === 'monitor'
+      || typeof sourceRecord.supersededBy === 'string';
+
+    if (!requiresRefresh) {
+      continue;
+    }
+
+    const existingTask = findExistingSourceRefreshTask(options.store, options.workflowRun, sourceRecord.id);
+    saveSourceRefreshTask({
+      store: options.store,
+      schemaRegistry: options.schemaRegistry,
+      actor: options.actor,
+      tenantId: options.workflowRun.tenantId,
+      workflowRunId: options.workflowRun.id,
+      sourceRecord: {
+        ...sourceRecord,
+        freshnessState: sourceRecord.approvalStatus === 'suspended' ? 'blocked' : sourceRecord.freshnessState,
+      },
+      existingTask,
+      reason: sourceRecord.approvalStatus === 'suspended'
+        ? 'Source is suspended and blocks release.'
+        : (typeof sourceRecord.supersededBy === 'string'
+          ? `Source has been superseded by ${sourceRecord.supersededBy}.`
+          : (sourceRecord.contradictionStatus === 'blocking' || sourceRecord.contradictionStatus === 'monitor'
+            ? `Source has contradiction status ${sourceRecord.contradictionStatus}.`
+            : `Source freshness state is ${sourceRecord.freshnessState}.`)),
+    });
+  }
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} clinicalService
+ * @param {string} tenantId
+ * @returns {Array<Record<string, any>>}
+ */
+function buildSourceCatalogPayload(store, clinicalService, tenantId) {
+  const governanceDecisions = listTenantGovernanceArtifacts(store, tenantId, 'source-governance-decision');
+  const contradictionResolutions = listTenantGovernanceArtifacts(store, tenantId, 'contradiction-resolution');
+  const ownerAssignments = listTenantArtifactsByType(store, 'source-owner-assignment', tenantId);
+  const sourceRefreshTasks = listTenantArtifactsByType(store, 'source-refresh-task', tenantId);
+  const canonicalDiseases = [...new Set([
+    ...Object.values(clinicalService.library ?? {}).map((knowledgePack) => knowledgePack.canonicalDiseaseName),
+    ...store.listWorkflowRuns()
+      .filter((workflowRun) => getTenantId(workflowRun) === tenantId)
+      .map((workflowRun) => loadResolvedCanonicalDiseaseForRun(store, workflowRun)?.canonicalDiseaseName)
+      .filter(Boolean),
+  ])];
+  /** @type {Map<string, any>} */
+  const mergedRecords = new Map();
+
+  for (const canonicalDiseaseName of canonicalDiseases) {
+    const sourceRecords = clinicalService.listSourceRecords(canonicalDiseaseName, {
+      governanceDecisions,
+      contradictionResolutions,
+    });
+
+    for (const sourceRecord of sourceRecords) {
+      const existing = mergedRecords.get(sourceRecord.id);
+      const ownerAssignment = ownerAssignments
+        .filter((assignment) => assignment.sourceId === sourceRecord.id)
+        .sort((left, right) => String(right.assignedAt).localeCompare(String(left.assignedAt)))
+        .at(0);
+      const impactedRunCount = store.listWorkflowRuns().filter((workflowRun) => {
+        if (getTenantId(workflowRun) !== tenantId) {
+          return false;
+        }
+
+        const diseasePacket = loadLatestArtifact(store, workflowRun, 'disease-packet');
+        return diseasePacket?.evidence?.some((/** @type {any} */ record) => record.sourceId === sourceRecord.id);
+      }).length;
+
+      mergedRecords.set(sourceRecord.id, {
+        ...sourceRecord,
+        primaryOwnerRole: ownerAssignment?.primaryOwnerRole ?? sourceRecord.primaryOwnerRole,
+        backupOwnerRole: ownerAssignment?.backupOwnerRole ?? sourceRecord.backupOwnerRole,
+        impactedDiseaseCount: existing ? existing.impactedDiseaseCount + 1 : 1,
+        impactedRunCount,
+        openRefreshTaskCount: sourceRefreshTasks.filter((task) => task.sourceId === sourceRecord.id && task.status === 'open').length,
+      });
+    }
+  }
+
+  return [...mergedRecords.values()].sort((/** @type {any} */ left, /** @type {any} */ right) => String(left.sourceLabel).localeCompare(String(right.sourceLabel)));
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, renderExecutionService: any, workflowRun: any, actor: any, renderPromptIds?: string[] }} options
+ * @returns {{ workflowRun: any, renderJob: any }}
+ */
+function enqueueRenderJob(options) {
+  const renderPrompts = collectArtifactsForRun(options.store, options.workflowRun)
+    .filter((entry) => entry.artifactType === 'render-prompt')
+    .map((entry) => entry.artifact)
+    .filter((renderPrompt) => !options.renderPromptIds || options.renderPromptIds.includes(renderPrompt.id));
+
+  if (renderPrompts.length === 0) {
+    throw createHttpError(409, 'No render prompts are available for render execution.');
+  }
+
+  let workflowRun = markWorkflowStage(options.workflowRun, 'render-execution', 'running', 'Render execution queued.');
+  const renderJob = options.renderExecutionService.createRenderJob({
+    workflowRun,
+    actor: options.actor,
+    renderPromptIds: renderPrompts.map((renderPrompt) => renderPrompt.id),
+  });
+
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'render-job',
+    'contracts/render-job.schema.json',
+    renderJob,
+  );
+  workflowRun = saveWorkflowRunRecord(options.store, options.schemaRegistry, workflowRun);
+
+  return {
+    workflowRun,
+    renderJob,
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowSpec: any, workflowRun: any, actor: any }} options
+ * @returns {any}
+ */
+function prepareWorkflowRunForManualRenderExecution(options) {
+  if (options.workflowRun.state === 'running' && options.workflowRun.currentStage === 'render-execution') {
+    return options.workflowRun;
+  }
+
+  if (options.workflowRun.state === 'review') {
+    return transitionWorkflow(
+      options.store,
+      options.schemaRegistry,
+      options.workflowSpec,
+      options.workflowRun,
+      {
+        eventType: 'REJECT_TO_STAGE',
+        actor: {
+          type: 'user',
+          id: options.actor.id,
+        },
+        payload: {
+          targetStage: 'render-execution',
+        },
+        notes: 'Manual render execution requested from review.',
+      },
+    );
+  }
+
+  if (options.workflowRun.state === 'approved' || options.workflowRun.state === 'exported') {
+    const reopened = transitionWorkflow(
+      options.store,
+      options.schemaRegistry,
+      options.workflowSpec,
+      options.workflowRun,
+      {
+        eventType: 'REOPEN_REVIEW',
+        actor: {
+          type: 'user',
+          id: options.actor.id,
+        },
+        notes: 'Manual render execution requested after approval/export.',
+      },
+    );
+
+    return transitionWorkflow(
+      options.store,
+      options.schemaRegistry,
+      options.workflowSpec,
+      reopened,
+      {
+        eventType: 'REJECT_TO_STAGE',
+        actor: {
+          type: 'user',
+          id: options.actor.id,
+        },
+        payload: {
+          targetStage: 'render-execution',
+        },
+        notes: 'Manual render execution requested after approval/export.',
+      },
+    );
+  }
+
+  return options.workflowRun;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowSpec: any, workflowRun: any, renderJob: any, renderExecutionService: any, telemetry: any }} options
+ * @returns {Promise<any>}
+ */
+export async function processRenderJob(options) {
+  let workflowRun = options.workflowRun;
+  let renderJob = {
+    ...options.renderJob,
+    status: 'running',
+    updatedAt: new Date().toISOString(),
+  };
+  options.store.saveArtifact('render-job', renderJob.id, renderJob, {
+    tenantId: workflowRun.tenantId,
+  });
+  const renderPrompts = renderJob.renderPromptIds
+    .map((/** @type {string} */ renderPromptId) => options.store.getArtifact('render-prompt', renderPromptId))
+    .filter(Boolean);
+  /** @type {any[]} */
+  let renderedAssets = [];
+  let lastError = null;
+
+  for (const [attemptIndex, strategy] of options.renderExecutionService.renderTargetProfile.fallbackStrategies.entries()) {
+    try {
+      renderedAssets = [];
+
+      for (const renderPrompt of renderPrompts) {
+        const renderedImage = await options.renderExecutionService.renderSinglePrompt(renderPrompt, strategy);
+        const assetId = createId('ras');
+        const documentRecord = options.store.saveDocument('render-output', assetId, renderedImage.buffer, {
+          tenantId: workflowRun.tenantId,
+          contentType: renderedImage.mimeType,
+          extension: renderedImage.mimeType === 'image/png' ? 'png' : 'bin',
+          retentionClass: 'approved-artifact',
+        });
+        const renderedAsset = options.renderExecutionService.buildRenderedAsset({
+          workflowRun,
+          renderJob,
+          renderPrompt,
+          renderedImage,
+          location: documentRecord.location,
+          thumbnailLocation: documentRecord.location,
+        });
+        renderedAsset.id = assetId;
+        assertSchema(options.schemaRegistry, 'contracts/rendered-asset.schema.json', renderedAsset);
+        options.store.saveArtifact('rendered-asset', renderedAsset.id, renderedAsset, {
+          tenantId: workflowRun.tenantId,
+        });
+        workflowRun = upsertArtifactReference(workflowRun, {
+          artifactType: 'rendered-asset',
+          artifactId: renderedAsset.id,
+          status: 'generated',
+        });
+        renderedAssets.push(renderedAsset);
+      }
+
+      const renderAttempt = options.renderExecutionService.buildRenderAttempt({
+        workflowRun,
+        renderJobId: renderJob.id,
+        attemptNumber: attemptIndex + 1,
+        strategy,
+        status: 'succeeded',
+        providerRequestId: `${renderJob.id}.${strategy}`,
+        renderedAssetIds: renderedAssets.map((asset) => asset.id),
+      });
+      assertSchema(options.schemaRegistry, 'contracts/render-attempt.schema.json', renderAttempt);
+      options.store.saveArtifact('render-attempt', renderAttempt.id, renderAttempt, {
+        tenantId: workflowRun.tenantId,
+      });
+      workflowRun = upsertArtifactReference(workflowRun, {
+        artifactType: 'render-attempt',
+        artifactId: renderAttempt.id,
+        status: 'generated',
+      });
+
+      const renderedAssetManifest = options.renderExecutionService.buildRenderedAssetManifest({
+        workflowRun,
+        renderJob,
+        renderedAssets,
+      });
+      assertSchema(options.schemaRegistry, 'contracts/rendered-asset-manifest.schema.json', renderedAssetManifest);
+      options.store.saveArtifact('rendered-asset-manifest', renderedAssetManifest.id, renderedAssetManifest, {
+        tenantId: workflowRun.tenantId,
+      });
+      workflowRun = upsertArtifactReference(workflowRun, {
+        artifactType: 'rendered-asset-manifest',
+        artifactId: renderedAssetManifest.id,
+        status: 'generated',
+      });
+
+      renderJob = {
+        ...renderJob,
+        status: 'completed',
+        approvalStatus: 'approved',
+        attemptIds: [...(renderJob.attemptIds ?? []), renderAttempt.id],
+        renderedAssetManifestId: renderedAssetManifest.id,
+        updatedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      };
+      options.store.saveArtifact('render-job', renderJob.id, renderJob, {
+        tenantId: workflowRun.tenantId,
+      });
+      workflowRun = transitionWorkflow(
+        options.store,
+        options.schemaRegistry,
+        options.workflowSpec,
+        workflowRun,
+        {
+          eventType: 'STAGE_PASSED',
+          actor: {
+            type: 'system',
+            id: 'render-execution-stage',
+          },
+          payload: {
+            renderJobId: renderJob.id,
+            renderedAssetManifestId: renderedAssetManifest.id,
+            renderedAssetIds: renderedAssets.map((asset) => asset.id),
+          },
+          notes: 'Rendered assets generated successfully.',
+        },
+      );
+      options.telemetry.info('render-job.completed', {
+        renderJobId: renderJob.id,
+        workflowRunId: workflowRun.id,
+        renderedAssetCount: renderedAssets.length,
+      });
+      return renderJob;
+    } catch (error) {
+      lastError = error;
+      const renderAttempt = options.renderExecutionService.buildRenderAttempt({
+        workflowRun,
+        renderJobId: renderJob.id,
+        attemptNumber: attemptIndex + 1,
+        strategy,
+        status: 'failed',
+        providerRequestId: `${renderJob.id}.${strategy}`,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      assertSchema(options.schemaRegistry, 'contracts/render-attempt.schema.json', renderAttempt);
+      options.store.saveArtifact('render-attempt', renderAttempt.id, renderAttempt, {
+        tenantId: workflowRun.tenantId,
+      });
+      workflowRun = upsertArtifactReference(workflowRun, {
+        artifactType: 'render-attempt',
+        artifactId: renderAttempt.id,
+        status: 'rejected',
+      });
+      renderJob = {
+        ...renderJob,
+        attemptIds: [...(renderJob.attemptIds ?? []), renderAttempt.id],
+        updatedAt: new Date().toISOString(),
+        lastError: error instanceof Error ? error.message : String(error),
+      };
+      options.store.saveArtifact('render-job', renderJob.id, renderJob, {
+        tenantId: workflowRun.tenantId,
+      });
+    }
+  }
+
+  renderJob = {
+    ...renderJob,
+    status: 'retry-required',
+    updatedAt: new Date().toISOString(),
+    lastError: lastError instanceof Error ? lastError.message : String(lastError),
+  };
+  options.store.saveArtifact('render-job', renderJob.id, renderJob, {
+    tenantId: workflowRun.tenantId,
+  });
+  const retryWorkItem = buildWorkItem({
+    tenantId: workflowRun.tenantId,
+    workflowRunId: workflowRun.id,
+    workType: 'render-retry',
+    queueName: 'render-review',
+    subjectType: 'render-job',
+    subjectId: renderJob.id,
+    reason: 'default',
+    priority: 'high',
+    originType: 'render-job',
+    originId: renderJob.id,
+    notes: [renderJob.lastError ?? 'Render execution failed after automatic retries.'],
+  });
+  assertSchema(options.schemaRegistry, 'contracts/work-item.schema.json', retryWorkItem);
+  options.store.saveArtifact('work-item', retryWorkItem.id, retryWorkItem, {
+    tenantId: workflowRun.tenantId,
+  });
+  workflowRun = upsertArtifactReference(workflowRun, {
+    artifactType: 'work-item',
+    artifactId: retryWorkItem.id,
+    status: 'generated',
+  });
+  workflowRun = transitionWorkflow(
+    options.store,
+    options.schemaRegistry,
+    options.workflowSpec,
+    workflowRun,
+    {
+      eventType: 'REQUEST_REVIEW',
+      actor: {
+        type: 'system',
+        id: 'render-execution-stage',
+      },
+      payload: {
+        renderJobId: renderJob.id,
+        retryWorkItemId: retryWorkItem.id,
+      },
+      notes: 'Automatic render retries exhausted and human review is required.',
+    },
+  );
+  saveWorkflowRunRecord(
+    options.store,
+    options.schemaRegistry,
+    withPauseReason(workflowRun, 'render-retry-required'),
+  );
+  options.telemetry.warn('render-job.retry-required', {
+    renderJobId: renderJob.id,
+    workflowRunId: workflowRun.id,
+    lastError: renderJob.lastError,
+  });
+  return renderJob;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowSpec: any, queueAdapter: any, renderExecutionService: any, workflowRun: any, actor: any, telemetry: any }} options
+ * @returns {Promise<any>}
+ */
+async function resumeRenderExecutionIfReady(options) {
+  if (options.workflowRun.currentStage !== 'render-execution' || options.workflowRun.state !== 'running') {
+    return options.workflowRun;
+  }
+
+  const existingRenderableJob = listRenderJobsForRun(options.store, options.workflowRun)
+    .find((renderJob) => renderJob.status === 'queued' || renderJob.status === 'running');
+
+  if (existingRenderableJob) {
+    return options.store.getWorkflowRun(options.workflowRun.id) ?? options.workflowRun;
+  }
+
+  const queued = enqueueRenderJob({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    renderExecutionService: options.renderExecutionService,
+    workflowRun: options.workflowRun,
+    actor: options.actor,
+  });
+  await options.queueAdapter.enqueue('render-execution', {
+    workflowRunId: queued.workflowRun.id,
+    renderJobId: queued.renderJob.id,
+  });
+  options.telemetry.info('render-job.auto-queued', {
+    renderJobId: queued.renderJob.id,
+    workflowRunId: queued.workflowRun.id,
+  });
+  return options.store.getWorkflowRun(queued.workflowRun.id) ?? queued.workflowRun;
+}
+
+/**
  * @param {{ store: PlatformStore, schemaRegistry: any, evalService: any, workflowRun: any, actor: any }} options
  * @returns {any}
  */
@@ -3001,7 +3938,18 @@ function syncLatestEvalMetadata(store, schemaRegistry, workflowRun) {
 }
 
 /**
- * @param {{ rootDir?: string, store?: PlatformStore, dbFilePath?: string, objectStoreDir?: string, webDistDir?: string }} [options]
+ * @param {{
+ *   rootDir?: string,
+ *   store?: PlatformStore,
+ *   dbFilePath?: string,
+ *   objectStoreDir?: string,
+ *   webDistDir?: string,
+ *   queueBackend?: string,
+ *   telemetryBackend?: string,
+ *   serviceBusConnectionString?: string,
+ *   renderProvider?: string,
+ *   geminiApiKey?: string,
+ * }} [options]
  * @returns {Promise<{ server: import('node:http').Server, store: PlatformStore }>}
  */
 export async function createApp(options = {}) {
@@ -3009,6 +3957,13 @@ export async function createApp(options = {}) {
   const dbFilePath = options.dbFilePath ?? process.env.PLATFORM_DB_FILE ?? path.join(rootDir, 'var', 'db', 'platform.sqlite');
   const objectStoreDir = options.objectStoreDir ?? process.env.OBJECT_STORE_DIR ?? path.join(rootDir, 'var', 'object-store');
   const webDistDir = options.webDistDir ?? path.join(rootDir, 'apps', 'web', 'dist');
+  const platformRuntime = createPlatformRuntime({
+    rootDir,
+    objectStoreDir,
+    queueBackend: options.queueBackend,
+    telemetryBackend: options.telemetryBackend,
+    serviceBusConnectionString: options.serviceBusConnectionString,
+  });
   const store = options.store ?? new PlatformStore({
     rootDir,
     dbFilePath,
@@ -3019,11 +3974,36 @@ export async function createApp(options = {}) {
   const clinicalService = createClinicalRetrievalService();
   const storyEngineService = createStoryEngineService();
   const exporterService = createExporterService();
+  const renderExecutionService = createRenderExecutionService({
+    provider: options.renderProvider,
+    apiKey: options.geminiApiKey,
+  });
   const evalService = createEvalService({
     rootDir,
     exporterService,
   });
   const webIndexPath = path.join(webDistDir, 'index.html');
+
+  if (typeof platformRuntime.queueAdapter?.registerHandler === 'function') {
+    platformRuntime.queueAdapter.registerHandler('render-execution', async (/** @type {any} */ message) => {
+      const workflowRun = store.getWorkflowRun(message.workflowRunId);
+      const renderJob = store.getArtifact('render-job', message.renderJobId);
+
+      if (!workflowRun || !renderJob) {
+        return;
+      }
+
+      await processRenderJob({
+        store,
+        schemaRegistry,
+        workflowSpec,
+        workflowRun,
+        renderJob,
+        renderExecutionService,
+        telemetry: platformRuntime.telemetry,
+      });
+    });
+  }
 
   /**
    * @returns {Promise<boolean>}
@@ -3269,7 +4249,7 @@ export async function createApp(options = {}) {
         assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'canonicalization.resolve', 'workflow-run', workflowRun.id);
         const body = await readFormBody(request);
 
-        resolveCanonicalizationForRun({
+        const updatedWorkflowRun = resolveCanonicalizationForRun({
           store,
           schemaRegistry,
           workflowSpec,
@@ -3279,6 +4259,16 @@ export async function createApp(options = {}) {
           actor,
           selectedCanonicalDiseaseName: body.selectedCanonicalDiseaseName,
           reason: body.reason,
+        });
+        await resumeRenderExecutionIfReady({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          queueAdapter: platformRuntime.queueAdapter,
+          renderExecutionService,
+          workflowRun: updatedWorkflowRun,
+          actor,
+          telemetry: platformRuntime.telemetry,
         });
         redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
         return;
@@ -3317,7 +4307,7 @@ export async function createApp(options = {}) {
         assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'clinical-package.rebuild', 'workflow-run', workflowRun.id);
         const body = await readFormBody(request);
 
-        rebuildClinicalPackageForRun({
+        const rebuiltRun = rebuildClinicalPackageForRun({
           store,
           schemaRegistry,
           workflowSpec,
@@ -3326,6 +4316,16 @@ export async function createApp(options = {}) {
           workflowRun,
           actor,
           reason: body.reason,
+        });
+        await resumeRenderExecutionIfReady({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          queueAdapter: platformRuntime.queueAdapter,
+          renderExecutionService,
+          workflowRun: rebuiltRun,
+          actor,
+          telemetry: platformRuntime.telemetry,
         });
         redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
         return;
@@ -3369,6 +4369,26 @@ export async function createApp(options = {}) {
           reason: body.reason,
           notes: body.reason ? [body.reason] : [],
         });
+        const rebuiltRun = rebuildClinicalPackageForRun({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          clinicalService,
+          storyEngineService,
+          workflowRun,
+          actor,
+          reason: `Recomputed the clinical package after source governance for ${sourceRecord.id}.`,
+        });
+        await resumeRenderExecutionIfReady({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          queueAdapter: platformRuntime.queueAdapter,
+          renderExecutionService,
+          workflowRun: rebuiltRun,
+          actor,
+          telemetry: platformRuntime.telemetry,
+        });
         redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
         return;
       }
@@ -3410,6 +4430,26 @@ export async function createApp(options = {}) {
           relatedClaimId: body.relatedClaimId || undefined,
           status: body.status,
           reason: body.reason,
+        });
+        const rebuiltRun = rebuildClinicalPackageForRun({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          clinicalService,
+          storyEngineService,
+          workflowRun,
+          actor,
+          reason: `Recomputed the clinical package after contradiction resolution for ${evidenceRecord.claimId}.`,
+        });
+        await resumeRenderExecutionIfReady({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          queueAdapter: platformRuntime.queueAdapter,
+          renderExecutionService,
+          workflowRun: rebuiltRun,
+          actor,
+          telemetry: platformRuntime.telemetry,
         });
         redirect(response, `/review/runs/${encodeURIComponent(workflowRun.id)}`);
         return;
@@ -3457,6 +4497,25 @@ export async function createApp(options = {}) {
         return;
       }
 
+      if (method === 'GET' && isReviewQueueViewPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot read review queue data.');
+        }
+
+        escalateOverdueWorkItems(store, actor.tenantId);
+        const accessibleProjects = store.listProjects().filter((project) => canAccessTenant(actor, getTenantId(project)));
+        const accessibleWorkflowRuns = store.listWorkflowRuns().filter((workflowRun) => canAccessTenant(actor, getTenantId(workflowRun)));
+        const queueView = buildReviewQueueView(
+          store,
+          accessibleWorkflowRuns,
+          new Map(accessibleProjects.map((project) => [project.id, project])),
+          requestUrl.searchParams,
+        );
+        assertSchema(schemaRegistry, 'contracts/review-queue-view.schema.json', queueView);
+        sendJson(response, 200, queueView);
+        return;
+      }
+
       const workflowRunReviewViewPath = matchWorkflowRunReviewViewPath(pathname);
 
       if (method === 'GET' && workflowRunReviewViewPath) {
@@ -3478,6 +4537,9 @@ export async function createApp(options = {}) {
           clinicalPackage: reviewRunContext.clinicalPackage,
           reviewAssignments: reviewRunContext.reviewAssignments,
           reviewComments: reviewRunContext.reviewComments,
+          workItems: reviewRunContext.workItems,
+          reviewThreads: reviewRunContext.reviewThreads,
+          renderJobs: reviewRunContext.renderJobs,
           latestEvalRun: reviewRunContext.latestEvalRun,
           latestEvalStatus: reviewRunContext.latestEvalStatus,
           exportHistory: reviewRunContext.exportHistory,
@@ -3554,6 +4616,13 @@ export async function createApp(options = {}) {
         store.saveArtifact('review-comment', reviewComment.id, reviewComment, {
           tenantId: workflowRun.tenantId,
         });
+        syncCommentThread({
+          store,
+          schemaRegistry,
+          workflowRun,
+          reviewComment,
+          actor,
+        });
         appendAuditLog(
           store,
           schemaRegistry,
@@ -3622,6 +4691,12 @@ export async function createApp(options = {}) {
         store.saveArtifact('review-assignment', reviewAssignment.id, reviewAssignment, {
           tenantId: workflowRun.tenantId,
         });
+        syncAssignmentWorkItem({
+          store,
+          schemaRegistry,
+          workflowRun,
+          reviewAssignment,
+        });
         appendAuditLog(
           store,
           schemaRegistry,
@@ -3639,6 +4714,284 @@ export async function createApp(options = {}) {
           },
         );
         sendJson(response, existingAssignment ? 200 : 201, reviewAssignment);
+        return;
+      }
+
+      const workflowRunThreadsPath = matchWorkflowRunThreadsPath(pathname);
+
+      if (workflowRunThreadsPath && method === 'GET') {
+        const workflowRun = store.getWorkflowRun(workflowRunThreadsPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'review-threads.view', 'workflow-run', workflowRun.id);
+        const reviewThreads = listReviewThreadsForRun(store, workflowRun);
+        reviewThreads.forEach((reviewThread) => assertSchema(schemaRegistry, 'contracts/review-thread.schema.json', reviewThread));
+        sendJson(response, 200, reviewThreads.map((reviewThread) => ({
+          ...reviewThread,
+          messages: listMessagesForThread(store, workflowRun.tenantId, reviewThread.id),
+        })));
+        return;
+      }
+
+      if (workflowRunThreadsPath && method === 'POST') {
+        const workflowRun = store.getWorkflowRun(workflowRunThreadsPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'review-threads.write', 'workflow-run', workflowRun.id);
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body) || typeof body.title !== 'string' || typeof body.scopeType !== 'string') {
+          throw createHttpError(400, 'title and scopeType are required for review threads.');
+        }
+
+        const reviewThread = ensureReviewThread({
+          store,
+          schemaRegistry,
+          workflowRun,
+          actor,
+          title: body.title,
+          scopeType: body.scopeType,
+          scopeId: typeof body.scopeId === 'string' ? body.scopeId : undefined,
+        });
+        sendJson(response, 201, reviewThread);
+        return;
+      }
+
+      const reviewThreadMessagesPath = matchReviewThreadMessagesPath(pathname);
+
+      if (reviewThreadMessagesPath && method === 'GET') {
+        const reviewThread = store.getArtifact('review-thread', reviewThreadMessagesPath.threadId);
+
+        if (!reviewThread) {
+          throw createHttpError(404, 'Review thread not found.');
+        }
+
+        assertTenantAccess(actor, reviewThread.tenantId, store, schemaRegistry, 'review-thread-messages.view', 'workflow-run', reviewThread.workflowRunId);
+        const messages = listMessagesForThread(store, reviewThread.tenantId, reviewThread.id);
+        messages.forEach((message) => assertSchema(schemaRegistry, 'contracts/review-message.schema.json', message));
+        sendJson(response, 200, messages);
+        return;
+      }
+
+      if (reviewThreadMessagesPath && method === 'POST') {
+        const reviewThread = store.getArtifact('review-thread', reviewThreadMessagesPath.threadId);
+
+        if (!reviewThread) {
+          throw createHttpError(404, 'Review thread not found.');
+        }
+
+        const workflowRun = store.getWorkflowRun(reviewThread.workflowRunId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, reviewThread.tenantId, store, schemaRegistry, 'review-thread-messages.write', 'workflow-run', workflowRun.id);
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body) || typeof body.body !== 'string') {
+          throw createHttpError(400, 'body is required for review thread messages.');
+        }
+
+        const reviewMessage = appendThreadMessage({
+          store,
+          schemaRegistry,
+          workflowRun,
+          thread: reviewThread,
+          actor,
+          body: body.body,
+          parentMessageId: typeof body.parentMessageId === 'string' ? body.parentMessageId : undefined,
+          mentions: Array.isArray(body.mentions) ? body.mentions.filter((value) => typeof value === 'string') : [],
+          resolutionNote: typeof body.resolutionNote === 'string' ? body.resolutionNote : undefined,
+        });
+        sendJson(response, 201, reviewMessage);
+        return;
+      }
+
+      const workItemPath = matchWorkItemPath(pathname);
+
+      if (workItemPath && method === 'GET') {
+        const workItem = store.getArtifact('work-item', workItemPath.workItemId);
+
+        if (!workItem) {
+          throw createHttpError(404, 'Work item not found.');
+        }
+
+        assertTenantAccess(actor, workItem.tenantId, store, schemaRegistry, 'work-item.view', 'workflow-run', workItem.workflowRunId ?? workItem.subjectId);
+        assertSchema(schemaRegistry, 'contracts/work-item.schema.json', workItem);
+        sendJson(response, 200, workItem);
+        return;
+      }
+
+      if (workItemPath && method === 'PATCH') {
+        const workItem = store.getArtifact('work-item', workItemPath.workItemId);
+
+        if (!workItem) {
+          throw createHttpError(404, 'Work item not found.');
+        }
+
+        assertTenantAccess(actor, workItem.tenantId, store, schemaRegistry, 'work-item.write', 'workflow-run', workItem.workflowRunId ?? workItem.subjectId);
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body)) {
+          throw createHttpError(400, 'Work item patch must be an object.');
+        }
+
+        const status = typeof body.status === 'string' ? body.status : workItem.status;
+
+        if (!WORK_ITEM_STATUSES.has(status)) {
+          throw createHttpError(400, 'Invalid work item status.');
+        }
+
+        const updatedWorkItem = {
+          ...workItem,
+          status,
+          priority: typeof body.priority === 'string' ? body.priority : workItem.priority,
+          notes: Array.isArray(body.notes) ? body.notes.filter((value) => typeof value === 'string') : workItem.notes,
+          updatedAt: new Date().toISOString(),
+          ...(status === 'completed' ? { completedAt: new Date().toISOString() } : {}),
+        };
+        assertSchema(schemaRegistry, 'contracts/work-item.schema.json', updatedWorkItem);
+        store.saveArtifact('work-item', updatedWorkItem.id, updatedWorkItem, {
+          tenantId: updatedWorkItem.tenantId,
+        });
+        sendJson(response, 200, updatedWorkItem);
+        return;
+      }
+
+      const workflowRunRenderJobsPath = matchWorkflowRunRenderJobsPath(pathname);
+
+      if (workflowRunRenderJobsPath && method === 'POST') {
+        const workflowRun = store.getWorkflowRun(workflowRunRenderJobsPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'render-job.enqueue', 'workflow-run', workflowRun.id);
+        const body = await readJsonBody(request);
+        const renderPromptIds = isRecord(body) && Array.isArray(body.renderPromptIds)
+          ? body.renderPromptIds.filter((value) => typeof value === 'string')
+          : undefined;
+        const renderReadyRun = prepareWorkflowRunForManualRenderExecution({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          workflowRun,
+          actor,
+        });
+        const queued = enqueueRenderJob({
+          store,
+          schemaRegistry,
+          renderExecutionService,
+          workflowRun: renderReadyRun,
+          actor,
+          renderPromptIds,
+        });
+        appendAuditLog(
+          store,
+          schemaRegistry,
+          actor,
+          'render-job.enqueue',
+          'workflow-run',
+          queued.workflowRun.id,
+          'success',
+          `Queued render job ${queued.renderJob.id}.`,
+          {
+            renderJobId: queued.renderJob.id,
+            renderPromptCount: queued.renderJob.renderPromptIds.length,
+          },
+        );
+        await platformRuntime.queueAdapter.enqueue('render-execution', {
+          workflowRunId: queued.workflowRun.id,
+          renderJobId: queued.renderJob.id,
+        });
+        sendJson(response, 202, queued);
+        return;
+      }
+
+      const renderJobPath = matchRenderJobPath(pathname);
+
+      if (renderJobPath && method === 'GET') {
+        const renderJob = store.getArtifact('render-job', renderJobPath.jobId);
+
+        if (!renderJob) {
+          throw createHttpError(404, 'Render job not found.');
+        }
+
+        assertTenantAccess(actor, renderJob.tenantId, store, schemaRegistry, 'render-job.view', 'workflow-run', renderJob.workflowRunId);
+        const attempts = listTenantArtifactsByType(store, 'render-attempt', renderJob.tenantId)
+          .filter((attempt) => attempt.renderJobId === renderJob.id);
+        const manifest = renderJob.renderedAssetManifestId
+          ? store.getArtifact('rendered-asset-manifest', renderJob.renderedAssetManifestId)
+          : null;
+        const renderedAssets = listTenantArtifactsByType(store, 'rendered-asset', renderJob.tenantId)
+          .filter((asset) => asset.renderJobId === renderJob.id);
+        sendJson(response, 200, {
+          ...renderJob,
+          attempts,
+          renderedAssets,
+          renderedAssetManifest: manifest,
+        });
+        return;
+      }
+
+      const renderJobRetryPath = matchRenderJobRetryPath(pathname);
+
+      if (renderJobRetryPath && method === 'POST') {
+        const existingRenderJob = store.getArtifact('render-job', renderJobRetryPath.jobId);
+
+        if (!existingRenderJob) {
+          throw createHttpError(404, 'Render job not found.');
+        }
+
+        const workflowRun = store.getWorkflowRun(existingRenderJob.workflowRunId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, existingRenderJob.tenantId, store, schemaRegistry, 'render-job.retry', 'workflow-run', workflowRun.id);
+        const renderReadyRun = prepareWorkflowRunForManualRenderExecution({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          workflowRun,
+          actor,
+        });
+        const queued = enqueueRenderJob({
+          store,
+          schemaRegistry,
+          renderExecutionService,
+          workflowRun: renderReadyRun,
+          actor,
+          renderPromptIds: existingRenderJob.renderPromptIds,
+        });
+        appendAuditLog(
+          store,
+          schemaRegistry,
+          actor,
+          'render-job.retry',
+          'workflow-run',
+          workflowRun.id,
+          'success',
+          `Queued retry render job ${queued.renderJob.id} from ${existingRenderJob.id}.`,
+          {
+            previousRenderJobId: existingRenderJob.id,
+            renderJobId: queued.renderJob.id,
+          },
+        );
+        await platformRuntime.queueAdapter.enqueue('render-execution', {
+          workflowRunId: queued.workflowRun.id,
+          renderJobId: queued.renderJob.id,
+        });
+        sendJson(response, 202, queued);
         return;
       }
 
@@ -3679,8 +5032,15 @@ export async function createApp(options = {}) {
             dbFilePath: store.dbFilePath,
             objectStoreDir: store.objectStoreDir,
           },
+          platform: {
+            metadataStore: platformRuntime.metadataStoreKind,
+            objectStore: platformRuntime.objectStorageKind,
+            queueBackend: platformRuntime.queueBackend,
+            telemetryBackend: process.env.TELEMETRY_BACKEND ?? 'stdout',
+          },
           availableCommands: [
             'pnpm dev:api',
+            'pnpm dev:worker',
             'pnpm dev:web',
             'pnpm lint',
             'pnpm typecheck',
@@ -3691,6 +5051,8 @@ export async function createApp(options = {}) {
             'pnpm local:backup',
             'pnpm local:reset',
             'pnpm local:restore -- --path var/backups/<timestamp>',
+            'pnpm migrate:managed',
+            'pnpm ops:restore-smoke',
           ],
           readiness: getReadinessSnapshot(),
         });
@@ -3861,6 +5223,17 @@ export async function createApp(options = {}) {
             canonicalDisease,
             clinicalService,
             storyEngineService,
+            actor,
+          });
+          workflowRun = await resumeRenderExecutionIfReady({
+            store,
+            schemaRegistry,
+            workflowSpec,
+            queueAdapter: platformRuntime.queueAdapter,
+            renderExecutionService,
+            workflowRun,
+            actor,
+            telemetry: platformRuntime.telemetry,
           });
         }
 
@@ -3954,7 +5327,17 @@ export async function createApp(options = {}) {
           actor,
           reason: isRecord(body) && typeof body.reason === 'string' ? body.reason : undefined,
         });
-        sendJson(response, 200, rebuiltRun);
+        const resumedWorkflowRun = await resumeRenderExecutionIfReady({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          queueAdapter: platformRuntime.queueAdapter,
+          renderExecutionService,
+          workflowRun: rebuiltRun,
+          actor,
+          telemetry: platformRuntime.telemetry,
+        });
+        sendJson(response, 200, resumedWorkflowRun);
         return;
       }
 
@@ -4065,8 +5448,18 @@ export async function createApp(options = {}) {
           selectedCanonicalDiseaseName: body.selectedCanonicalDiseaseName,
           reason: body.reason,
         });
+        const resumedWorkflowRun = await resumeRenderExecutionIfReady({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          queueAdapter: platformRuntime.queueAdapter,
+          renderExecutionService,
+          workflowRun: updatedWorkflowRun,
+          actor,
+          telemetry: platformRuntime.telemetry,
+        });
 
-        sendJson(response, 200, updatedWorkflowRun);
+        sendJson(response, 200, resumedWorkflowRun);
         return;
       }
 
@@ -4281,6 +5674,31 @@ export async function createApp(options = {}) {
           reason: typeof body.reason === 'string' ? body.reason : undefined,
         });
 
+        rebuildClinicalPackageForRun({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          clinicalService,
+          storyEngineService,
+          workflowRun: matchingRun,
+          actor,
+          reason: `Recomputed the clinical package after contradiction resolution for ${contradictionResolutionPath.claimId}.`,
+        });
+        const refreshedWorkflowRun = store.getWorkflowRun(matchingRun.id);
+
+        if (refreshedWorkflowRun) {
+          await resumeRenderExecutionIfReady({
+            store,
+            schemaRegistry,
+            workflowSpec,
+            queueAdapter: platformRuntime.queueAdapter,
+            renderExecutionService,
+            workflowRun: refreshedWorkflowRun,
+            actor,
+            telemetry: platformRuntime.telemetry,
+          });
+        }
+
         sendJson(response, 201, contradictionResolution);
         return;
       }
@@ -4373,7 +5791,154 @@ export async function createApp(options = {}) {
           notes: Array.isArray(body.notes) ? body.notes.filter((value) => typeof value === 'string') : [],
         });
 
+        rebuildClinicalPackageForRun({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          clinicalService,
+          storyEngineService,
+          workflowRun: matchingRun,
+          actor,
+          reason: `Recomputed the clinical package after source governance for ${sourceGovernanceDecisionPath.sourceId}.`,
+        });
+        const refreshedWorkflowRun = store.getWorkflowRun(matchingRun.id);
+
+        if (refreshedWorkflowRun) {
+          await resumeRenderExecutionIfReady({
+            store,
+            schemaRegistry,
+            workflowSpec,
+            queueAdapter: platformRuntime.queueAdapter,
+            renderExecutionService,
+            workflowRun: refreshedWorkflowRun,
+            actor,
+            telemetry: platformRuntime.telemetry,
+          });
+        }
+
         sendJson(response, 201, governanceDecision);
+        return;
+      }
+
+      if (method === 'GET' && isSourceCatalogPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot read source catalog data.');
+        }
+
+        const sourceCatalog = buildSourceCatalogPayload(store, clinicalService, actor.tenantId);
+        sourceCatalog.forEach((sourceRecord) => assertSchema(schemaRegistry, 'contracts/source-record.schema.json', sourceRecord));
+        sendJson(response, 200, sourceCatalog);
+        return;
+      }
+
+      const sourceRefreshTaskPath = matchSourceRefreshTaskPath(pathname);
+
+      if (sourceRefreshTaskPath && method === 'POST') {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot create source refresh tasks.');
+        }
+
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body) || typeof body.canonicalDiseaseName !== 'string') {
+          throw createHttpError(400, 'canonicalDiseaseName is required.');
+        }
+
+        const sourceRecord = clinicalService.getSourceRecord(sourceRefreshTaskPath.sourceId, {
+          governanceDecisions: listTenantGovernanceArtifacts(store, actor.tenantId, 'source-governance-decision'),
+          contradictionResolutions: listTenantGovernanceArtifacts(store, actor.tenantId, 'contradiction-resolution'),
+        });
+
+        if (!sourceRecord || sourceRecord.canonicalDiseaseName !== body.canonicalDiseaseName) {
+          throw createHttpError(404, 'Source record not found for the requested disease.');
+        }
+
+        const existingTask = listTenantArtifactsByType(store, 'source-refresh-task', actor.tenantId)
+          .find((task) => task.sourceId === sourceRecord.id && task.canonicalDiseaseName === body.canonicalDiseaseName && task.status !== 'completed' && task.status !== 'cancelled')
+          ?? null;
+        const refreshTaskResult = saveSourceRefreshTask({
+          store,
+          schemaRegistry,
+          actor,
+          tenantId: actor.tenantId,
+          workflowRunId: typeof body.workflowRunId === 'string' ? body.workflowRunId : undefined,
+          sourceRecord,
+          existingTask,
+          reason: typeof body.reason === 'string' ? body.reason : undefined,
+        });
+        appendAuditLog(
+          store,
+          schemaRegistry,
+          actor,
+          'source-refresh-task.create',
+          'source-record',
+          sourceRecord.id,
+          'success',
+          `Created source refresh task ${refreshTaskResult.refreshTask.id}.`,
+          {
+            canonicalDiseaseName: body.canonicalDiseaseName,
+            sourceRefreshTaskId: refreshTaskResult.refreshTask.id,
+            workItemId: refreshTaskResult.workItem.id,
+          },
+        );
+        sendJson(response, 201, refreshTaskResult.refreshTask);
+        return;
+      }
+
+      const sourceOwnershipPath = matchSourceOwnershipPath(pathname);
+
+      if (sourceOwnershipPath && method === 'POST') {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot assign source ownership.');
+        }
+
+        const body = await readJsonBody(request);
+
+        if (
+          !isRecord(body)
+          || typeof body.canonicalDiseaseName !== 'string'
+          || typeof body.primaryOwnerRole !== 'string'
+          || typeof body.backupOwnerRole !== 'string'
+        ) {
+          throw createHttpError(400, 'canonicalDiseaseName, primaryOwnerRole, and backupOwnerRole are required.');
+        }
+
+        const sourceRecord = clinicalService.getSourceRecord(sourceOwnershipPath.sourceId, {
+          governanceDecisions: listTenantGovernanceArtifacts(store, actor.tenantId, 'source-governance-decision'),
+          contradictionResolutions: listTenantGovernanceArtifacts(store, actor.tenantId, 'contradiction-resolution'),
+        });
+
+        if (!sourceRecord || sourceRecord.canonicalDiseaseName !== body.canonicalDiseaseName) {
+          throw createHttpError(404, 'Source record not found for the requested disease.');
+        }
+
+        const sourceOwnerAssignment = saveSourceOwnerAssignment({
+          store,
+          schemaRegistry,
+          actor,
+          tenantId: actor.tenantId,
+          sourceId: sourceRecord.id,
+          canonicalDiseaseName: body.canonicalDiseaseName,
+          primaryOwnerRole: body.primaryOwnerRole,
+          backupOwnerRole: body.backupOwnerRole,
+          notes: Array.isArray(body.notes) ? body.notes.filter((value) => typeof value === 'string') : [],
+        });
+        appendAuditLog(
+          store,
+          schemaRegistry,
+          actor,
+          'source-owner-assignment.create',
+          'source-record',
+          sourceRecord.id,
+          'success',
+          `Assigned ${body.primaryOwnerRole} ownership for source ${sourceRecord.id}.`,
+          {
+            backupOwnerRole: body.backupOwnerRole,
+            canonicalDiseaseName: body.canonicalDiseaseName,
+            sourceOwnerAssignmentId: sourceOwnerAssignment.id,
+          },
+        );
+        sendJson(response, 201, sourceOwnerAssignment);
         return;
       }
 

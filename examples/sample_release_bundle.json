@@ -77,6 +77,7 @@
     "educationalSequencing": 0.93,
     "panelization": 0.9,
     "renderReadiness": 0.94,
+    "renderOutputQuality": 0.92,
     "sourceFreshness": 0.98,
     "contradictionStatus": "none",
     "releaseVerdict": "approved"
@@ -106,6 +107,11 @@
       "name": "evaluation-status",
       "status": "passed",
       "details": "Eval run evr.hcc.001 passed all applicable thresholds."
+    },
+    {
+      "name": "rendered-output",
+      "status": "passed",
+      "details": "Rendered asset manifest rman.hcc.001 covered every required panel."
     }
   ],
   "approvals": [
@@ -132,8 +138,8 @@
     "evalRunId": "evr.hcc.001",
     "evaluatedAt": "2026-04-21T00:09:45Z",
     "allThresholdsMet": true,
-    "applicableFamilyCount": 7,
-    "passedFamilyCount": 7,
+    "applicableFamilyCount": 8,
+    "passedFamilyCount": 8,
     "failedFamilyCount": 0,
     "familyScores": {
       "medical_accuracy": 1,
@@ -142,6 +148,7 @@
       "educational_sequencing": 1,
       "panelization": 1,
       "render_readiness": 1,
+      "render_output_quality": 1,
       "governance_release": 1
     }
   },
@@ -153,6 +160,8 @@
   "exportedBy": "local-operator",
   "bundleIndexLocation": "examples/release_bundle_index.md",
   "sourceEvidencePackLocation": "examples/evidence_sources.json",
+  "renderedAssetManifestId": "rman.hcc.001",
+  "renderedAssetManifestLocation": "examples/sample_rendered_asset_manifest.json",
   "notes": [
     "Demo-only example release bundle."
   ]

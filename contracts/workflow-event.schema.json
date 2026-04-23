@@ -109,6 +109,7 @@
             "scene-planning",
             "panel-planning",
             "render-prep",
+            "render-execution",
             "review",
             "export"
           ]
@@ -123,6 +124,7 @@
             "scene-planning",
             "panel-planning",
             "render-prep",
+            "render-execution",
             "review",
             "export"
           ]

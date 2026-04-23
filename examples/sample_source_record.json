@@ -10,6 +10,11 @@
   "freshnessStatus": "current",
   "contradictionStatus": "none",
   "owner": "clinical-governance",
+  "primaryOwnerRole": "Clinical Reviewer",
+  "backupOwnerRole": "Product Editor",
+  "refreshCadenceDays": 180,
+  "nextReviewDueAt": "2026-10-18T00:00:00Z",
+  "freshnessState": "current",
   "governanceNotes": [
     "Preferred for liver oncology baseline claims.",
     "Review annually or on major guideline update."

@@ -11,6 +11,8 @@ datasets:
   family: panelization
 - path: evals/datasets/render_readiness_cases.jsonl
   family: render_readiness
+- path: evals/datasets/render_output_quality_cases.jsonl
+  family: render_output_quality
 - path: evals/datasets/governance_release_cases.jsonl
   family: governance_release
 graders:
@@ -20,4 +22,5 @@ graders:
 - evals/graders/educational_sequencing_rubric.md
 - evals/graders/panelization_rubric.md
 - evals/graders/render_readiness_rubric.md
+- evals/graders/render_output_quality_rubric.md
 - evals/graders/governance_release_rubric.md

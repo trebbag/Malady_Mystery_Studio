@@ -11,6 +11,7 @@ import { PanelsPage } from '@/pages/PanelsPage';
 import { PacketsPage } from '@/pages/PacketsPage';
 import { PipelinePage } from '@/pages/PipelinePage';
 import { ReviewDashboardPage } from '@/pages/ReviewDashboardPage';
+import { ReviewQueuePage } from '@/pages/ReviewQueuePage';
 import { ReviewPage } from '@/pages/ReviewPage';
 import { ScenesPage } from '@/pages/ScenesPage';
 import { SettingsPage } from '@/pages/SettingsPage';
@@ -23,6 +24,7 @@ export function AppRoutes() {
       <Route path="/" element={<Navigate replace to="/review" />} />
       <Route element={<ShellLayout />}>
         <Route path="/review" element={<ReviewDashboardPage />} />
+        <Route path="/review/queue" element={<ReviewQueuePage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/runs/:runId" element={<RunLayout />}>
           <Route path="pipeline" element={<PipelinePage />} />

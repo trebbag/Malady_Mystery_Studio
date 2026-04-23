@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "ratm.hcc.001",
+  "renderJobId": "rjob.hcc.001",
+  "workflowRunId": "run.hcc.001",
+  "tenantId": "tenant.local",
+  "attemptNumber": 1,
+  "strategy": "baseline",
+  "status": "succeeded",
+  "providerRequestId": "greq.hcc.001",
+  "renderedAssetIds": [
+    "ras.hcc.001"
+  ],
+  "startedAt": "2026-04-22T14:15:10Z",
+  "completedAt": "2026-04-22T14:17:00Z"
+}

@@ -15,6 +15,8 @@ const dashboardView = {
     assignee: '',
     exportStatus: '',
     evalStatus: '',
+    queueStatus: '',
+    workType: '',
     sort: 'updated-desc',
   },
   stats: {
@@ -25,6 +27,8 @@ const dashboardView = {
     openCommentCount: 1,
     staleEvalCount: 0,
     exportReadyCount: 0,
+    overdueWorkItemCount: 0,
+    escalatedWorkItemCount: 0,
   },
   runs: [
     {
@@ -37,7 +41,48 @@ const dashboardView = {
       openCommentCount: 1,
       latestEvalStatus: 'passed',
       exportCount: 1,
+      activeWorkItemCount: 1,
+      overdueWorkItemCount: 0,
+      threadCount: 1,
       updatedAt: '2026-04-22T12:00:00Z',
+    },
+  ],
+};
+
+const queueView = {
+  schemaVersion: '1.0.0',
+  filters: {
+    workType: '',
+    status: '',
+    priority: '',
+    queueName: '',
+    assignee: '',
+  },
+  stats: {
+    visibleItemCount: 1,
+    overdueItemCount: 0,
+    escalatedItemCount: 0,
+    renderRetryCount: 0,
+    sourceRefreshCount: 0,
+  },
+  items: [
+    {
+      workItemId: 'wrk.local.001',
+      workflowRunId: 'run.local.001',
+      projectTitle: 'Community-acquired pneumonia starter project',
+      diseaseName: 'Community-acquired pneumonia',
+      workType: 'run-review',
+      status: 'queued',
+      priority: 'medium',
+      queueName: 'review-queue',
+      subjectType: 'workflow-run',
+      subjectId: 'run.local.001',
+      assignedActorDisplayName: 'Local Operator',
+      dueAt: '2026-04-22T16:00:00Z',
+      reminderAt: '2026-04-22T14:00:00Z',
+      isOverdue: false,
+      threadCount: 1,
+      notes: ['Clinical review is ready for follow-through.'],
     },
   ],
 };
@@ -102,17 +147,33 @@ const clinicalPackage = {
     id: 'anchor.local.001',
     anchors: [],
   },
-  sourceGovernance: {
-    canonicalDiseaseName: 'Community-acquired pneumonia',
-    sourceRecords: [
-      {
-        id: 'src.local.001',
-        sourceLabel: 'Starter source',
-        sourceUrl: 'https://example.org/source',
-      },
-    ],
-    governanceDecisions: [],
-  },
+    sourceGovernance: {
+      canonicalDiseaseName: 'Community-acquired pneumonia',
+      sourceRecords: [
+        {
+          id: 'src.local.001',
+          canonicalDiseaseName: 'Community-acquired pneumonia',
+          sourceLabel: 'Starter source',
+          sourceType: 'guideline',
+          sourceTier: 'tier-1',
+          approvalStatus: 'approved',
+          freshnessScore: 0.97,
+          freshnessStatus: 'current',
+          contradictionStatus: 'none',
+          lastReviewedAt: '2026-04-22T12:00:00Z',
+          primaryOwnerRole: 'Clinical Reviewer',
+          backupOwnerRole: 'Product Editor',
+          refreshCadenceDays: 180,
+          nextReviewDueAt: '2026-10-19T12:00:00Z',
+          freshnessState: 'current',
+          sourceUrl: 'https://example.org/source',
+          impactedDiseaseCount: 1,
+          impactedRunCount: 1,
+          openRefreshTaskCount: 0,
+        },
+      ],
+      governanceDecisions: [],
+    },
   contradictionResolutions: [],
   traceCoverage: {
     score: 1,
@@ -170,6 +231,61 @@ const reviewRunView = {
       updatedAt: '2026-04-22T12:06:00Z',
     },
   ],
+  workItems: [
+    {
+      schemaVersion: '1.0.0',
+      id: 'wrk.local.001',
+      tenantId: 'tenant.local',
+      workflowRunId: 'run.local.001',
+      workType: 'run-review',
+      status: 'queued',
+      priority: 'medium',
+      queueName: 'review-queue',
+      fallbackQueueName: 'review-queue-fallback',
+      subjectType: 'workflow-run',
+      subjectId: 'run.local.001',
+      assignedActorId: 'local-operator',
+      assignedActorDisplayName: 'Local Operator',
+      assignedActorRoles: ['Local Operator'],
+      slaHours: 4,
+      reminderAt: '2026-04-22T13:00:00Z',
+      dueAt: '2026-04-22T15:00:00Z',
+      notes: ['Clinical review is ready for follow-through.'],
+      createdAt: '2026-04-22T12:00:00Z',
+      updatedAt: '2026-04-22T12:00:00Z',
+    },
+  ],
+  reviewThreads: [
+    {
+      schemaVersion: '1.0.0',
+      id: 'thr.local.001',
+      tenantId: 'tenant.local',
+      workflowRunId: 'run.local.001',
+      scopeType: 'run',
+      title: 'Run review thread',
+      status: 'open',
+      participantIds: ['local-operator'],
+      createdBy: 'local-operator',
+      createdAt: '2026-04-22T12:00:00Z',
+      updatedAt: '2026-04-22T12:00:00Z',
+      messages: [
+        {
+          schemaVersion: '1.0.0',
+          id: 'msg.local.001',
+          threadId: 'thr.local.001',
+          tenantId: 'tenant.local',
+          workflowRunId: 'run.local.001',
+          authorId: 'local-operator',
+          authorDisplayName: 'Local Operator',
+          body: 'Initial review context recorded locally.',
+          mentions: [],
+          status: 'posted',
+          createdAt: '2026-04-22T12:00:00Z',
+          updatedAt: '2026-04-22T12:00:00Z',
+        },
+      ],
+    },
+  ],
   evaluationSummary: {
     schemaVersion: '1.0.0',
     latestEvalRunId: 'evl.local.001',
@@ -198,6 +314,27 @@ const reviewRunView = {
       },
     ],
   },
+  renderJobs: [
+    {
+      schemaVersion: '1.0.0',
+      id: 'rjob.local.001',
+      tenantId: 'tenant.local',
+      workflowRunId: 'run.local.001',
+      status: 'completed',
+      approvalStatus: 'approved',
+      queueName: 'render-execution',
+      provider: 'stub-image',
+      model: 'stub-image-v1',
+      renderTargetProfileId: 'rtp.gemini-image-default',
+      renderPromptIds: ['rnd.local.001'],
+      attemptIds: ['ratm.local.001'],
+      renderedAssetManifestId: 'rman.local.001',
+      createdBy: 'local-operator',
+      createdAt: '2026-04-22T12:01:00Z',
+      updatedAt: '2026-04-22T12:03:00Z',
+      completedAt: '2026-04-22T12:03:00Z',
+    },
+  ],
   availableActions: ['run-evaluations', 'export-bundle'],
 };
 
@@ -270,6 +407,12 @@ const localRuntimeView = {
     dbFilePath: 'var/db/platform.sqlite',
     objectStoreDir: 'var/object-store',
   },
+  platform: {
+    metadataStore: 'sqlite',
+    objectStore: 'filesystem',
+    queueBackend: 'in-process',
+    telemetryBackend: 'stdout',
+  },
   availableCommands: ['pnpm dev:api', 'pnpm dev:web'],
   readiness: {
     areas: [],
@@ -329,6 +472,10 @@ function mockFetch(url: string) {
     return Response.json(localRuntimeView);
   }
 
+  if (parsed.pathname === '/api/v1/review-queue') {
+    return Response.json(queueView);
+  }
+
   if (parsed.pathname === '/api/v1/workflow-runs/run.local.001') {
     return Response.json(workflowRun);
   }
@@ -373,6 +520,10 @@ function mockFetch(url: string) {
     return Response.json(clinicalPackage.sourceGovernance.sourceRecords);
   }
 
+  if (parsed.pathname === '/api/v1/source-catalog') {
+    return Response.json(clinicalPackage.sourceGovernance.sourceRecords);
+  }
+
   if (parsed.pathname === '/api/v1/release-bundles/rel.local.001') {
     return Response.json({
       releaseId: 'rel.local.001',
@@ -410,6 +561,7 @@ afterEach(() => {
 describe('web app routes', () => {
   it.each([
     ['/review', 'Review Dashboard'],
+    ['/review/queue', 'Review Queue'],
     ['/runs/run.local.001/pipeline', 'Pipeline Page'],
     ['/runs/run.local.001/review', 'Review Page'],
     ['/runs/run.local.001/packets', 'Packets Page'],

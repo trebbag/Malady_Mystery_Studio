@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "soa.hcc.001",
+  "tenantId": "tenant.local",
+  "sourceId": "src.hcc.guideline.001",
+  "canonicalDiseaseName": "Hepatocellular carcinoma",
+  "primaryOwnerRole": "Clinical Reviewer",
+  "backupOwnerRole": "Product Editor",
+  "assignedBy": "local-operator",
+  "assignedAt": "2026-04-22T11:30:00Z",
+  "notes": [
+    "Keep liver oncology guidance ownership explicit for refresh tasks."
+  ]
+}

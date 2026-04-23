@@ -1,0 +1,1357 @@
+[
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.type-2-diabetes-mellitus",
+    "canonicalDiseaseName": "Type 2 diabetes mellitus",
+    "aliases": [
+      "type 2 diabetes",
+      "t2dm",
+      "adult-onset diabetes"
+    ],
+    "ontologyId": "ICD-10-CM:E11.9",
+    "diseaseCategory": "endocrine / metabolic",
+    "educationalFocus": [
+      "insulin resistance",
+      "beta-cell strain",
+      "chronic complication prevention"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Type 2 diabetes mellitus is a chronic disorder of insulin resistance and progressive beta-cell dysfunction that raises glucose over time.",
+      "keyMechanism": "Peripheral tissues become less responsive to insulin and pancreatic beta cells can no longer compensate fully.",
+      "timeScale": "usually develops over years and is often discovered in ambulatory care",
+      "patientExperienceSummary": "Some patients notice thirst, polyuria, and fatigue, while many are identified on routine lab work before dramatic symptoms appear."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "glucose homeostasis",
+        "whyItMatters": "Readers need the normal insulin-glucose loop before the detectives can show how resistance breaks it."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "insulin resistance increases in muscle and liver",
+        "mechanism": "Tissues need more insulin to move glucose effectively, especially after meals.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.t2dm.001"
+        ]
+      },
+      {
+        "order": 2,
+        "event": "beta-cell reserve becomes insufficient",
+        "mechanism": "Compensatory insulin production eventually fails to keep glucose in range.",
+        "scale": "cellular",
+        "linkedClaimIds": [
+          "clm.t2dm.001",
+          "clm.t2dm.002"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "polyuria",
+        "polydipsia",
+        "fatigue",
+        "blurred vision"
+      ],
+      "commonSigns": [
+        "elevated BMI",
+        "acanthosis nigricans in some patients"
+      ],
+      "historyClues": [
+        "family history",
+        "sedentary lifestyle",
+        "gestational diabetes history"
+      ],
+      "physicalExamClues": [
+        "evidence of metabolic risk rather than a single dramatic focal finding"
+      ],
+      "complications": [
+        "atherosclerotic cardiovascular disease",
+        "chronic kidney disease",
+        "retinopathy",
+        "neuropathy"
+      ],
+      "typicalTimecourse": "often gradual enough that outpatient screening and longitudinal follow-up matter."
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "hemoglobin A1C",
+          "purpose": "capture longer-term glycemic exposure",
+          "expectedFinding": "elevated A1C supports diagnosis in the appropriate setting",
+          "claimIds": [
+            "clm.t2dm.002"
+          ]
+        },
+        {
+          "name": "fasting plasma glucose",
+          "purpose": "confirm sustained hyperglycemia",
+          "expectedFinding": "persistent fasting elevation supports diagnosis",
+          "claimIds": [
+            "clm.t2dm.002"
+          ]
+        }
+      ],
+      "imaging": [],
+      "pathology": [],
+      "diagnosticLogic": [
+        "Confirm chronic hyperglycemia with standard diagnostic thresholds rather than a single symptom story alone.",
+        "Risk profile and comorbid disease shape treatment urgency and medication selection."
+      ],
+      "differentials": [
+        {
+          "disease": "type 1 diabetes mellitus",
+          "whyConsidered": "both cause hyperglycemia",
+          "whyLessLikely": "the longitudinal ambulatory pattern and metabolic-risk context fit type 2 diabetes better"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "nutrition and activity changes",
+        "weight-sensitive lifestyle counseling",
+        "metformin when appropriate"
+      ],
+      "escalation": [
+        "add glucose-lowering medication based on A1C, cardiovascular risk, kidney disease, and tolerance"
+      ],
+      "monitoring": [
+        "A1C trend",
+        "blood pressure",
+        "kidney function",
+        "retinal and foot screening"
+      ],
+      "notes": [
+        "Outpatient diabetes care ties glucose control to prevention of organ complications."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.t2dm.001",
+        "claimText": "Type 2 diabetes mellitus is driven by insulin resistance with progressive failure of beta-cell compensation.",
+        "sourceId": "src.niddk.t2dm-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK Type 2 diabetes overview",
+        "sourceLocator": "cause and mechanism overview",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care baseline teaching",
+        "claimType": "core-mechanism",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "baseline pathophysiology",
+        "patientSubgroupApplicability": "Adults with type 2 diabetes",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.t2dm.002",
+        "claimText": "Type 2 diabetes is commonly diagnosed through standard blood glucose and A1C testing rather than symptoms alone.",
+        "sourceId": "src.niddk.t2dm-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK Type 2 diabetes overview",
+        "sourceLocator": "diagnosis section",
+        "confidence": 0.95,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care diagnosis framing",
+        "claimType": "diagnostic",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Adults with type 2 diabetes",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.t2dm.003",
+        "claimText": "Management combines lifestyle change, glucose lowering therapy, and complication prevention based on comorbidity risk.",
+        "sourceId": "src.niddk.t2dm-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK diabetes management overview",
+        "sourceLocator": "treatment and prevention",
+        "confidence": 0.94,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care chronic management",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "longitudinal care",
+        "patientSubgroupApplicability": "Adults with type 2 diabetes",
+        "importanceRank": 3
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.niddk.t2dm-overview",
+        "canonicalDiseaseName": "Type 2 diabetes mellitus",
+        "sourceLabel": "NIDDK Type 2 diabetes overview",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "primaryOwnerRole": "Primary Care Clinical Reviewer",
+        "backupOwnerRole": "Endocrine Editor",
+        "refreshCadenceDays": 180,
+        "governanceNotes": [
+          "Use for baseline mechanism, symptom, and diagnosis framing."
+        ],
+        "topics": [
+          "mechanism",
+          "diagnosis"
+        ],
+        "sourceUrl": "https://www.niddk.nih.gov/health-information/diabetes/overview/what-is-diabetes/type-2-diabetes",
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "nextReviewDueAt": "2026-10-20T00:00:00Z"
+      },
+      {
+        "id": "src.niddk.t2dm-older-pack",
+        "canonicalDiseaseName": "Type 2 diabetes mellitus",
+        "sourceLabel": "Legacy local diabetes pack",
+        "sourceType": "reference",
+        "sourceTier": "tier-3",
+        "defaultApprovalStatus": "suspended",
+        "owner": "clinical-governance",
+        "primaryOwnerRole": "Primary Care Clinical Reviewer",
+        "backupOwnerRole": "Endocrine Editor",
+        "refreshCadenceDays": 90,
+        "governanceNotes": [
+          "Keep only for audit history; current pack supersedes it."
+        ],
+        "topics": [
+          "superseded-reference"
+        ],
+        "sourceUrl": "https://www.niddk.nih.gov/health-information/diabetes",
+        "lastReviewedAt": "2025-01-15T00:00:00Z",
+        "nextReviewDueAt": "2025-04-15T00:00:00Z",
+        "supersededBy": "src.niddk.t2dm-overview"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "title": "Insulin resistance comes before obvious organ damage",
+        "teachingPoint": "Show the metabolic imbalance early so later complication-prevention choices feel earned.",
+        "linkedClaimIds": [
+          "clm.t2dm.001",
+          "clm.t2dm.003"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "id": "vanchor.t2dm.001",
+        "label": "Clinic desk with glucometer, A1C trend, and prevention checklist",
+        "whyItMatters": "The visual language should feel longitudinal and primary-care oriented rather than emergency-only.",
+        "linkedClaimIds": [
+          "clm.t2dm.002",
+          "clm.t2dm.003"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.t2dm.001",
+        "toClaimId": "clm.t2dm.003",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Medication choice and prevention strategy depend on comorbidity context, not glucose alone."
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.essential-hypertension",
+    "canonicalDiseaseName": "Essential hypertension",
+    "aliases": [
+      "primary hypertension",
+      "essential hypertension",
+      "high blood pressure"
+    ],
+    "ontologyId": "ICD-10-CM:I10",
+    "diseaseCategory": "cardiovascular risk management",
+    "educationalFocus": [
+      "silent disease burden",
+      "repeated measurement",
+      "target-organ prevention"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Essential hypertension is persistent elevated blood pressure without a single reversible cause and is often silent until it causes end-organ strain.",
+      "keyMechanism": "Vascular tone, sodium handling, and long-term cardiovascular regulation shift blood pressure upward over time.",
+      "timeScale": "usually chronic and ambulatory rather than dramatic at onset",
+      "patientExperienceSummary": "Many patients feel fine, which makes screening, confirmation, and prevention central to the story."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "blood pressure regulation",
+        "whyItMatters": "Readers need a baseline for how vascular resistance and volume affect pressure."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "vascular resistance and pressure stay chronically elevated",
+        "mechanism": "Long-term hemodynamic stress raises cardiovascular and renal risk even when symptoms are absent.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.htn.001"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "often none",
+        "nonspecific headache when pressure is very high"
+      ],
+      "commonSigns": [
+        "persistently elevated office or home blood pressure"
+      ],
+      "historyClues": [
+        "family history",
+        "high sodium intake",
+        "sleep apnea or obesity risk factors"
+      ],
+      "physicalExamClues": [
+        "repeat measurements matter more than a dramatic one-time symptom story"
+      ],
+      "complications": [
+        "stroke",
+        "heart failure",
+        "chronic kidney disease"
+      ],
+      "typicalTimecourse": "often recognized gradually through routine primary-care screening."
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "basic metabolic panel and kidney function",
+          "purpose": "assess baseline organ effects and therapy safety",
+          "expectedFinding": "may be normal at diagnosis but helps risk-stratify care",
+          "claimIds": [
+            "clm.htn.002"
+          ]
+        }
+      ],
+      "imaging": [],
+      "pathology": [],
+      "diagnosticLogic": [
+        "Confirm persistent elevation with repeated office and/or home readings rather than a single isolated measurement.",
+        "Evaluate for target-organ risk and secondary causes when the story suggests them."
+      ],
+      "differentials": [
+        {
+          "disease": "secondary hypertension",
+          "whyConsidered": "some patients have a reversible cause of elevated pressure",
+          "whyLessLikely": "the routine ambulatory pattern without a specific trigger supports essential hypertension"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "home blood pressure confirmation",
+        "sodium-conscious dietary counseling",
+        "exercise and weight support",
+        "blood-pressure-lowering medication when indicated"
+      ],
+      "escalation": [
+        "titrate or combine medications to reach blood pressure targets safely"
+      ],
+      "monitoring": [
+        "home readings",
+        "kidney function",
+        "cardiovascular risk factors"
+      ],
+      "notes": [
+        "Longitudinal prevention is the narrative payoff."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.htn.001",
+        "claimText": "High blood pressure is frequently silent while still increasing the risk of stroke, heart disease, and kidney disease.",
+        "sourceId": "src.nhlbi.hypertension-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI high blood pressure overview",
+        "sourceLocator": "why blood pressure matters",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care screening and prevention",
+        "claimType": "risk",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "screening and longitudinal care",
+        "patientSubgroupApplicability": "Adults with elevated blood pressure",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.htn.002",
+        "claimText": "Hypertension diagnosis relies on persistent blood pressure elevation confirmed over time, not on symptoms alone.",
+        "sourceId": "src.nhlbi.hypertension-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI high blood pressure overview",
+        "sourceLocator": "diagnosis and monitoring",
+        "confidence": 0.94,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care diagnosis framing",
+        "claimType": "diagnostic",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Adults with elevated blood pressure",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.htn.003",
+        "claimText": "Lifestyle changes and antihypertensive medication are combined to reduce long-term organ damage risk.",
+        "sourceId": "src.nhlbi.hypertension-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI blood pressure management overview",
+        "sourceLocator": "treatment and risk reduction",
+        "confidence": 0.93,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care treatment planning",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "longitudinal care",
+        "patientSubgroupApplicability": "Adults with hypertension",
+        "importanceRank": 3
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.nhlbi.hypertension-overview",
+        "canonicalDiseaseName": "Essential hypertension",
+        "sourceLabel": "NHLBI high blood pressure overview",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "primaryOwnerRole": "Primary Care Clinical Reviewer",
+        "backupOwnerRole": "Cardiovascular Editor",
+        "refreshCadenceDays": 180,
+        "governanceNotes": [
+          "Preferred baseline source for screening, risk, and diagnosis framing."
+        ],
+        "topics": [
+          "screening",
+          "risk",
+          "management"
+        ],
+        "sourceUrl": "https://www.nhlbi.nih.gov/health/high-blood-pressure",
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "nextReviewDueAt": "2026-10-20T00:00:00Z"
+      },
+      {
+        "id": "src.nhlbi.hypertension-legacy-sheet",
+        "canonicalDiseaseName": "Essential hypertension",
+        "sourceLabel": "Legacy hypertension clinic handout",
+        "sourceType": "reference",
+        "sourceTier": "tier-3",
+        "defaultApprovalStatus": "suspended",
+        "owner": "clinical-governance",
+        "primaryOwnerRole": "Primary Care Clinical Reviewer",
+        "backupOwnerRole": "Cardiovascular Editor",
+        "refreshCadenceDays": 90,
+        "governanceNotes": [
+          "Kept for audit comparison only; superseded by the current baseline source."
+        ],
+        "topics": [
+          "legacy-reference"
+        ],
+        "sourceUrl": "https://www.nhlbi.nih.gov/health/high-blood-pressure",
+        "lastReviewedAt": "2025-02-01T00:00:00Z",
+        "nextReviewDueAt": "2025-05-02T00:00:00Z",
+        "supersededBy": "src.nhlbi.hypertension-overview"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "title": "Silent risk still deserves visual drama",
+        "teachingPoint": "Make the invisible vascular strain legible without pretending most patients feel a dramatic warning sign.",
+        "linkedClaimIds": [
+          "clm.htn.001",
+          "clm.htn.002"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "id": "vanchor.htn.001",
+        "label": "Repeated blood-pressure checks beside organ-risk silhouettes",
+        "whyItMatters": "The page should look like longitudinal prevention rather than emergency collapse.",
+        "linkedClaimIds": [
+          "clm.htn.001",
+          "clm.htn.003"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.htn.001",
+        "toClaimId": "clm.htn.002",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "The disease can be silent, so diagnosis must come from repeated measurement rather than symptom certainty."
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.chronic-kidney-disease",
+    "canonicalDiseaseName": "Chronic kidney disease",
+    "aliases": [
+      "ckd",
+      "chronic kidney disease",
+      "chronic renal disease"
+    ],
+    "ontologyId": "ICD-10-CM:N18.9",
+    "diseaseCategory": "renal / chronic disease management",
+    "educationalFocus": [
+      "kidney filtration",
+      "albuminuria",
+      "risk reduction"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Chronic kidney disease is long-term loss of kidney structure or function that often begins silently and accumulates risk over time.",
+      "keyMechanism": "Progressive nephron injury reduces filtration and raises albuminuria, cardiovascular burden, and medication-safety concerns.",
+      "timeScale": "months to years",
+      "patientExperienceSummary": "Many patients feel normal early, so the detective work relies on labs, urine testing, and risk-factor context."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "glomerular filtration",
+        "whyItMatters": "Readers need a simple model for why filtration loss and albumin leak matter."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "ongoing nephron injury reduces kidney reserve",
+        "mechanism": "Filtration and albumin handling worsen as chronic damage accumulates.",
+        "scale": "organ",
+        "linkedClaimIds": [
+          "clm.ckd.001"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "often none early",
+        "fatigue",
+        "edema in more advanced disease"
+      ],
+      "commonSigns": [
+        "hypertension",
+        "edema when volume handling worsens"
+      ],
+      "historyClues": [
+        "diabetes",
+        "hypertension",
+        "prior kidney injury"
+      ],
+      "physicalExamClues": [
+        "chronic disease context matters more than a single dramatic symptom"
+      ],
+      "complications": [
+        "progression to kidney failure",
+        "cardiovascular disease",
+        "anemia",
+        "mineral bone disease"
+      ],
+      "typicalTimecourse": "usually recognized through outpatient lab trends and urine testing."
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "estimated GFR",
+          "purpose": "track kidney filtration over time",
+          "expectedFinding": "reduced eGFR helps stage chronic kidney disease",
+          "claimIds": [
+            "clm.ckd.002"
+          ]
+        },
+        {
+          "name": "urine albumin-to-creatinine ratio",
+          "purpose": "detect albumin leakage and risk",
+          "expectedFinding": "albuminuria supports kidney damage even when symptoms are absent",
+          "claimIds": [
+            "clm.ckd.002"
+          ]
+        }
+      ],
+      "imaging": [],
+      "pathology": [],
+      "diagnosticLogic": [
+        "Chronic kidney disease depends on persistent kidney damage or reduced function over time, not on a single abnormal lab alone.",
+        "Albuminuria and eGFR together help stage disease and refine risk."
+      ],
+      "differentials": [
+        {
+          "disease": "acute kidney injury",
+          "whyConsidered": "both can raise creatinine",
+          "whyLessLikely": "the chronic trend and outpatient context support CKD"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "control blood pressure",
+        "optimize diabetes management when present",
+        "avoid nephrotoxic exposures",
+        "risk-based kidney-protective medication when appropriate"
+      ],
+      "escalation": [
+        "stage-based medication adjustment and nephrology referral when risk rises"
+      ],
+      "monitoring": [
+        "eGFR trend",
+        "albuminuria",
+        "electrolytes",
+        "blood pressure"
+      ],
+      "notes": [
+        "Primary care CKD work is largely longitudinal prevention and medication-safety management."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.ckd.001",
+        "claimText": "Chronic kidney disease often develops gradually and may be asymptomatic until kidney injury is established.",
+        "sourceId": "src.niddk.ckd-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK chronic kidney disease overview",
+        "sourceLocator": "overview and symptoms",
+        "confidence": 0.95,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care baseline framing",
+        "claimType": "presentation",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "screening and presentation",
+        "patientSubgroupApplicability": "Adults with chronic kidney disease",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.ckd.002",
+        "claimText": "Estimated GFR and urine albumin testing are core tools for identifying and staging chronic kidney disease.",
+        "sourceId": "src.niddk.ckd-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK chronic kidney disease overview",
+        "sourceLocator": "diagnosis and staging",
+        "confidence": 0.95,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care diagnosis framing",
+        "claimType": "diagnostic",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Adults with chronic kidney disease",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.ckd.003",
+        "claimText": "Management emphasizes risk-factor control, kidney-protective therapy when appropriate, and monitoring for progression.",
+        "sourceId": "src.niddk.ckd-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK chronic kidney disease care overview",
+        "sourceLocator": "treatment and progression prevention",
+        "confidence": 0.93,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care long-term management",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "longitudinal care",
+        "patientSubgroupApplicability": "Adults with chronic kidney disease",
+        "importanceRank": 3
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.niddk.ckd-overview",
+        "canonicalDiseaseName": "Chronic kidney disease",
+        "sourceLabel": "NIDDK chronic kidney disease overview",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "primaryOwnerRole": "Primary Care Clinical Reviewer",
+        "backupOwnerRole": "Renal Editor",
+        "refreshCadenceDays": 180,
+        "governanceNotes": [
+          "Preferred source for outpatient CKD screening and staging."
+        ],
+        "topics": [
+          "screening",
+          "staging",
+          "management"
+        ],
+        "sourceUrl": "https://www.niddk.nih.gov/health-information/kidney-disease/chronic-kidney-disease-ckd",
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "nextReviewDueAt": "2026-10-20T00:00:00Z"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "title": "Lab trends are the clue trail",
+        "teachingPoint": "The detectives should earn CKD through urine and filtration clues instead of waiting for late symptoms.",
+        "linkedClaimIds": [
+          "clm.ckd.001",
+          "clm.ckd.002"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "id": "vanchor.ckd.001",
+        "label": "Longitudinal lab trend board with eGFR and albumin markers",
+        "whyItMatters": "CKD storytelling should feel slow-burn and data-driven.",
+        "linkedClaimIds": [
+          "clm.ckd.002",
+          "clm.ckd.003"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.ckd.001",
+        "toClaimId": "clm.ckd.002",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Because early CKD can be silent, laboratory staging clues must carry the mystery."
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.hypothyroidism",
+    "canonicalDiseaseName": "Hypothyroidism",
+    "aliases": [
+      "underactive thyroid",
+      "hypothyroidism",
+      "primary hypothyroidism"
+    ],
+    "ontologyId": "ICD-10-CM:E03.9",
+    "diseaseCategory": "endocrine / thyroid disease",
+    "educationalFocus": [
+      "thyroid hormone signaling",
+      "nonspecific symptom interpretation",
+      "lab confirmation"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Hypothyroidism is inadequate thyroid hormone effect, usually from primary thyroid gland failure, and often presents with gradual, nonspecific symptoms.",
+      "keyMechanism": "Reduced thyroid hormone slows metabolic processes across many organ systems.",
+      "timeScale": "typically develops gradually in outpatient care",
+      "patientExperienceSummary": "Patients often describe fatigue, cold intolerance, constipation, or weight change without a dramatic single clue."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "thyroid hormone feedback",
+        "whyItMatters": "Readers need the pituitary-thyroid loop before TSH and free T4 clues make sense."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "thyroid hormone output falls",
+        "mechanism": "Reduced hormone signaling slows metabolism and produces broad systemic symptoms.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.hypo.001"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "fatigue",
+        "cold intolerance",
+        "constipation",
+        "dry skin"
+      ],
+      "commonSigns": [
+        "bradycardia",
+        "delayed reflex relaxation in some patients"
+      ],
+      "historyClues": [
+        "gradual onset",
+        "autoimmune history",
+        "prior thyroid treatment"
+      ],
+      "physicalExamClues": [
+        "symptoms are broad and nonspecific, so the story needs lab confirmation"
+      ],
+      "complications": [
+        "hyperlipidemia",
+        "infertility",
+        "myxedema in extreme untreated disease"
+      ],
+      "typicalTimecourse": "usually subtle enough that ambulatory longitudinal care matters."
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "TSH",
+          "purpose": "screen for primary thyroid hormone insufficiency",
+          "expectedFinding": "elevated TSH suggests primary hypothyroidism when free T4 is low or low-normal",
+          "claimIds": [
+            "clm.hypo.002"
+          ]
+        },
+        {
+          "name": "free T4",
+          "purpose": "confirm thyroid hormone effect",
+          "expectedFinding": "low free T4 confirms overt hypothyroidism in the right context",
+          "claimIds": [
+            "clm.hypo.002"
+          ]
+        }
+      ],
+      "imaging": [],
+      "pathology": [],
+      "diagnosticLogic": [
+        "Symptoms are too nonspecific to stand alone, so the mystery must close with thyroid testing.",
+        "TSH and free T4 together distinguish overt hormone deficiency from milder or alternate patterns."
+      ],
+      "differentials": [
+        {
+          "disease": "depression or nonspecific fatigue syndrome",
+          "whyConsidered": "fatigue and low energy are common in many conditions",
+          "whyLessLikely": "thyroid testing and endocrine clues provide a firmer mechanism"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "levothyroxine replacement when overt hypothyroidism is confirmed"
+      ],
+      "escalation": [
+        "dose titration based on symptom response and repeat TSH"
+      ],
+      "monitoring": [
+        "TSH trend",
+        "symptom improvement",
+        "medication adherence"
+      ],
+      "notes": [
+        "The payoff is usually steady outpatient normalization rather than an emergency intervention."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.hypo.001",
+        "claimText": "Hypothyroidism reflects inadequate thyroid hormone effect and often causes gradual fatigue, cold intolerance, constipation, and dry skin.",
+        "sourceId": "src.niddk.hypothyroidism-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK hypothyroidism overview",
+        "sourceLocator": "symptoms and causes",
+        "confidence": 0.95,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care baseline teaching",
+        "claimType": "presentation",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "presentation",
+        "patientSubgroupApplicability": "Adults with hypothyroidism",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.hypo.002",
+        "claimText": "Primary hypothyroidism is confirmed with thyroid function testing, especially TSH and free T4.",
+        "sourceId": "src.niddk.hypothyroidism-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK hypothyroidism overview",
+        "sourceLocator": "diagnosis",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care diagnosis framing",
+        "claimType": "diagnostic",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Adults with hypothyroidism",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.hypo.003",
+        "claimText": "Levothyroxine replacement is the standard treatment for overt hypothyroidism, with follow-up lab monitoring for dose adjustment.",
+        "sourceId": "src.niddk.hypothyroidism-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NIDDK hypothyroidism treatment overview",
+        "sourceLocator": "treatment and monitoring",
+        "confidence": 0.94,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care treatment planning",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "treatment",
+        "patientSubgroupApplicability": "Adults with hypothyroidism",
+        "importanceRank": 3
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.niddk.hypothyroidism-overview",
+        "canonicalDiseaseName": "Hypothyroidism",
+        "sourceLabel": "NIDDK hypothyroidism overview",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "primaryOwnerRole": "Primary Care Clinical Reviewer",
+        "backupOwnerRole": "Endocrine Editor",
+        "refreshCadenceDays": 180,
+        "governanceNotes": [
+          "Use for symptom and lab-confirmation framing."
+        ],
+        "topics": [
+          "presentation",
+          "diagnosis"
+        ],
+        "sourceUrl": "https://www.niddk.nih.gov/health-information/endocrine-diseases/hypothyroidism",
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "nextReviewDueAt": "2026-10-20T00:00:00Z"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "title": "Nonspecific symptoms still need a fair mechanism",
+        "teachingPoint": "The detectives should show why thyroid labs are necessary instead of pretending fatigue alone solves the mystery.",
+        "linkedClaimIds": [
+          "clm.hypo.001",
+          "clm.hypo.002"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "id": "vanchor.hypo.001",
+        "label": "Metabolic control board with TSH/free T4 clues",
+        "whyItMatters": "The visual logic should connect broad symptoms to endocrine measurement.",
+        "linkedClaimIds": [
+          "clm.hypo.002",
+          "clm.hypo.003"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.hypo.001",
+        "toClaimId": "clm.hypo.002",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Because symptoms are nonspecific, thyroid testing is necessary to close the diagnostic loop."
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.iron-deficiency-anemia",
+    "canonicalDiseaseName": "Iron deficiency anemia",
+    "aliases": [
+      "iron deficiency anemia",
+      "ida",
+      "iron-deficiency anaemia"
+    ],
+    "ontologyId": "ICD-10-CM:D50.9",
+    "diseaseCategory": "hematology / primary care evaluation",
+    "educationalFocus": [
+      "oxygen delivery",
+      "iron stores",
+      "cause identification"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Iron deficiency anemia is reduced hemoglobin production from inadequate iron availability, usually because intake, absorption, or blood loss cannot meet demand.",
+      "keyMechanism": "Low iron limits hemoglobin synthesis, which lowers oxygen-carrying capacity and causes fatigue and exertional symptoms.",
+      "timeScale": "often gradual, though the underlying source of blood loss may change urgency",
+      "patientExperienceSummary": "Patients often describe fatigue, weakness, and reduced exercise tolerance long before they know why."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "hemoglobin and oxygen delivery",
+        "whyItMatters": "The story needs a simple bridge from iron stores to reduced stamina and dyspnea."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "iron stores become insufficient for red cell production",
+        "mechanism": "Hemoglobin synthesis falls and red cells carry less oxygen effectively.",
+        "scale": "cellular",
+        "linkedClaimIds": [
+          "clm.ida.001"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "fatigue",
+        "weakness",
+        "exertional shortness of breath"
+      ],
+      "commonSigns": [
+        "pallor",
+        "tachycardia when more symptomatic"
+      ],
+      "historyClues": [
+        "heavy menstrual bleeding",
+        "GI blood loss history",
+        "poor intake or malabsorption"
+      ],
+      "physicalExamClues": [
+        "the clue trail should point to chronic oxygen-delivery strain and the source of iron loss"
+      ],
+      "complications": [
+        "functional impairment",
+        "worsened cardiac demand",
+        "missed occult bleeding source"
+      ],
+      "typicalTimecourse": "often gradual, with discovery in primary care or outpatient workup."
+    },
+    "diagnostics": {
+      "labs": [
+        {
+          "name": "complete blood count",
+          "purpose": "identify anemia pattern",
+          "expectedFinding": "anemia with a pattern consistent with iron deficiency in context",
+          "claimIds": [
+            "clm.ida.002"
+          ]
+        },
+        {
+          "name": "ferritin and iron studies",
+          "purpose": "confirm depleted iron stores",
+          "expectedFinding": "low ferritin strongly supports iron deficiency in the right setting",
+          "claimIds": [
+            "clm.ida.002"
+          ]
+        }
+      ],
+      "imaging": [],
+      "pathology": [],
+      "diagnosticLogic": [
+        "Confirm iron deficiency biochemically, then look for the reason iron became inadequate.",
+        "The workup should not stop at replacement alone when bleeding or malabsorption is plausible."
+      ],
+      "differentials": [
+        {
+          "disease": "anemia of chronic disease",
+          "whyConsidered": "both can present with fatigue and low hemoglobin",
+          "whyLessLikely": "iron studies and history help distinguish low iron stores from inflammatory restriction"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "oral or other iron replacement when appropriate",
+        "evaluate and address the source of blood loss or malabsorption"
+      ],
+      "escalation": [
+        "consider higher-intensity replacement or specialist evaluation when oral therapy is insufficient or the cause is concerning"
+      ],
+      "monitoring": [
+        "hemoglobin response",
+        "ferritin trend",
+        "source-control follow-up"
+      ],
+      "notes": [
+        "Replacing iron without addressing the cause leaves the mystery unfinished."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.ida.001",
+        "claimText": "Iron deficiency anemia results from insufficient iron availability for normal hemoglobin production.",
+        "sourceId": "src.nhlbi.ida-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI iron-deficiency anemia overview",
+        "sourceLocator": "cause and mechanism",
+        "confidence": 0.96,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care baseline teaching",
+        "claimType": "core-mechanism",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "baseline pathophysiology",
+        "patientSubgroupApplicability": "Adults with iron deficiency anemia",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.ida.002",
+        "claimText": "Iron deficiency anemia is evaluated with a blood count plus iron studies such as ferritin to confirm low iron stores.",
+        "sourceId": "src.nhlbi.ida-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI iron-deficiency anemia overview",
+        "sourceLocator": "diagnosis section",
+        "confidence": 0.95,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care workup",
+        "claimType": "diagnostic",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Adults with iron deficiency anemia",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.ida.003",
+        "claimText": "Treatment includes iron replacement and identification of the underlying reason iron loss or deficiency developed.",
+        "sourceId": "src.nhlbi.ida-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NHLBI iron-deficiency anemia overview",
+        "sourceLocator": "treatment and prevention",
+        "confidence": 0.94,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care treatment planning",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "treatment",
+        "patientSubgroupApplicability": "Adults with iron deficiency anemia",
+        "importanceRank": 3
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.nhlbi.ida-overview",
+        "canonicalDiseaseName": "Iron deficiency anemia",
+        "sourceLabel": "NHLBI iron-deficiency anemia overview",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "primaryOwnerRole": "Primary Care Clinical Reviewer",
+        "backupOwnerRole": "Hematology Editor",
+        "refreshCadenceDays": 180,
+        "governanceNotes": [
+          "Use for baseline ambulatory anemia mechanism, workup, and treatment."
+        ],
+        "topics": [
+          "diagnosis",
+          "management"
+        ],
+        "sourceUrl": "https://www.nhlbi.nih.gov/health/iron-deficiency-anemia",
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "nextReviewDueAt": "2026-10-20T00:00:00Z"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "title": "Finish the cause hunt",
+        "teachingPoint": "The comic should not stop with low hemoglobin; it should show why identifying the iron-loss source matters.",
+        "linkedClaimIds": [
+          "clm.ida.002",
+          "clm.ida.003"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "id": "vanchor.ida.001",
+        "label": "CBC and ferritin evidence board with a trail toward the bleeding source",
+        "whyItMatters": "This keeps the mystery tied to causal investigation rather than replacement alone.",
+        "linkedClaimIds": [
+          "clm.ida.002",
+          "clm.ida.003"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.ida.002",
+        "toClaimId": "clm.ida.003",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "Confirming iron deficiency is not the end of the workup; the cause still has to be found."
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0.0",
+    "id": "dkp.migraine",
+    "canonicalDiseaseName": "Migraine",
+    "aliases": [
+      "migraine",
+      "migraine headache",
+      "migraine disorder"
+    ],
+    "ontologyId": "ICD-10-CM:G43.909",
+    "diseaseCategory": "neurology / ambulatory symptom management",
+    "educationalFocus": [
+      "recurrent neurologic symptoms",
+      "clinical diagnosis",
+      "acute and preventive treatment"
+    ],
+    "clinicalSummary": {
+      "oneSentence": "Migraine is a recurrent neurologic disorder that can cause disabling headache with sensory and autonomic symptoms.",
+      "keyMechanism": "The disorder reflects episodic brain-network and trigeminovascular activation rather than a structural lesion found on routine imaging.",
+      "timeScale": "recurrent attacks over months or years",
+      "patientExperienceSummary": "Patients may experience throbbing head pain, nausea, light sensitivity, and sometimes aura, often with recognizable triggers."
+    },
+    "physiologyPrerequisites": [
+      {
+        "topic": "pain signaling and aura concepts",
+        "whyItMatters": "Readers need a simple model for why migraine can produce both head pain and transient neurologic symptoms."
+      }
+    ],
+    "pathophysiology": [
+      {
+        "order": 1,
+        "event": "episodic migraine circuitry activates",
+        "mechanism": "Attack physiology creates headache plus sensitivity to light, sound, movement, or nausea.",
+        "scale": "whole-body",
+        "linkedClaimIds": [
+          "clm.mig.001"
+        ]
+      }
+    ],
+    "presentation": {
+      "commonSymptoms": [
+        "recurrent headache",
+        "nausea",
+        "photophobia",
+        "phonophobia"
+      ],
+      "commonSigns": [
+        "normal neurologic exam between attacks in uncomplicated migraine"
+      ],
+      "historyClues": [
+        "episodic pattern",
+        "trigger association",
+        "family history",
+        "possible aura"
+      ],
+      "physicalExamClues": [
+        "the diagnosis is pattern-based and clinical unless red flags change the story"
+      ],
+      "complications": [
+        "functional impairment",
+        "medication overuse headache",
+        "stroke mimic confusion in some aura presentations"
+      ],
+      "typicalTimecourse": "recurrent attacks separated by symptom-free intervals."
+    },
+    "diagnostics": {
+      "labs": [],
+      "imaging": [],
+      "pathology": [],
+      "diagnosticLogic": [
+        "Migraine is diagnosed clinically from the attack pattern and associated features.",
+        "Imaging is reserved for red flags, not routine confirmation of a typical migraine story."
+      ],
+      "differentials": [
+        {
+          "disease": "secondary headache disorder",
+          "whyConsidered": "dangerous causes can also present with headache",
+          "whyLessLikely": "typical recurrent migraine pattern without red flags supports a primary headache disorder"
+        }
+      ]
+    },
+    "management": {
+      "firstLine": [
+        "acute symptom treatment early in the attack",
+        "trigger-aware self-management"
+      ],
+      "escalation": [
+        "preventive therapy when attack burden or disability is frequent"
+      ],
+      "monitoring": [
+        "attack frequency",
+        "functional impact",
+        "medication use"
+      ],
+      "notes": [
+        "The story should distinguish acute attack treatment from prevention between attacks."
+      ]
+    },
+    "evidence": [
+      {
+        "claimId": "clm.mig.001",
+        "claimText": "Migraine often causes recurrent headache with nausea and light or sound sensitivity, with some patients experiencing aura.",
+        "sourceId": "src.ninds.migraine-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NINDS migraine overview",
+        "sourceLocator": "symptoms and attack pattern",
+        "confidence": 0.95,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care baseline teaching",
+        "claimType": "presentation",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "presentation",
+        "patientSubgroupApplicability": "Adults with migraine",
+        "importanceRank": 1
+      },
+      {
+        "claimId": "clm.mig.002",
+        "claimText": "Migraine is primarily a clinical diagnosis, and routine imaging is not required for a typical pattern without red flags.",
+        "sourceId": "src.ninds.migraine-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NINDS migraine overview",
+        "sourceLocator": "diagnosis and evaluation",
+        "confidence": 0.94,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care diagnosis framing",
+        "claimType": "diagnostic",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "evaluation",
+        "patientSubgroupApplicability": "Adults with migraine",
+        "importanceRank": 2
+      },
+      {
+        "claimId": "clm.mig.003",
+        "claimText": "Migraine care separates acute treatment during attacks from preventive therapy when attack burden is frequent or disabling.",
+        "sourceId": "src.ninds.migraine-overview",
+        "sourceType": "reference",
+        "sourceLabel": "NINDS migraine overview",
+        "sourceLocator": "treatment overview",
+        "confidence": 0.93,
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "applicability": "Primary care treatment planning",
+        "claimType": "management",
+        "certaintyLevel": "high",
+        "diseaseStageApplicability": "treatment",
+        "patientSubgroupApplicability": "Adults with migraine",
+        "importanceRank": 3
+      }
+    ],
+    "sourceCatalog": [
+      {
+        "id": "src.ninds.migraine-overview",
+        "canonicalDiseaseName": "Migraine",
+        "sourceLabel": "NINDS migraine overview",
+        "sourceType": "reference",
+        "sourceTier": "tier-1",
+        "defaultApprovalStatus": "approved",
+        "owner": "clinical-governance",
+        "primaryOwnerRole": "Primary Care Clinical Reviewer",
+        "backupOwnerRole": "Neurology Editor",
+        "refreshCadenceDays": 180,
+        "governanceNotes": [
+          "Use for symptom pattern, diagnosis, and treatment framing."
+        ],
+        "topics": [
+          "symptoms",
+          "diagnosis",
+          "management"
+        ],
+        "sourceUrl": "https://www.ninds.nih.gov/health-information/disorders/migraine",
+        "lastReviewedAt": "2026-04-23T00:00:00Z",
+        "nextReviewDueAt": "2026-10-20T00:00:00Z"
+      }
+    ],
+    "clinicalTeachingPoints": [
+      {
+        "title": "Pattern recognition is the detective engine",
+        "teachingPoint": "Migraine is usually solved by the pattern of recurrent attacks and associated symptoms, not by routine imaging spectacle.",
+        "linkedClaimIds": [
+          "clm.mig.001",
+          "clm.mig.002"
+        ]
+      }
+    ],
+    "visualAnchors": [
+      {
+        "id": "vanchor.mig.001",
+        "label": "Attack calendar with aura symbols and light-sensitivity motif",
+        "whyItMatters": "The art should emphasize episodic recurrence and trigger pattern rather than a static lesion reveal.",
+        "linkedClaimIds": [
+          "clm.mig.001",
+          "clm.mig.003"
+        ]
+      }
+    ],
+    "evidenceRelationships": [
+      {
+        "fromClaimId": "clm.mig.001",
+        "toClaimId": "clm.mig.002",
+        "relationshipType": "qualifies",
+        "status": "resolved",
+        "notes": "The recognizable attack pattern explains why routine imaging is unnecessary in a typical case."
+      }
+    ]
+  }
+]

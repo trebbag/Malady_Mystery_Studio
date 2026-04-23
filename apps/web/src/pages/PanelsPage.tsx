@@ -10,7 +10,11 @@ export function PanelsPage() {
   const { runId } = useRunPageContext();
   const refreshSignal = useRefreshSignal(runId);
   const artifactsState = useRemoteData(
-    () => fetchWorkflowArtifacts(runId, ['panel-plan', 'render-prompt', 'lettering-map', 'qa-report'], true),
+    () => fetchWorkflowArtifacts(
+      runId,
+      ['panel-plan', 'render-prompt', 'lettering-map', 'qa-report', 'render-job', 'render-attempt', 'rendered-asset', 'rendered-asset-manifest'],
+      true,
+    ),
     [runId, refreshSignal],
   );
 

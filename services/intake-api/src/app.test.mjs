@@ -665,3 +665,129 @@ test('built web assets are served while debug pages remain available', async () 
     await sandbox.cleanup();
   }
 });
+
+test('review queue, threaded review, source ownership, refresh tasks, and render jobs work through the public API', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer(sandbox);
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'community-acquired pneumonia',
+    });
+    const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+
+    const threadResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/threads`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Clinical governance follow-up',
+        scopeType: 'run',
+      }),
+    });
+    assert.equal(threadResponse.status, 201);
+    const reviewThread = await threadResponse.json();
+
+    const messageResponse = await fetch(`${app.baseUrl}/api/v1/review-threads/${encodeURIComponent(reviewThread.id)}/messages`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        body: 'Need a quick review of source freshness and render readiness.',
+      }),
+    });
+    assert.equal(messageResponse.status, 201);
+    const reviewMessage = await messageResponse.json();
+    assert.equal(reviewMessage.threadId, reviewThread.id);
+
+    const threadsListResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/threads`);
+    assert.equal(threadsListResponse.status, 200);
+    const reviewThreads = await threadsListResponse.json();
+    assert.equal(reviewThreads.length >= 1, true);
+    assert.equal(reviewThreads[0].messages.length >= 1, true);
+
+    const sourceCatalogResponse = await fetch(`${app.baseUrl}/api/v1/source-catalog`);
+    assert.equal(sourceCatalogResponse.status, 200);
+    const sourceCatalog = await sourceCatalogResponse.json();
+    const sourceRecord = sourceCatalog.find((/** @type {any} */ record) => record.canonicalDiseaseName === 'Community-acquired pneumonia');
+    assert.equal(Boolean(sourceRecord), true);
+
+    const ownershipResponse = await fetch(`${app.baseUrl}/api/v1/source-catalog/${encodeURIComponent(sourceRecord.id)}/ownership`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        canonicalDiseaseName: sourceRecord.canonicalDiseaseName,
+        primaryOwnerRole: 'Clinical Reviewer',
+        backupOwnerRole: 'Product Editor',
+        notes: ['Assigned during API integration coverage.'],
+      }),
+    });
+    assert.equal(ownershipResponse.status, 201);
+    const ownership = await ownershipResponse.json();
+    assert.equal(ownership.sourceId, sourceRecord.id);
+
+    const refreshTaskResponse = await fetch(`${app.baseUrl}/api/v1/source-catalog/${encodeURIComponent(sourceRecord.id)}/refresh-tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        canonicalDiseaseName: sourceRecord.canonicalDiseaseName,
+        workflowRunId: workflowRun.id,
+        reason: 'Test-created refresh task.',
+      }),
+    });
+    assert.equal(refreshTaskResponse.status, 201);
+    const refreshTask = await refreshTaskResponse.json();
+    assert.equal(refreshTask.sourceId, sourceRecord.id);
+    assert.equal(typeof refreshTask.workItemId, 'string');
+
+    const queueResponse = await fetch(`${app.baseUrl}/api/v1/review-queue?workType=source-refresh`);
+    assert.equal(queueResponse.status, 200);
+    const queueView = await queueResponse.json();
+    assert.equal(queueView.items.some((/** @type {any} */ item) => item.workItemId === refreshTask.workItemId), true);
+
+    const workItemResponse = await fetch(`${app.baseUrl}/api/v1/work-items/${encodeURIComponent(refreshTask.workItemId)}`);
+    assert.equal(workItemResponse.status, 200);
+    const workItem = await workItemResponse.json();
+    assert.equal(workItem.workType, 'source-refresh');
+
+    const updatedWorkItemResponse = await fetch(`${app.baseUrl}/api/v1/work-items/${encodeURIComponent(refreshTask.workItemId)}`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'completed',
+        notes: ['Completed during API integration coverage.'],
+      }),
+    });
+    assert.equal(updatedWorkItemResponse.status, 200);
+    const updatedWorkItem = await updatedWorkItemResponse.json();
+    assert.equal(updatedWorkItem.status, 'completed');
+
+    const renderJobResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/render-jobs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    assert.equal(renderJobResponse.status, 202);
+    const renderJobPayload = await renderJobResponse.json();
+    assert.equal(renderJobPayload.renderJob.workflowRunId, workflowRun.id);
+
+    const renderJobDetailResponse = await fetch(`${app.baseUrl}/api/v1/render-jobs/${encodeURIComponent(renderJobPayload.renderJob.id)}`);
+    assert.equal(renderJobDetailResponse.status, 200);
+    const renderJobDetail = await renderJobDetailResponse.json();
+    assert.equal(Array.isArray(renderJobDetail.attempts), true);
+    assert.equal(Array.isArray(renderJobDetail.renderedAssets), true);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});

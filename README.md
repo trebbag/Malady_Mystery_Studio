@@ -15,6 +15,7 @@ Local-first starter platform for turning a disease or condition into a medically
 ```bash
 pnpm install
 pnpm dev:api
+pnpm dev:worker
 pnpm dev:web
 pnpm lint
 pnpm typecheck
@@ -30,6 +31,8 @@ pnpm eval:run -- --run-id <runId>
 pnpm local:backup
 pnpm local:reset
 pnpm local:restore -- --path var/backups/<timestamp>
+pnpm migrate:managed
+pnpm ops:restore-smoke
 ```
 
 ## Local review flow
@@ -38,6 +41,7 @@ pnpm local:restore -- --path var/backups/<timestamp>
 - In built mode, the intake API serves the SPA at [http://127.0.0.1:3000/review](http://127.0.0.1:3000/review).
 - The primary SPA routes are:
   - `/review`
+  - `/review/queue`
   - `/runs/:runId/pipeline`
   - `/runs/:runId/review`
   - `/runs/:runId/packets`
@@ -58,23 +62,23 @@ pnpm local:restore -- --path var/backups/<timestamp>
 ## Current local MVP status
 
 - Foundation and local runtime: `96%`
-- Clinical truth layer: `91%`
-- Workbook and guardrails: `75%`
-- Scene, panel, render-prep: `72%`
-- Local review, eval, and export workflow: `96%`
-- Frontend structure and UX implementation: `91%`
-- Operational pilot readiness: `40%`
+- Clinical truth layer: `93%`
+- Workbook and guardrails: `76%`
+- Scene, panel, render-prep: `79%`
+- Local review, eval, export, and queue workflow: `97%`
+- Frontend structure and UX implementation: `93%`
+- Managed platform and pilot ops: `58%`
+- Live render execution: `62%`
 
 Overall:
-- Local MVP readiness: `91%`
-- Pilot readiness: `52%`
+- Local MVP readiness: `93%`
+- Pilot readiness: `61%`
 
 ## What remains before MVP and pilot
 
-- Add cross-run queueing, reviewer due-date escalation, and richer comment threading beyond the current local review cards.
-- Add live render integration and retry orchestration instead of stopping at render-prompt generation.
-- Expand the governed disease and source library beyond the current twelve-disease local pack set.
-- Deepen contradiction handling, source refresh, and source owner workflows beyond the current local controls.
-- Move from local SQLite and filesystem object storage to managed infrastructure for a pilot.
-- Add real deployment, observability, retention execution, backup policies, and recovery drills.
-- Integrate real auth at an external frontend or gateway layer when the app moves beyond local-open mode.
+- Finish the true managed runtime cutover from local SQLite/filesystem fallback to PostgreSQL plus Blob in the live execution path.
+- Harden Azure deployment, secrets wiring, restore drills, and operational observability beyond the current scaffold.
+- Add deeper multi-user reviewer collaboration features such as delivery-grade mentions, queue analytics, and richer escalation handling.
+- Expand governed disease and source coverage beyond the current starter, expansion, and primary-care tranches.
+- Harden render-output review, retry ergonomics, and downstream publishing beyond the current Gemini-first pilot path.
+- Integrate external auth and gateway identity when the product moves beyond local-open operator mode.

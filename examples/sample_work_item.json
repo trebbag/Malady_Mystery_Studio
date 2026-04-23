@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "wrk.render.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.hcc.001",
+  "workType": "render-retry",
+  "status": "escalated",
+  "priority": "critical",
+  "queueName": "render-retry-queue",
+  "fallbackQueueName": "render-retry-queue-fallback",
+  "subjectType": "render-job",
+  "subjectId": "rjob.hcc.001",
+  "originType": "render-job",
+  "originId": "rjob.hcc.001",
+  "assignedActorId": "local-operator",
+  "assignedActorDisplayName": "Local Operator",
+  "assignedActorRoles": [
+    "Local Operator"
+  ],
+  "slaHours": 8,
+  "reminderAt": "2026-04-23T12:00:00Z",
+  "dueAt": "2026-04-23T16:00:00Z",
+  "escalatedAt": "2026-04-23T17:00:00Z",
+  "notes": [
+    "Automatic retries exhausted for the rendered output."
+  ],
+  "metadata": {
+    "reason": "render-retry-required"
+  },
+  "createdAt": "2026-04-23T08:00:00Z",
+  "updatedAt": "2026-04-23T17:00:00Z"
+}

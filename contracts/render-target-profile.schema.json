@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/render-target-profile.schema.json",
+  "title": "RenderTargetProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "provider",
+    "model",
+    "supportedAspectRatios",
+    "fallbackStrategies",
+    "textHandlingPolicy",
+    "watermarkPolicy"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "supportedAspectRatios": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fallbackStrategies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "textHandlingPolicy": {
+      "type": "string"
+    },
+    "watermarkPolicy": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

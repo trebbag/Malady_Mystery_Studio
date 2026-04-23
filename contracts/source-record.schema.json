@@ -14,7 +14,12 @@
     "freshnessScore",
     "freshnessStatus",
     "contradictionStatus",
-    "lastReviewedAt"
+    "lastReviewedAt",
+    "primaryOwnerRole",
+    "backupOwnerRole",
+    "refreshCadenceDays",
+    "nextReviewDueAt",
+    "freshnessState"
   ],
   "properties": {
     "schemaVersion": {
@@ -81,6 +86,16 @@
     "owner": {
       "type": "string"
     },
+    "primaryOwnerRole": {
+      "type": "string"
+    },
+    "backupOwnerRole": {
+      "type": "string"
+    },
+    "refreshCadenceDays": {
+      "type": "integer",
+      "minimum": 1
+    },
     "governanceNotes": {
       "type": "array",
       "items": {
@@ -93,6 +108,35 @@
     "lastReviewedAt": {
       "type": "string",
       "format": "date-time"
+    },
+    "nextReviewDueAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "freshnessState": {
+      "type": "string",
+      "enum": [
+        "current",
+        "aging",
+        "stale",
+        "blocked"
+      ]
+    },
+    "supersededBy": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "impactedDiseaseCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "impactedRunCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "openRefreshTaskCount": {
+      "type": "integer",
+      "minimum": 0
     }
   }
 }

@@ -28,6 +28,8 @@
         "assignee",
         "exportStatus",
         "evalStatus",
+        "queueStatus",
+        "workType",
         "sort"
       ],
       "properties": {
@@ -49,6 +51,12 @@
         "evalStatus": {
           "type": "string"
         },
+        "queueStatus": {
+          "type": "string"
+        },
+        "workType": {
+          "type": "string"
+        },
         "sort": {
           "type": "string"
         }
@@ -64,7 +72,9 @@
         "assignedRunCount",
         "openCommentCount",
         "staleEvalCount",
-        "exportReadyCount"
+        "exportReadyCount",
+        "overdueWorkItemCount",
+        "escalatedWorkItemCount"
       ],
       "properties": {
         "visibleRunCount": {
@@ -94,6 +104,14 @@
         "exportReadyCount": {
           "type": "integer",
           "minimum": 0
+        },
+        "overdueWorkItemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "escalatedWorkItemCount": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },
@@ -112,6 +130,9 @@
           "openCommentCount",
           "latestEvalStatus",
           "exportCount",
+          "activeWorkItemCount",
+          "overdueWorkItemCount",
+          "threadCount",
           "updatedAt"
         ],
         "properties": {
@@ -148,6 +169,18 @@
             "type": "string"
           },
           "exportCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "activeWorkItemCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "overdueWorkItemCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "threadCount": {
             "type": "integer",
             "minimum": 0
           },

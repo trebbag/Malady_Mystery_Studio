@@ -14,6 +14,11 @@
       "freshnessStatus": "current",
       "contradictionStatus": "none",
       "owner": "clinical-board",
+      "primaryOwnerRole": "Clinical Reviewer",
+      "backupOwnerRole": "Product Editor",
+      "refreshCadenceDays": 180,
+      "nextReviewDueAt": "2026-10-17T00:00:00Z",
+      "freshnessState": "current",
       "governanceNotes": [
         "Preferred baseline source for the starter knowledge pack."
       ],

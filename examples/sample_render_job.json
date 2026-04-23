@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "rjob.hcc.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.hcc.001",
+  "status": "completed",
+  "approvalStatus": "approved",
+  "queueName": "render-execution",
+  "provider": "gemini-image",
+  "model": "gemini-3.1-flash-image-preview",
+  "renderTargetProfileId": "rtp.gemini-image-default",
+  "renderPromptIds": [
+    "rpr.hcc.004.03"
+  ],
+  "attemptIds": [
+    "ratm.hcc.001"
+  ],
+  "renderedAssetManifestId": "rman.hcc.001",
+  "createdBy": "local-operator",
+  "createdAt": "2026-04-22T14:15:00Z",
+  "updatedAt": "2026-04-22T14:17:00Z",
+  "completedAt": "2026-04-22T14:17:00Z"
+}

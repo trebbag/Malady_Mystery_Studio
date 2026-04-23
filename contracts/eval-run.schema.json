@@ -74,6 +74,7 @@
               "educational_sequencing",
               "panelization",
               "render_readiness",
+              "render_output_quality",
               "governance_release"
             ]
           },
@@ -215,6 +216,7 @@
             "educational_sequencing",
             "panelization",
             "render_readiness",
+            "render_output_quality",
             "governance_release"
           ],
           "properties": {
@@ -244,6 +246,11 @@
               "maximum": 1
             },
             "render_readiness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "render_output_quality": {
               "type": "number",
               "minimum": 0,
               "maximum": 1

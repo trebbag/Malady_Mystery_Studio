@@ -14,6 +14,7 @@ stageOrder:
   - scene-planning
   - panel-planning
   - render-prep
+  - render-execution
   - review
   - export
 states:

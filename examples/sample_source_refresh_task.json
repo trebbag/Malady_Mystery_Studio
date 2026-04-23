@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "srt.mig.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.migraine.001",
+  "sourceId": "src.ninds.migraine-overview",
+  "canonicalDiseaseName": "Migraine",
+  "status": "open",
+  "reason": "Source review date is aging and needs refresh before the next release.",
+  "freshnessState": "aging",
+  "workItemId": "wrk.source.001",
+  "nextReviewDueAt": "2026-05-01T00:00:00Z",
+  "createdAt": "2026-04-23T09:00:00Z",
+  "updatedAt": "2026-04-23T09:00:00Z"
+}

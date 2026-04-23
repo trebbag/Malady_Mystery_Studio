@@ -13,7 +13,8 @@
   "include": [
     "scripts/**/*.mjs",
     "packages/**/*.mjs",
-    "services/**/*.mjs"
+    "services/**/*.mjs",
+    "types/**/*.d.ts"
   ],
   "exclude": [
     "dist",

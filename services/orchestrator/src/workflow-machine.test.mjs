@@ -44,7 +44,7 @@ test('workflow stages advance into review through STAGE_PASSED events', () => {
     '2026-04-21T00:00:01Z',
   ));
 
-  for (let index = 0; index < 7; index += 1) {
+  for (let index = 0; index < 8; index += 1) {
     ({ workflowRun } = applyWorkflowEvent(
       workflowSpec,
       workflowRun,
@@ -64,6 +64,10 @@ test('workflow stages advance into review through STAGE_PASSED events', () => {
   assert.equal(workflowRun.currentStage, 'review');
   assert.equal(
     workflowRun.stages.find((/** @type {{ name: string, status: string }} */ stage) => stage.name === 'render-prep')?.status,
+    'passed',
+  );
+  assert.equal(
+    workflowRun.stages.find((/** @type {{ name: string, status: string }} */ stage) => stage.name === 'render-execution')?.status,
     'passed',
   );
   assert.equal(
@@ -110,7 +114,7 @@ test('approval completion requires all configured reviewer roles', () => {
     '2026-04-21T00:00:01Z',
   ));
 
-  for (let index = 0; index < 7; index += 1) {
+  for (let index = 0; index < 8; index += 1) {
     ({ workflowRun } = applyWorkflowEvent(
       workflowSpec,
       workflowRun,

@@ -103,7 +103,7 @@ export function createWorkflowArtifactListView(options) {
 }
 
 /**
- * @param {{ actor: any, tenantId: string, serverBaseUrl: string, storage: { dbFilePath: string, objectStoreDir: string }, availableCommands: string[], readiness: any }} options
+ * @param {{ actor: any, tenantId: string, serverBaseUrl: string, storage: { dbFilePath: string, objectStoreDir: string }, platform: { metadataStore: string, objectStore: string, queueBackend: string, telemetryBackend: string }, availableCommands: string[], readiness: any }} options
  * @returns {any}
  */
 export function createLocalRuntimeView(options) {
@@ -117,6 +117,7 @@ export function createLocalRuntimeView(options) {
     tenantId: options.tenantId,
     serverBaseUrl: options.serverBaseUrl,
     storage: options.storage,
+    platform: options.platform,
     availableCommands: options.availableCommands,
     readiness: options.readiness,
   };
@@ -147,6 +148,9 @@ export function createReviewDashboardView(options) {
       pauseReason: workflowRun.pauseReason,
       latestEvalStatus: summary.latestEvalStatus,
       exportCount: summary.exportCount,
+      activeWorkItemCount: summary.activeWorkItemCount ?? 0,
+      overdueWorkItemCount: summary.overdueWorkItemCount ?? 0,
+      threadCount: summary.threadCount ?? 0,
       updatedAt: workflowRun.updatedAt,
     };
   });
@@ -161,6 +165,8 @@ export function createReviewDashboardView(options) {
       assignee: options.filters.assignee ?? '',
       exportStatus: options.filters.exportStatus ?? '',
       evalStatus: options.filters.evalStatus ?? '',
+      queueStatus: options.filters.queueStatus ?? '',
+      workType: options.filters.workType ?? '',
       sort: options.filters.sort ?? 'updated-desc',
     },
     stats: {
@@ -171,13 +177,15 @@ export function createReviewDashboardView(options) {
       openCommentCount: runs.reduce((total, run) => total + run.openCommentCount, 0),
       staleEvalCount: runs.filter((run) => run.latestEvalStatus === 'stale').length,
       exportReadyCount: runs.filter((run) => run.state === 'approved' && run.latestEvalStatus === 'passed').length,
+      overdueWorkItemCount: runs.reduce((total, run) => total + (run.overdueWorkItemCount ?? 0), 0),
+      escalatedWorkItemCount: runs.filter((run) => (run.overdueWorkItemCount ?? 0) > 0).length,
     },
     runs,
   };
 }
 
 /**
- * @param {{ project: any, workflowRun: any, clinicalPackage: any, reviewAssignments?: any[], reviewComments?: any[], latestEvalRun?: any | null, latestEvalStatus: string, exportHistory: any[] }} options
+ * @param {{ project: any, workflowRun: any, clinicalPackage: any, reviewAssignments?: any[], reviewComments?: any[], workItems?: any[], reviewThreads?: any[], renderJobs?: any[], latestEvalRun?: any | null, latestEvalStatus: string, exportHistory: any[] }} options
  * @returns {any}
  */
 export function createReviewRunView(options) {
@@ -200,6 +208,8 @@ export function createReviewRunView(options) {
     }),
     reviewAssignments: options.reviewAssignments ?? [],
     reviewComments: options.reviewComments ?? [],
+    workItems: options.workItems ?? [],
+    reviewThreads: options.reviewThreads ?? [],
     evaluationSummary: createEvaluationSummaryView({
       latestEvalStatus: options.latestEvalStatus,
       latestEvalRun: options.latestEvalRun,
@@ -208,16 +218,22 @@ export function createReviewRunView(options) {
       runId: options.workflowRun.id,
       entries: options.exportHistory,
     }),
+    renderJobs: options.renderJobs ?? [],
     availableActions: [
       'resolve-canonicalization',
       'assign-reviewer',
       'record-review-comment',
+      'open-review-thread',
       'compare-artifacts',
       'record-approval',
       'record-source-decision',
       'record-contradiction-resolution',
+      'assign-source-owner',
+      'create-source-refresh-task',
       'rebuild-clinical-package',
       'run-evaluations',
+      'enqueue-render-job',
+      'retry-render-job',
       'export-bundle',
     ],
   };

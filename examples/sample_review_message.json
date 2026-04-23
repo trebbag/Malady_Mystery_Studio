@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "msg.hcc.001",
+  "threadId": "thr.hcc.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.hcc.001",
+  "authorId": "local-operator",
+  "authorDisplayName": "Local Operator",
+  "body": "The second panel needs a clearer link back to the chronic liver injury claim before approval.",
+  "mentions": [
+    "traceability",
+    "panel"
+  ],
+  "status": "posted",
+  "createdAt": "2026-04-22T14:00:00Z",
+  "updatedAt": "2026-04-22T14:00:00Z"
+}

@@ -8,6 +8,44 @@ function clampScore(value) {
 
 /**
  * @param {string | undefined} lastReviewedAt
+ * @param {number} cadenceDays
+ * @returns {string}
+ */
+function calculateNextReviewDueAt(lastReviewedAt, cadenceDays) {
+  const baseTimestamp = lastReviewedAt ? new Date(lastReviewedAt).getTime() : Date.now();
+  return new Date(baseTimestamp + (cadenceDays * 24 * 60 * 60 * 1000)).toISOString();
+}
+
+/**
+ * @param {any} sourceCatalogEntry
+ * @returns {string}
+ */
+function defaultPrimaryOwnerRole(sourceCatalogEntry) {
+  return sourceCatalogEntry.primaryOwnerRole
+    ?? (sourceCatalogEntry.owner === 'clinical-governance' ? 'Clinical Reviewer' : 'Clinical Governance Owner');
+}
+
+/**
+ * @param {any} sourceCatalogEntry
+ * @returns {string}
+ */
+function defaultBackupOwnerRole(sourceCatalogEntry) {
+  return sourceCatalogEntry.backupOwnerRole
+    ?? (sourceCatalogEntry.owner === 'clinical-governance' ? 'Product Editor' : 'Clinical Governance Backup');
+}
+
+/**
+ * @param {any} sourceCatalogEntry
+ * @returns {number}
+ */
+function defaultRefreshCadenceDays(sourceCatalogEntry) {
+  return Number.isInteger(sourceCatalogEntry.refreshCadenceDays)
+    ? sourceCatalogEntry.refreshCadenceDays
+    : (sourceCatalogEntry.sourceTier === 'tier-1' ? 180 : 365);
+}
+
+/**
+ * @param {string | undefined} lastReviewedAt
  * @param {Date} [referenceDate]
  * @returns {number}
  */
@@ -54,11 +92,16 @@ export function classifyFreshness(freshnessScore) {
 export function buildSourceRecord(sourceCatalogEntry, decision, contradictionStatus = 'none') {
   const reviewedAt = decision?.reviewedAt ?? decision?.occurredAt ?? sourceCatalogEntry.lastReviewedAt;
   const freshnessScore = calculateFreshnessScore(reviewedAt);
+  const freshnessStatus = classifyFreshness(freshnessScore);
   const approvalStatus = decision?.decision === 'approved'
     || decision?.decision === 'conditional'
     || decision?.decision === 'suspended'
     ? decision.decision
     : sourceCatalogEntry.defaultApprovalStatus;
+  const primaryOwnerRole = defaultPrimaryOwnerRole(sourceCatalogEntry);
+  const backupOwnerRole = defaultBackupOwnerRole(sourceCatalogEntry);
+  const refreshCadenceDays = defaultRefreshCadenceDays(sourceCatalogEntry);
+  const nextReviewDueAt = sourceCatalogEntry.nextReviewDueAt ?? calculateNextReviewDueAt(reviewedAt, refreshCadenceDays);
   const governanceNotes = [...(sourceCatalogEntry.governanceNotes ?? [])];
 
   if (typeof decision?.reason === 'string' && decision.reason) {
@@ -74,11 +117,19 @@ export function buildSourceRecord(sourceCatalogEntry, decision, contradictionSta
     sourceTier: sourceCatalogEntry.sourceTier,
     approvalStatus,
     freshnessScore: clampScore(freshnessScore),
-    freshnessStatus: classifyFreshness(freshnessScore),
+    freshnessStatus,
     contradictionStatus,
     owner: sourceCatalogEntry.owner,
+    primaryOwnerRole,
+    backupOwnerRole,
+    refreshCadenceDays,
+    nextReviewDueAt,
+    freshnessState: approvalStatus === 'suspended' || typeof sourceCatalogEntry.supersededBy === 'string'
+      ? 'blocked'
+      : freshnessStatus,
     governanceNotes,
     lastReviewedAt: reviewedAt,
+    ...(typeof sourceCatalogEntry.supersededBy === 'string' ? { supersededBy: sourceCatalogEntry.supersededBy } : {}),
     ...(typeof sourceCatalogEntry.sourceUrl === 'string' ? { sourceUrl: sourceCatalogEntry.sourceUrl } : {}),
   };
 }

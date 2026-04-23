@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "rtp.gemini-image-default",
+  "provider": "gemini-image",
+  "model": "gemini-3.1-flash-image-preview",
+  "supportedAspectRatios": [
+    "4:3",
+    "16:9",
+    "1:1"
+  ],
+  "fallbackStrategies": [
+    "baseline",
+    "simplified-composition",
+    "tight-anatomy"
+  ],
+  "textHandlingPolicy": "Never request visible lettering in generated art; preserve lettering as a separate overlay.",
+  "watermarkPolicy": "Provider output includes SynthID watermarking metadata at generation time.",
+  "notes": [
+    "Gemini image output must be continuity anchored and medically constrained.",
+    "Fallback prompts should simplify composition before weakening anatomy locks."
+  ]
+}

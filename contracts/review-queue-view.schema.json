@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/review-queue-view.schema.json",
+  "title": "ReviewQueueView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "filters",
+    "stats",
+    "items"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workType",
+        "status",
+        "priority",
+        "queueName",
+        "assignee"
+      ],
+      "properties": {
+        "workType": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string"
+        },
+        "queueName": {
+          "type": "string"
+        },
+        "assignee": {
+          "type": "string"
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visibleItemCount",
+        "overdueItemCount",
+        "escalatedItemCount",
+        "renderRetryCount",
+        "sourceRefreshCount"
+      ],
+      "properties": {
+        "visibleItemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "overdueItemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "escalatedItemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "renderRetryCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceRefreshCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workItemId",
+          "workType",
+          "status",
+          "priority",
+          "queueName",
+          "subjectType",
+          "subjectId",
+          "dueAt",
+          "isOverdue",
+          "workflowRunId",
+          "diseaseName"
+        ],
+        "properties": {
+          "workItemId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "workflowRunId": {
+            "type": "string"
+          },
+          "projectTitle": {
+            "type": "string"
+          },
+          "diseaseName": {
+            "type": "string"
+          },
+          "workType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "queueName": {
+            "type": "string"
+          },
+          "subjectType": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "assignedActorDisplayName": {
+            "type": "string"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reminderAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isOverdue": {
+            "type": "boolean"
+          },
+          "threadCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

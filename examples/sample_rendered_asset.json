@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "ras.hcc.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.hcc.001",
+  "renderJobId": "rjob.hcc.001",
+  "renderPromptId": "rpr.hcc.004.03",
+  "panelId": "pnl.hcc.004.03",
+  "provider": "gemini-image",
+  "model": "gemini-3.1-flash-image-preview",
+  "mimeType": "image/png",
+  "checksum": "demo-rendered-asset-checksum",
+  "location": "artifacts/tenant.local/render-output/ras.hcc.001.png",
+  "thumbnailLocation": "artifacts/tenant.local/render-output/ras.hcc.001.png",
+  "width": 1024,
+  "height": 768,
+  "createdAt": "2026-04-22T14:17:00Z"
+}

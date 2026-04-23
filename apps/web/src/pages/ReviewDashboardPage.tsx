@@ -36,9 +36,14 @@ export function ReviewDashboardPage() {
     assignee: searchParams.get('assignee') ?? '',
     exportStatus: searchParams.get('exportStatus') ?? '',
     evalStatus: searchParams.get('evalStatus') ?? '',
+    queueStatus: searchParams.get('queueStatus') ?? '',
+    workType: searchParams.get('workType') ?? '',
     sort: searchParams.get('sort') ?? 'updated-desc',
   }), [searchParams]);
-  const dashboardState = useRemoteData(() => fetchDashboardView(filters), [filters.disease, filters.state, filters.stage, filters.assignee, filters.exportStatus, filters.evalStatus, filters.sort, refreshSignal]);
+  const dashboardState = useRemoteData(
+    () => fetchDashboardView(filters),
+    [filters.disease, filters.state, filters.stage, filters.assignee, filters.exportStatus, filters.evalStatus, filters.queueStatus, filters.workType, filters.sort, refreshSignal],
+  );
 
   const updateFilter = (name: string, value: string) => {
     const nextSearchParams = new URLSearchParams(searchParams);
@@ -73,13 +78,14 @@ export function ReviewDashboardPage() {
         eyebrow="Local review"
         title="Review Dashboard"
         description="Primary local shell for run selection, workflow initiation, and at-a-glance gate health."
+        actions={<Button variant="secondary" onClick={() => navigate('/review/queue')}>Open review queue</Button>}
       />
 
       <div className="grid gap-4 xl:grid-cols-[1.8fr_1fr]">
         <Card>
           <CardTitle>Run filters</CardTitle>
-          <CardDescription>Drive the review queue by disease, stage, export presence, and eval state.</CardDescription>
-          <div className="mt-4 grid gap-3 md:grid-cols-4 xl:grid-cols-7">
+          <CardDescription>Drive the review queue by disease, stage, export presence, eval state, and queue pressure.</CardDescription>
+          <div className="mt-4 grid gap-3 md:grid-cols-4 xl:grid-cols-9">
             <Input value={filters.disease} onChange={(event) => updateFilter('disease', event.target.value)} placeholder="Disease" />
             <Input value={filters.state} onChange={(event) => updateFilter('state', event.target.value)} placeholder="State" />
             <Input value={filters.stage} onChange={(event) => updateFilter('stage', event.target.value)} placeholder="Stage" />
@@ -95,6 +101,19 @@ export function ReviewDashboardPage() {
               <option value="failed">Failed</option>
               <option value="stale">Stale</option>
               <option value="missing">Missing</option>
+            </Select>
+            <Select value={filters.queueStatus} onChange={(event) => updateFilter('queueStatus', event.target.value)}>
+              <option value="">Any queue state</option>
+              <option value="active">Active work</option>
+              <option value="overdue">Overdue work</option>
+            </Select>
+            <Select value={filters.workType} onChange={(event) => updateFilter('workType', event.target.value)}>
+              <option value="">Any work type</option>
+              <option value="run-review">Run review</option>
+              <option value="source-refresh">Source refresh</option>
+              <option value="contradiction-resolution">Contradiction resolution</option>
+              <option value="render-retry">Render retry</option>
+              <option value="ops-drill">Ops drill</option>
             </Select>
             <Select value={filters.sort} onChange={(event) => updateFilter('sort', event.target.value)}>
               <option value="updated-desc">Recently updated</option>
@@ -150,6 +169,8 @@ export function ReviewDashboardPage() {
             <MetricCard label="Open comments" value={dashboardState.data.stats.openCommentCount} />
             <MetricCard label="Stale evals" value={dashboardState.data.stats.staleEvalCount} />
             <MetricCard label="Export ready" value={dashboardState.data.stats.exportReadyCount} />
+            <MetricCard label="Overdue work" value={dashboardState.data.stats.overdueWorkItemCount} />
+            <MetricCard label="Escalated runs" value={dashboardState.data.stats.escalatedWorkItemCount} />
           </div>
 
           <Card>
@@ -167,6 +188,7 @@ export function ReviewDashboardPage() {
                     <Th>Comments</Th>
                     <Th>Eval</Th>
                     <Th>Exports</Th>
+                    <Th>Queue</Th>
                     <Th>Updated</Th>
                     <Th />
                   </tr>
@@ -182,6 +204,7 @@ export function ReviewDashboardPage() {
                       <Td>{run.openCommentCount}</Td>
                       <Td><StatusPill label={run.latestEvalStatus} /></Td>
                       <Td>{run.exportCount}</Td>
+                      <Td>{run.activeWorkItemCount} active / {run.overdueWorkItemCount} overdue</Td>
                       <Td>{formatDateTime(run.updatedAt)}</Td>
                       <Td className="text-right">
                         <Button variant="secondary" onClick={() => navigate(`/runs/${encodeURIComponent(run.runId)}/review`)}>

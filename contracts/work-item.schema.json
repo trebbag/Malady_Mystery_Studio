@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/work-item.schema.json",
+  "title": "WorkItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workType",
+    "status",
+    "priority",
+    "queueName",
+    "subjectType",
+    "subjectId",
+    "slaHours",
+    "dueAt",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "tenantId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflowRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workType": {
+      "type": "string",
+      "enum": [
+        "run-review",
+        "source-refresh",
+        "contradiction-resolution",
+        "render-retry",
+        "ops-drill"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "in-progress",
+        "completed",
+        "escalated",
+        "cancelled"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "queueName": {
+      "type": "string"
+    },
+    "fallbackQueueName": {
+      "type": "string"
+    },
+    "subjectType": {
+      "type": "string",
+      "enum": [
+        "workflow-run",
+        "artifact",
+        "source-record",
+        "render-job",
+        "ops-drill"
+      ]
+    },
+    "subjectId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "originType": {
+      "type": "string"
+    },
+    "originId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "assignedActorId": {
+      "type": "string"
+    },
+    "assignedActorDisplayName": {
+      "type": "string"
+    },
+    "assignedActorRoles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "slaHours": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "reminderAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dueAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "escalatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

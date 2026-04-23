@@ -29,6 +29,15 @@ export function Sidebar({ runs }: { runs: DashboardRun[] }) {
           Review dashboard
         </NavLink>
         <NavLink
+          to="/review/queue"
+          className={({ isActive }) => [
+            'block rounded-2xl px-4 py-3 text-sm transition',
+            isActive ? 'bg-white text-shell-950' : 'bg-white/5 text-white hover:bg-white/10',
+          ].join(' ')}
+        >
+          Review queue
+        </NavLink>
+        <NavLink
           to="/settings"
           className={({ isActive }) => [
             'block rounded-2xl px-4 py-3 text-sm transition',

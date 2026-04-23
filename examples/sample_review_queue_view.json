@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "1.0.0",
+  "filters": {
+    "workType": "",
+    "status": "",
+    "priority": "",
+    "queueName": "",
+    "assignee": ""
+  },
+  "stats": {
+    "visibleItemCount": 2,
+    "overdueItemCount": 1,
+    "escalatedItemCount": 1,
+    "renderRetryCount": 1,
+    "sourceRefreshCount": 1
+  },
+  "items": [
+    {
+      "workItemId": "wrk.render.001",
+      "workflowRunId": "run.hcc.001",
+      "projectTitle": "Hepatocellular carcinoma starter project",
+      "diseaseName": "Hepatocellular carcinoma",
+      "workType": "render-retry",
+      "status": "escalated",
+      "priority": "critical",
+      "queueName": "render-retry-queue",
+      "subjectType": "render-job",
+      "subjectId": "rjob.hcc.001",
+      "assignedActorDisplayName": "Local Operator",
+      "dueAt": "2026-04-23T16:00:00Z",
+      "reminderAt": "2026-04-23T12:00:00Z",
+      "isOverdue": true,
+      "threadCount": 1,
+      "notes": [
+        "Automatic retries exhausted for the rendered output."
+      ]
+    },
+    {
+      "workItemId": "wrk.source.001",
+      "workflowRunId": "run.migraine.001",
+      "projectTitle": "Migraine starter project",
+      "diseaseName": "Migraine",
+      "workType": "source-refresh",
+      "status": "queued",
+      "priority": "medium",
+      "queueName": "source-refresh-queue",
+      "subjectType": "source-record",
+      "subjectId": "src.ninds.migraine-overview",
+      "assignedActorDisplayName": "Local Operator",
+      "dueAt": "2026-04-28T15:00:00Z",
+      "reminderAt": "2026-04-26T03:00:00Z",
+      "isOverdue": false,
+      "threadCount": 0,
+      "notes": [
+        "Refresh the source review date before the next migraine release."
+      ]
+    }
+  ]
+}

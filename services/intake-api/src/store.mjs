@@ -110,7 +110,7 @@ function asNullableString(value, label) {
 
 export class PlatformStore {
   /**
-   * @param {{ rootDir?: string, dbFilePath?: string, objectStoreDir?: string }} [options]
+   * @param {{ rootDir?: string, dbFilePath?: string, objectStoreDir?: string, objectStorage?: any }} [options]
    */
   constructor(options = {}) {
     this.rootDir = options.rootDir ?? findRepoRoot(import.meta.url);
@@ -122,7 +122,7 @@ export class PlatformStore {
     this.db.exec('PRAGMA journal_mode = WAL;');
     this.db.exec('PRAGMA foreign_keys = ON;');
     this.db.exec('PRAGMA busy_timeout = 5000;');
-    this.objectStorage = new ObjectStorage({ baseDir: this.objectStoreDir });
+    this.objectStorage = options.objectStorage ?? new ObjectStorage({ baseDir: this.objectStoreDir });
     this.applyMigrations();
     this.seedRetentionPolicies();
   }
@@ -447,7 +447,7 @@ export class PlatformStore {
   /**
    * @param {string} documentType
    * @param {string} documentId
-   * @param {string} contents
+   * @param {string | Buffer} contents
    * @param {{ tenantId?: string, contentType?: string, extension?: string, retentionClass?: string }} [options]
    * @returns {{ location: string, checksum: string, contentType: string, retentionClass: string }}
    */
@@ -498,6 +498,19 @@ export class PlatformStore {
     ).get(documentType, documentId);
 
     return row ? this.objectStorage.getText(asString(row.location, 'documents.location')) : null;
+  }
+
+  /**
+   * @param {string} documentType
+   * @param {string} documentId
+   * @returns {Buffer | null}
+   */
+  getDocumentObject(documentType, documentId) {
+    const row = this.db.prepare(
+      'SELECT location FROM documents WHERE document_type = ? AND document_id = ?',
+    ).get(documentType, documentId);
+
+    return row ? this.objectStorage.getObject(asString(row.location, 'documents.location')) : null;
   }
 
   /**

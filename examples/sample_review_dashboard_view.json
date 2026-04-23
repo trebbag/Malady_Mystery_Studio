@@ -8,6 +8,8 @@
     "assignee": "",
     "exportStatus": "",
     "evalStatus": "",
+    "queueStatus": "",
+    "workType": "",
     "sort": "updated-desc"
   },
   "stats": {
@@ -17,7 +19,9 @@
     "assignedRunCount": 1,
     "openCommentCount": 2,
     "staleEvalCount": 0,
-    "exportReadyCount": 1
+    "exportReadyCount": 1,
+    "overdueWorkItemCount": 1,
+    "escalatedWorkItemCount": 1
   },
   "runs": [
     {
@@ -32,6 +36,9 @@
       "openCommentCount": 0,
       "latestEvalStatus": "passed",
       "exportCount": 1,
+      "activeWorkItemCount": 1,
+      "overdueWorkItemCount": 0,
+      "threadCount": 1,
       "updatedAt": "2026-04-22T12:15:00Z"
     },
     {
@@ -47,6 +54,9 @@
       "pauseReason": "clinical-governance-review-required",
       "latestEvalStatus": "missing",
       "exportCount": 0,
+      "activeWorkItemCount": 2,
+      "overdueWorkItemCount": 1,
+      "threadCount": 2,
       "updatedAt": "2026-04-22T12:20:00Z"
     }
   ]

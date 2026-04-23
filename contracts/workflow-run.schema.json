@@ -80,6 +80,7 @@
         "scene-planning",
         "panel-planning",
         "render-prep",
+        "render-execution",
         "review",
         "export"
       ]
@@ -117,6 +118,7 @@
               "scene-planning",
               "panel-planning",
               "render-prep",
+              "render-execution",
               "review",
               "export"
             ]
@@ -173,10 +175,19 @@
               "scene-card",
               "panel-plan",
               "render-prompt",
+              "render-job",
+              "render-attempt",
+              "rendered-asset",
+              "rendered-asset-manifest",
               "lettering-map",
               "qa-report",
               "eval-run",
-              "release-bundle"
+              "release-bundle",
+              "work-item",
+              "review-thread",
+              "review-message",
+              "source-owner-assignment",
+              "source-refresh-task"
             ]
           },
           "artifactId": {
@@ -213,8 +224,18 @@
       "type": "string",
       "enum": [
         "clinical-governance-review-required",
-        "clinical-governance-blocked"
+        "clinical-governance-blocked",
+        "source-refresh-required",
+        "render-retry-required"
       ]
+    },
+    "activeWorkItemCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "overdueWorkItemCount": {
+      "type": "integer",
+      "minimum": 0
     },
     "latestEvalRunId": {
       "type": "string",

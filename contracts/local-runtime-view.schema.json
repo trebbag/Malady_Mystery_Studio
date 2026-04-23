@@ -10,6 +10,7 @@
     "tenantId",
     "serverBaseUrl",
     "storage",
+    "platform",
     "availableCommands",
     "readiness"
   ],
@@ -51,6 +52,25 @@
           "type": "string"
         },
         "objectStoreDir": {
+          "type": "string"
+        }
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metadataStore", "objectStore", "queueBackend", "telemetryBackend"],
+      "properties": {
+        "metadataStore": {
+          "type": "string"
+        },
+        "objectStore": {
+          "type": "string"
+        },
+        "queueBackend": {
+          "type": "string"
+        },
+        "telemetryBackend": {
           "type": "string"
         }
       }

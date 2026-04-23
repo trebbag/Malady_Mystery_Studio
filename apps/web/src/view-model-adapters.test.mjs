@@ -49,22 +49,7 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
   const sourceGovernance = createSourceGovernanceView({
     canonicalDiseaseName: 'Hepatocellular carcinoma',
     sourceRecords: [
-      {
-        schemaVersion: '1.0.0',
-        id: 'src.hcc.guideline.001',
-        canonicalDiseaseName: 'Hepatocellular carcinoma',
-        sourceLabel: 'Curated hepatocellular carcinoma guideline',
-        sourceType: 'guideline',
-        sourceTier: 'tier-1',
-        approvalStatus: 'approved',
-        freshnessScore: 0.97,
-        freshnessStatus: 'current',
-        contradictionStatus: 'none',
-        owner: 'clinical-board',
-        governanceNotes: ['Preferred baseline source for the starter knowledge pack.'],
-        sourceUrl: 'https://example.org/hcc-guideline',
-        lastReviewedAt: '2026-04-20T00:00:00Z',
-      },
+      (await import('../../../examples/sample_source_record.json', { with: { type: 'json' } })).default,
     ],
     governanceDecisions: [
       {
@@ -120,6 +105,9 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
   const latestEvalRun = (await import('../../../examples/sample_eval_run.json', { with: { type: 'json' } })).default;
   const reviewAssignment = (await import('../../../examples/sample_review_assignment.json', { with: { type: 'json' } })).default;
   const reviewComment = (await import('../../../examples/sample_review_comment.json', { with: { type: 'json' } })).default;
+  const workItem = (await import('../../../examples/sample_work_item.json', { with: { type: 'json' } })).default;
+  const reviewThread = (await import('../../../examples/sample_review_thread.json', { with: { type: 'json' } })).default;
+  const renderJob = (await import('../../../examples/sample_render_job.json', { with: { type: 'json' } })).default;
   const artifactDiffView = (await import('../../../examples/sample_artifact_diff_view.json', { with: { type: 'json' } })).default;
   const evaluationSummary = createEvaluationSummaryView({
     latestEvalStatus: 'passed',
@@ -159,6 +147,12 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
     storage: {
       dbFilePath: 'var/db/platform.sqlite',
       objectStoreDir: 'var/object-store',
+    },
+    platform: {
+      metadataStore: 'sqlite',
+      objectStore: 'filesystem',
+      queueBackend: 'in-process',
+      telemetryBackend: 'stdout',
     },
     availableCommands: ['pnpm dev:api', 'pnpm dev:web'],
     readiness: {
@@ -208,6 +202,9 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
           openCommentCount: 1,
           activeAssignmentCount: 1,
           latestEvalStatus: 'passed',
+          activeWorkItemCount: 1,
+          overdueWorkItemCount: 0,
+          threadCount: 1,
           reviewAssignments: [reviewAssignment],
         },
       ],
@@ -248,6 +245,9 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
     },
     reviewAssignments: [reviewAssignment],
     reviewComments: [reviewComment],
+    workItems: [workItem],
+    reviewThreads: [reviewThread],
+    renderJobs: [renderJob],
     latestEvalRun,
     latestEvalStatus: 'passed',
     exportHistory: exportHistory.entries,
@@ -255,6 +255,9 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
 
   schemaRegistry.assertValid('contracts/review-assignment.schema.json', reviewAssignment);
   schemaRegistry.assertValid('contracts/review-comment.schema.json', reviewComment);
+  schemaRegistry.assertValid('contracts/work-item.schema.json', workItem);
+  schemaRegistry.assertValid('contracts/review-thread.schema.json', reviewThread);
+  schemaRegistry.assertValid('contracts/render-job.schema.json', renderJob);
   schemaRegistry.assertValid('contracts/artifact-diff-view.schema.json', artifactDiffView);
   schemaRegistry.assertValid('contracts/trace-coverage-view.schema.json', traceCoverage);
   schemaRegistry.assertValid('contracts/source-governance-view.schema.json', sourceGovernance);

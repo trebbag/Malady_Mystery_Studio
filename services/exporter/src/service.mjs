@@ -7,6 +7,7 @@ const REQUIRED_RELEASE_ARTIFACT_TYPES = [
   'panel-plan',
   'render-prompt',
   'lettering-map',
+  'rendered-asset-manifest',
   'qa-report',
 ];
 
@@ -36,7 +37,7 @@ function selectPrimaryQaReport(qaReports) {
  * @param {any[]} qaReports
  * @param {any} diseasePacket
  * @param {any | undefined} evaluationSummary
- * @returns {{ medicalAccuracy: number, evidenceTraceability: number, mysteryIntegrity: number, educationalSequencing: number, panelization: number, renderReadiness: number, sourceFreshness: number, contradictionStatus: string, releaseVerdict: string }}
+ * @returns {{ medicalAccuracy: number, evidenceTraceability: number, mysteryIntegrity: number, educationalSequencing: number, panelization: number, renderReadiness: number, renderOutputQuality: number, sourceFreshness: number, contradictionStatus: string, releaseVerdict: string }}
  */
 function buildQualitySummary(qaReports, diseasePacket, evaluationSummary) {
   const primaryQaReport = selectPrimaryQaReport(qaReports);
@@ -59,6 +60,7 @@ function buildQualitySummary(qaReports, diseasePacket, evaluationSummary) {
     educationalSequencing: Number((primaryQaReport?.scores.educationalSequencing ?? average(educationalSequencingScores)).toFixed(3)),
     panelization: Number((primaryQaReport?.scores.panelization ?? average(panelizationScores)).toFixed(3)),
     renderReadiness: Number((primaryQaReport?.scores.renderReadiness ?? average(renderReadinessScores)).toFixed(3)),
+    renderOutputQuality: Number((evaluationSummary?.familyScores?.render_output_quality ?? 0).toFixed(3)),
     sourceFreshness: Number(diseasePacket.evidenceSummary.freshnessScore.toFixed(3)),
     contradictionStatus,
     releaseVerdict: contradictionStatus === 'blocking' || qaReports.some((qaReport) => qaReport.verdict === 'fail')
@@ -85,6 +87,7 @@ function buildReleaseGateChecks(workflowRun, artifactManifest, qaReports, diseas
   ));
   const noQaFailures = qaReports.every((qaReport) => qaReport.verdict !== 'fail');
   const noBlockingContradictions = diseasePacket.evidenceSummary.blockingContradictions === 0;
+  const hasRenderedManifest = artifactManifest.some((artifact) => artifact.artifactType === 'rendered-asset-manifest');
 
   return [
     {
@@ -107,6 +110,13 @@ function buildReleaseGateChecks(workflowRun, artifactManifest, qaReports, diseas
       details: noQaFailures
         ? 'No QA report returned a fail verdict.'
         : 'At least one QA report remained in a fail state.',
+    },
+    {
+      name: 'rendered-output',
+      status: hasRenderedManifest ? 'passed' : 'failed',
+      details: hasRenderedManifest
+        ? 'A rendered asset manifest is present for pilot-ready export.'
+        : 'Pilot-ready export requires a rendered asset manifest.',
     },
     {
       name: 'source-governance',
@@ -250,6 +260,8 @@ export class ExporterService {
       exportedBy: options.actor.id,
       bundleIndexLocation: '',
       sourceEvidencePackLocation: '',
+      renderedAssetManifestId: options.artifactManifest.find((artifact) => artifact.artifactType === 'rendered-asset-manifest')?.artifactId,
+      renderedAssetManifestLocation: options.artifactManifest.find((artifact) => artifact.artifactType === 'rendered-asset-manifest')?.location,
       notes: [
         'Release assembled from an approved workflow run.',
       ],

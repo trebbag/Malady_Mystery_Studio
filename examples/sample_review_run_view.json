@@ -305,6 +305,11 @@
           "freshnessStatus": "current",
           "contradictionStatus": "none",
           "owner": "clinical-board",
+          "primaryOwnerRole": "Clinical Reviewer",
+          "backupOwnerRole": "Product Editor",
+          "refreshCadenceDays": 180,
+          "nextReviewDueAt": "2026-10-17T00:00:00Z",
+          "freshnessState": "current",
           "governanceNotes": [
             "Preferred baseline source for the starter knowledge pack."
           ],
@@ -408,6 +413,76 @@
       }
     }
   ],
+  "workItems": [
+    {
+      "schemaVersion": "1.0.0",
+      "id": "wrk.hcc.001",
+      "tenantId": "tenant.local",
+      "workflowRunId": "run.hcc.001",
+      "workType": "run-review",
+      "status": "in-progress",
+      "priority": "high",
+      "queueName": "review-queue",
+      "fallbackQueueName": "review-queue-fallback",
+      "subjectType": "workflow-run",
+      "subjectId": "run.hcc.001",
+      "originType": "review-assignment",
+      "originId": "asg.hcc.001",
+      "assignedActorId": "local-operator",
+      "assignedActorDisplayName": "Local Operator",
+      "assignedActorRoles": [
+        "Local Operator"
+      ],
+      "slaHours": 24,
+      "reminderAt": "2026-04-23T01:30:00Z",
+      "dueAt": "2026-04-23T13:30:00Z",
+      "notes": [
+        "Confirm the clue ladder still tracks to the approved liver-risk evidence set."
+      ],
+      "metadata": {
+        "reviewRole": "clinical"
+      },
+      "createdAt": "2026-04-22T13:30:00Z",
+      "updatedAt": "2026-04-22T13:30:00Z"
+    }
+  ],
+  "reviewThreads": [
+    {
+      "schemaVersion": "1.0.0",
+      "id": "thr.hcc.001",
+      "tenantId": "tenant.local",
+      "workflowRunId": "run.hcc.001",
+      "scopeType": "artifact",
+      "scopeId": "panel-plan:pnl.hcc.002",
+      "title": "Panel-plan discussion",
+      "status": "open",
+      "participantIds": [
+        "local-operator"
+      ],
+      "createdBy": "local-operator",
+      "createdAt": "2026-04-22T14:00:00Z",
+      "updatedAt": "2026-04-22T14:02:00Z",
+      "messages": [
+        {
+          "schemaVersion": "1.0.0",
+          "id": "msg.hcc.001",
+          "threadId": "thr.hcc.001",
+          "tenantId": "tenant.local",
+          "workflowRunId": "run.hcc.001",
+          "authorId": "local-operator",
+          "authorDisplayName": "Local Operator",
+          "body": "The second panel needs a clearer link back to the chronic liver injury claim before approval.",
+          "mentions": [
+            "traceability",
+            "panel"
+          ],
+          "status": "posted",
+          "createdAt": "2026-04-22T14:00:00Z",
+          "updatedAt": "2026-04-22T14:00:00Z"
+        }
+      ]
+    }
+  ],
   "evaluationSummary": {
     "schemaVersion": "1.0.0",
     "latestEvalRunId": "evr.hcc.001",
@@ -454,10 +529,37 @@
       }
     ]
   },
+  "renderJobs": [
+    {
+      "schemaVersion": "1.0.0",
+      "id": "rjob.hcc.001",
+      "tenantId": "tenant.local",
+      "workflowRunId": "run.hcc.001",
+      "status": "completed",
+      "approvalStatus": "approved",
+      "queueName": "render-execution",
+      "provider": "gemini-image",
+      "model": "gemini-3.1-flash-image-preview",
+      "renderTargetProfileId": "rtp.gemini-image-default",
+      "renderPromptIds": [
+        "rpr.hcc.004.03"
+      ],
+      "attemptIds": [
+        "ratm.hcc.001"
+      ],
+      "renderedAssetManifestId": "rman.hcc.001",
+      "createdBy": "local-operator",
+      "createdAt": "2026-04-22T14:15:00Z",
+      "updatedAt": "2026-04-22T14:17:00Z",
+      "completedAt": "2026-04-22T14:17:00Z"
+    }
+  ],
   "availableActions": [
     "resolve-canonicalization",
     "assign-reviewer",
     "record-review-comment",
+    "create-review-thread",
+    "start-render-job",
     "compare-artifacts",
     "record-source-decision",
     "record-contradiction-resolution",

@@ -1,30 +1,55 @@
 # Needs From You
 
-Nothing new is required from you to run the current local-only slice. The app now runs in open local mode with SQLite plus filesystem object storage.
+The current repo still runs locally without any external credentials. The items below are only required to complete the managed Azure pilot path and live Gemini-backed rendering that are now scaffolded in code.
 
-The following decisions still remain for a real pilot beyond this local batch:
+## Azure Pilot Foundations
+
+- Azure subscription ID for the first internal pilot environment.
+- Azure tenant ID used for Key Vault and managed infrastructure access.
+- Preferred Azure region and resource-group naming convention for:
+  - Container Apps environment
+  - PostgreSQL Flexible Server
+  - Blob Storage account/container
+  - Service Bus namespace
+  - Key Vault
+  - Log Analytics / Application Insights
+- Confirmation of the first backup and restore policy:
+  - PostgreSQL retention window
+  - Blob soft-delete retention window
+  - restore-smoke cadence and scratch-environment expectations
+
+## Managed Runtime Secrets
+
+- `MANAGED_POSTGRES_URL`
+- `AZURE_BLOB_CONNECTION_STRING`
+- `AZURE_SERVICE_BUS_CONNECTION_STRING`
+- Container image references for the API and worker when the Azure deployment tranche is actually cut over.
+
+## Live Rendering
+
+- `GEMINI_API_KEY` for the first live render-enabled environment.
+- Confirmation that Gemini Image is the intended first render provider for the pilot.
+- Confirmation of the first pilot release policy for rendered output approval:
+  - who can approve rendered-output quality
+  - whether prompt-only export must remain allowed anywhere beyond local/dev use
+
+## Clinical Governance and Ownership
+
+- Confirmation of the initial primary owner and backup owner roles for source refresh work in the pilot.
+- Confirmation of the first primary-care reviewer group responsible for:
+  - source refresh
+  - contradiction resolution
+  - render-retry review when medical fidelity is at issue
+- Confirmation of any additional primary-care diseases that must be added immediately after the current tranche.
 
 ## Identity and Access
 
-- Choose the production IdP and provide issuer, audience, and JWKS or shared-secret details for the first real tenant.
-- Confirm whether the first pilot needs SSO only, local fallback accounts, or both.
-- Confirm the initial tenant roster and who should hold `Owner`, `Clinical Reviewer`, `Editorial Reviewer`, `Product Editor`, `Auditor`, and `Viewer` roles.
+- External operator identity is still out of scope for this tranche, but pilot planning still needs:
+  - chosen IdP
+  - issuer / audience / JWKS details
+  - initial operator roster and pilot roles
 
-## Persistence and Storage
+## Release and Delivery
 
-- Choose the first persistent deployment target for relational metadata.
-  Current code uses SQLite locally; pilot should move to a managed relational store.
-- Choose the first object storage target for artifacts, release bundles, bundle indexes, and evidence packs.
-- Confirm retention windows if they should differ from the current starter defaults for `approved-artifact`, `release-bundle`, `audit-log`, and `session`.
-
-## Clinical Governance
-
-- Confirm the next approved disease set to add beyond the current seeded library.
-- Confirm which source owners or reviewers are responsible for approving source records and contradiction resolutions.
-- Confirm whether any pilot diseases require additional ontology mappings beyond the current ICD-10 starter identifiers.
-
-## Release and Operations
-
-- Confirm the first pilot export targets beyond JSON and the human-readable bundle index.
-- Confirm whether pilot release bundles must be retrievable only through the app or also mirrored to an external delivery location.
-- Confirm the deployment environment, observability stack, and backup expectations for the pilot.
+- Confirm whether pilot bundles should remain app-retrievable only or also mirror to an external delivery location.
+- Confirm the first non-local delivery target after the managed pilot bundle path is cut over.

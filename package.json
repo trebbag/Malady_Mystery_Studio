@@ -7,15 +7,23 @@
     "build": "pnpm build:web && node scripts/build_workspaces.mjs",
     "build:web": "pnpm --filter @dcp/web build",
     "dev:api": "node services/intake-api/src/server.mjs",
+    "dev:worker": "node services/intake-api/src/worker.mjs",
     "dev:web": "pnpm --filter @dcp/web dev",
     "eval:run": "node scripts/run_eval.mjs",
     "lint": "node scripts/lint_repo.mjs && pnpm --filter @dcp/web lint",
     "local:backup": "node scripts/local_storage.mjs backup",
     "local:reset": "node scripts/local_storage.mjs reset",
     "local:restore": "node scripts/local_storage.mjs restore",
+    "migrate:managed": "node scripts/migrate_managed_runtime.mjs",
+    "ops:restore-smoke": "node scripts/restore_smoke.mjs",
     "test": "node --test ./scripts/*.test.mjs ./services/*/src/*.test.mjs ./apps/web/src/*.test.mjs && pnpm --filter @dcp/web test",
     "typecheck": "tsc --project tsconfig.json --noEmit && pnpm --filter @dcp/web typecheck",
     "validate:pack": "node scripts/validate_repo_pack.mjs"
+  },
+  "dependencies": {
+    "@azure/service-bus": "^7.9.5",
+    "@azure/storage-blob": "^12.29.1",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

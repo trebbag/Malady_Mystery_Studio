@@ -13,10 +13,19 @@
     "dbFilePath": "var/db/platform.sqlite",
     "objectStoreDir": "var/object-store"
   },
+  "platform": {
+    "metadataStore": "sqlite",
+    "objectStore": "filesystem",
+    "queueBackend": "in-process",
+    "telemetryBackend": "structured-stdout"
+  },
   "availableCommands": [
     "pnpm dev:api",
     "pnpm dev:web",
+    "pnpm dev:worker",
     "pnpm eval:run -- --run-id <runId>",
+    "pnpm migrate:managed",
+    "pnpm ops:restore-smoke",
     "pnpm local:backup",
     "pnpm local:reset",
     "pnpm local:restore -- --path var/backups/<timestamp>"

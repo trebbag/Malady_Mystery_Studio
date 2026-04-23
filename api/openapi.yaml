@@ -123,6 +123,14 @@ paths:
           schema:
             type: string
         - in: query
+          name: queueStatus
+          schema:
+            type: string
+        - in: query
+          name: workType
+          schema:
+            type: string
+        - in: query
           name: sort
           schema:
             type: string
@@ -133,6 +141,38 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/review-dashboard-view.schema.json'
+  /api/v1/review-queue:
+    get:
+      summary: Get the cross-run review and operations queue
+      operationId: getReviewQueue
+      parameters:
+        - in: query
+          name: workType
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: priority
+          schema:
+            type: string
+        - in: query
+          name: queueName
+          schema:
+            type: string
+        - in: query
+          name: assignee
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review queue view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-queue-view.schema.json'
   /api/v1/workflow-runs/{runId}/review-run-view:
     get:
       summary: Get the frontend review-run read model
@@ -294,6 +334,162 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/review-assignment.schema.json'
+  /api/v1/workflow-runs/{runId}/threads:
+    get:
+      summary: List threaded review discussions for a workflow run
+      operationId: listReviewThreads
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review threads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/review-thread.schema.json'
+    post:
+      summary: Create a review thread for a workflow run
+      operationId: createReviewThread
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title, scopeType]
+              properties:
+                title:
+                  type: string
+                scopeType:
+                  type: string
+                  enum: [run, stage, artifact, source, render-job]
+                scopeId:
+                  type: string
+      responses:
+        '201':
+          description: Review thread created
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-thread.schema.json'
+  /api/v1/review-threads/{threadId}/messages:
+    get:
+      summary: List messages for a threaded review discussion
+      operationId: listReviewThreadMessages
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review thread messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/review-message.schema.json'
+    post:
+      summary: Append a message to a review thread
+      operationId: createReviewThreadMessage
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [body]
+              properties:
+                body:
+                  type: string
+                parentMessageId:
+                  type: string
+                mentions:
+                  type: array
+                  items:
+                    type: string
+                resolutionNote:
+                  type: string
+      responses:
+        '201':
+          description: Review thread message created
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-message.schema.json'
+  /api/v1/work-items/{workItemId}:
+    get:
+      summary: Get a queue work item
+      operationId: getWorkItem
+      parameters:
+        - in: path
+          name: workItemId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Work item
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/work-item.schema.json'
+    patch:
+      summary: Update a queue work item
+      operationId: updateWorkItem
+      parameters:
+        - in: path
+          name: workItemId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                status:
+                  type: string
+                  enum: [queued, in-progress, completed, escalated, cancelled]
+                priority:
+                  type: string
+                  enum: [low, medium, high, critical]
+                notes:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Updated work item
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/work-item.schema.json'
   /api/v1/workflow-runs/{runId}/artifacts:
     get:
       summary: List workflow-run artifacts for frontend pages
@@ -602,6 +798,83 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/eval-run.schema.json'
+  /api/v1/workflow-runs/{runId}/render-jobs:
+    post:
+      summary: Queue a render job for a workflow run
+      operationId: createRenderJob
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                renderPromptIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '202':
+          description: Render job queued
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [workflowRun, renderJob]
+                properties:
+                  workflowRun:
+                    $ref: '../contracts/workflow-run.schema.json'
+                  renderJob:
+                    $ref: '../contracts/render-job.schema.json'
+  /api/v1/render-jobs/{jobId}:
+    get:
+      summary: Get a render job with attempts and rendered assets
+      operationId: getRenderJob
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Render job detail
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/render-job.schema.json'
+  /api/v1/render-jobs/{jobId}/retry:
+    post:
+      summary: Queue a retry render job using the prior prompt set
+      operationId: retryRenderJob
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Retry render job queued
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [workflowRun, renderJob]
+                properties:
+                  workflowRun:
+                    $ref: '../contracts/workflow-run.schema.json'
+                  renderJob:
+                    $ref: '../contracts/render-job.schema.json'
   /api/v1/artifacts/{artifactType}/{artifactId}:
     get:
       summary: Get a generated artifact
@@ -641,6 +914,15 @@ paths:
                   - $ref: '../contracts/qa-report.schema.json'
                   - $ref: '../contracts/eval-run.schema.json'
                   - $ref: '../contracts/release-bundle.schema.json'
+                  - $ref: '../contracts/work-item.schema.json'
+                  - $ref: '../contracts/review-thread.schema.json'
+                  - $ref: '../contracts/review-message.schema.json'
+                  - $ref: '../contracts/render-job.schema.json'
+                  - $ref: '../contracts/render-attempt.schema.json'
+                  - $ref: '../contracts/rendered-asset.schema.json'
+                  - $ref: '../contracts/rendered-asset-manifest.schema.json'
+                  - $ref: '../contracts/source-owner-assignment.schema.json'
+                  - $ref: '../contracts/source-refresh-task.schema.json'
   /api/v1/evidence-records/{claimId}:
     get:
       summary: Get an evidence record by claim id
@@ -766,6 +1048,87 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/source-governance-decision.schema.json'
+  /api/v1/source-catalog:
+    get:
+      summary: List source records across the governed disease catalog
+      operationId: listSourceCatalog
+      responses:
+        '200':
+          description: Source catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/source-record.schema.json'
+  /api/v1/source-catalog/{sourceId}/refresh-tasks:
+    post:
+      summary: Create or reuse a source refresh task
+      operationId: createSourceRefreshTask
+      parameters:
+        - in: path
+          name: sourceId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [canonicalDiseaseName]
+              properties:
+                canonicalDiseaseName:
+                  type: string
+                workflowRunId:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Source refresh task created
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/source-refresh-task.schema.json'
+  /api/v1/source-catalog/{sourceId}/ownership:
+    post:
+      summary: Assign source ownership roles
+      operationId: assignSourceOwnership
+      parameters:
+        - in: path
+          name: sourceId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [canonicalDiseaseName, primaryOwnerRole, backupOwnerRole]
+              properties:
+                canonicalDiseaseName:
+                  type: string
+                primaryOwnerRole:
+                  type: string
+                backupOwnerRole:
+                  type: string
+                notes:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Source ownership assigned
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/source-owner-assignment.schema.json'
   /api/v1/release-bundles/{releaseId}:
     get:
       summary: Get a release bundle

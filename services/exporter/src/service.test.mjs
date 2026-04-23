@@ -103,6 +103,7 @@ test('exporter assembles a release bundle from an approved run', () => {
     'panel-plan',
     'render-prompt',
     'lettering-map',
+    'rendered-asset-manifest',
     'qa-report',
   ].map((artifactType, index) => ({
     artifactType,

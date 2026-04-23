@@ -9,6 +9,9 @@ export interface DashboardRun {
   pauseReason?: string;
   latestEvalStatus: string;
   exportCount: number;
+  activeWorkItemCount: number;
+  overdueWorkItemCount: number;
+  threadCount: number;
   updatedAt: string;
 }
 
@@ -22,6 +25,8 @@ export interface ReviewDashboardView {
     assignee: string;
     exportStatus: string;
     evalStatus: string;
+    queueStatus: string;
+    workType: string;
     sort: string;
   };
   stats: {
@@ -32,6 +37,8 @@ export interface ReviewDashboardView {
     openCommentCount: number;
     staleEvalCount: number;
     exportReadyCount: number;
+    overdueWorkItemCount: number;
+    escalatedWorkItemCount: number;
   };
   runs: DashboardRun[];
 }
@@ -186,6 +193,90 @@ export interface ReviewAssignment {
   updatedAt: string;
 }
 
+export interface WorkItem {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  workflowRunId?: string;
+  workType: 'run-review' | 'source-refresh' | 'contradiction-resolution' | 'render-retry' | 'ops-drill';
+  status: 'queued' | 'in-progress' | 'completed' | 'escalated' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  queueName: string;
+  fallbackQueueName?: string;
+  subjectType: string;
+  subjectId: string;
+  originType?: string;
+  originId?: string;
+  assignedActorId?: string;
+  assignedActorDisplayName?: string;
+  assignedActorRoles?: string[];
+  slaHours: number;
+  reminderAt?: string;
+  dueAt: string;
+  escalatedAt?: string;
+  completedAt?: string;
+  notes?: string[];
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReviewMessage {
+  schemaVersion: string;
+  id: string;
+  threadId: string;
+  tenantId: string;
+  workflowRunId: string;
+  parentMessageId?: string;
+  authorId: string;
+  authorDisplayName: string;
+  body: string;
+  mentions?: string[];
+  status: 'posted' | 'edited' | 'resolved';
+  resolutionNote?: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+}
+
+export interface ReviewThread {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  workflowRunId: string;
+  scopeType: 'run' | 'stage' | 'artifact' | 'source' | 'render-job';
+  scopeId?: string;
+  title: string;
+  status: 'open' | 'resolved' | 'archived';
+  participantIds?: string[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+  messages?: ReviewMessage[];
+}
+
+export interface RenderJob {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  workflowRunId: string;
+  status: 'queued' | 'running' | 'completed' | 'retry-required' | 'failed';
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  queueName: string;
+  provider: string;
+  model: string;
+  renderTargetProfileId: string;
+  renderPromptIds: string[];
+  attemptIds?: string[];
+  renderedAssetManifestId?: string;
+  lastError?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
 export interface ReviewRunView {
   schemaVersion: string;
   runId: string;
@@ -198,8 +289,11 @@ export interface ReviewRunView {
   clinicalPackage: ClinicalPackageView;
   reviewAssignments: ReviewAssignment[];
   reviewComments: ReviewComment[];
+  workItems: WorkItem[];
+  reviewThreads: ReviewThread[];
   evaluationSummary: EvaluationSummaryView;
   exportHistory: ExportHistoryView;
+  renderJobs?: RenderJob[];
   availableActions: string[];
 }
 
@@ -261,6 +355,42 @@ export interface EvalRun {
   [key: string]: unknown;
 }
 
+export interface ReviewQueueView {
+  schemaVersion: string;
+  filters: {
+    workType: string;
+    status: string;
+    priority: string;
+    queueName: string;
+    assignee: string;
+  };
+  stats: {
+    visibleItemCount: number;
+    overdueItemCount: number;
+    escalatedItemCount: number;
+    renderRetryCount: number;
+    sourceRefreshCount: number;
+  };
+  items: Array<{
+    workItemId: string;
+    workflowRunId: string;
+    projectTitle?: string;
+    diseaseName: string;
+    workType: string;
+    status: string;
+    priority: string;
+    queueName: string;
+    subjectType: string;
+    subjectId: string;
+    assignedActorDisplayName?: string;
+    dueAt: string;
+    reminderAt?: string;
+    isOverdue: boolean;
+    threadCount?: number;
+    notes?: string[];
+  }>;
+}
+
 export interface LocalRuntimeView {
   schemaVersion: string;
   actor: {
@@ -273,6 +403,12 @@ export interface LocalRuntimeView {
   storage: {
     dbFilePath: string;
     objectStoreDir: string;
+  };
+  platform: {
+    metadataStore: string;
+    objectStore: string;
+    queueBackend: string;
+    telemetryBackend: string;
   };
   availableCommands: string[];
   readiness: {
@@ -304,6 +440,8 @@ export interface ReleaseBundle {
   version: string;
   bundleIndexLocation?: string;
   sourceEvidencePackLocation?: string;
+  renderedAssetManifestId?: string;
+  renderedAssetManifestLocation?: string;
   qualitySummary?: Record<string, unknown>;
   gateChecks?: Array<Record<string, unknown>>;
   [key: string]: unknown;

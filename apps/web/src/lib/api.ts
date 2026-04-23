@@ -5,11 +5,16 @@ import type {
   EvalRun,
   ExportHistoryEntry,
   LocalRuntimeView,
+  ReviewMessage,
+  ReviewQueueView,
   ReleaseBundle,
   ReviewAssignment,
   ReviewComment,
   ReviewDashboardView,
   ReviewRunView,
+  ReviewThread,
+  RenderJob,
+  WorkItem,
   WorkflowArtifactListView,
   WorkflowRun,
 } from './types';
@@ -84,6 +89,10 @@ export function fetchDashboardView(filters: Partial<ReviewDashboardView['filters
   return request<ReviewDashboardView>(`/api/v1/review-dashboard-view${buildQuery(filters)}`);
 }
 
+export function fetchReviewQueue(filters: Partial<ReviewQueueView['filters']> = {}) {
+  return request<ReviewQueueView>(`/api/v1/review-queue${buildQuery(filters)}`);
+}
+
 export function fetchWorkflowRun(runId: string) {
   return request<WorkflowRun>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}`);
 }
@@ -124,6 +133,39 @@ export function fetchReviewAssignments(runId: string) {
   return request<ReviewAssignment[]>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/assignments`);
 }
 
+export function fetchReviewThreads(runId: string) {
+  return request<ReviewThread[]>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/threads`);
+}
+
+export function createReviewThread(runId: string, payload: Record<string, unknown>) {
+  return request<ReviewThread>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/threads`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchThreadMessages(threadId: string) {
+  return request<ReviewMessage[]>(`/api/v1/review-threads/${encodeURIComponent(threadId)}/messages`);
+}
+
+export function createThreadMessage(threadId: string, payload: Record<string, unknown>) {
+  return request<ReviewMessage>(`/api/v1/review-threads/${encodeURIComponent(threadId)}/messages`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchWorkItem(workItemId: string) {
+  return request<WorkItem>(`/api/v1/work-items/${encodeURIComponent(workItemId)}`);
+}
+
+export function updateWorkItem(workItemId: string, payload: Record<string, unknown>) {
+  return request<WorkItem>(`/api/v1/work-items/${encodeURIComponent(workItemId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createReviewAssignment(runId: string, payload: Record<string, unknown>) {
   return request<ReviewAssignment>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/assignments`, {
     method: 'POST',
@@ -153,6 +195,32 @@ export function fetchEvaluations(runId: string) {
   return request<EvalRun[]>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/evaluations`);
 }
 
+export function createRenderJob(runId: string, payload: Record<string, unknown> = {}) {
+  return request<{ workflowRun: WorkflowRun; renderJob: RenderJob }>(
+    `/api/v1/workflow-runs/${encodeURIComponent(runId)}/render-jobs`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function fetchRenderJob(jobId: string) {
+  return request<RenderJob & { attempts?: Array<Record<string, unknown>>; renderedAssets?: Array<Record<string, unknown>>; renderedAssetManifest?: Record<string, unknown> | null }>(
+    `/api/v1/render-jobs/${encodeURIComponent(jobId)}`,
+  );
+}
+
+export function retryRenderJob(jobId: string) {
+  return request<{ workflowRun: WorkflowRun; renderJob: RenderJob }>(
+    `/api/v1/render-jobs/${encodeURIComponent(jobId)}/retry`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+  );
+}
+
 export function fetchExports(runId: string) {
   return request<ExportHistoryEntry[]>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/exports`);
 }
@@ -165,6 +233,10 @@ export function fetchSourceRecords(canonicalDiseaseName: string) {
   return request<Array<Record<string, unknown>>>(
     `/api/v1/source-records?canonicalDiseaseName=${encodeURIComponent(canonicalDiseaseName)}`,
   );
+}
+
+export function fetchSourceCatalog() {
+  return request<Array<Record<string, unknown>>>('/api/v1/source-catalog');
 }
 
 export function fetchLocalRuntimeView() {
@@ -218,6 +290,26 @@ export function rebuildClinicalPackage(runId: string, payload: Record<string, un
 export function recordSourceDecision(sourceId: string, payload: Record<string, unknown>) {
   return request<Record<string, unknown>>(
     `/api/v1/source-records/${encodeURIComponent(sourceId)}/governance-decisions`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function createSourceRefreshTask(sourceId: string, payload: Record<string, unknown>) {
+  return request<Record<string, unknown>>(
+    `/api/v1/source-catalog/${encodeURIComponent(sourceId)}/refresh-tasks`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function assignSourceOwnership(sourceId: string, payload: Record<string, unknown>) {
+  return request<Record<string, unknown>>(
+    `/api/v1/source-catalog/${encodeURIComponent(sourceId)}/ownership`,
     {
       method: 'POST',
       body: JSON.stringify(payload),

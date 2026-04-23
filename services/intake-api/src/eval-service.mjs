@@ -364,6 +364,43 @@ function scoreMedicalPacket(diseasePacket) {
 
 /**
  * @param {any} context
+ * @returns {number}
+ */
+function scoreRenderedOutput(context) {
+  const renderedAssetManifest = context.renderedAssetManifest;
+
+  if (!renderedAssetManifest) {
+    return 0;
+  }
+
+  const renderedAssetCount = Array.isArray(renderedAssetManifest.renderedAssets)
+    ? renderedAssetManifest.renderedAssets.length
+    : 0;
+  const validRenderedAssetCount = (renderedAssetManifest.renderedAssets ?? []).filter((/** @type {any} */ asset) => (
+    typeof asset.location === 'string'
+    && typeof asset.checksum === 'string'
+    && typeof asset.mimeType === 'string'
+  )).length;
+  const latestRenderJob = context.renderJobs.at(-1) ?? null;
+  let score = renderedAssetCount === 0 ? 0 : roundScore(validRenderedAssetCount / renderedAssetCount);
+
+  if (!renderedAssetManifest.allPanelsRendered) {
+    score = Math.min(score, 0.5);
+  }
+
+  if (!latestRenderJob || latestRenderJob.status !== 'completed') {
+    score = Math.min(score, 0.4);
+  }
+
+  if (latestRenderJob?.approvalStatus !== 'approved') {
+    score = Math.min(score, 0.6);
+  }
+
+  return score;
+}
+
+/**
+ * @param {any} context
  * @returns {{ preview: any | null, error: string | null }}
  */
 function buildReleasePreview(context) {
@@ -445,6 +482,9 @@ function scoreEvaluationCase(evaluationCase, context, threshold) {
       break;
     case 'render_readiness':
       score = context.renderReview.score;
+      break;
+    case 'render_output_quality':
+      score = scoreRenderedOutput(context);
       break;
     case 'governance_release': {
       const preview = buildReleasePreview(context);
@@ -594,6 +634,8 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
   const panelPlans = loadArtifactsByType(store, workflowRun, 'panel-plan');
   const renderPrompts = loadArtifactsByType(store, workflowRun, 'render-prompt');
   const letteringMaps = loadArtifactsByType(store, workflowRun, 'lettering-map');
+  const renderJobs = loadArtifactsByType(store, workflowRun, 'render-job');
+  const renderedAssetManifest = loadLatestArtifactByType(store, workflowRun, 'rendered-asset-manifest');
   const primaryQaReport = selectPrimaryQaReport(qaReports);
   const traceabilitySummary = diseasePacket
     ? buildEvidenceTraceabilitySummary({
@@ -629,6 +671,8 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
     panelPlans,
     renderPrompts,
     letteringMaps,
+    renderJobs,
+    renderedAssetManifest,
     availableArtifactTypes: new Set(workflowRun.artifacts.map((/** @type {{ artifactType: string }} */ artifactReference) => artifactReference.artifactType)),
     canonicalDiseaseName: normalizeName(diseasePacket?.canonicalDiseaseName ?? workflowRun.input?.diseaseName),
     mysteryReview: storyWorkbook && diseasePacket
