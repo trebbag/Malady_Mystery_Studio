@@ -84,6 +84,7 @@
         "educationalSequencing",
         "panelization",
         "renderReadiness",
+        "renderingGuideQuality",
         "renderOutputQuality",
         "releaseVerdict"
       ],
@@ -114,6 +115,11 @@
           "maximum": 1
         },
         "renderReadiness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "renderingGuideQuality": {
           "type": "number",
           "minimum": 0,
           "maximum": 1
@@ -271,6 +277,11 @@
               "minimum": 0,
               "maximum": 1
             },
+            "rendering_guide_quality": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
             "render_output_quality": {
               "type": "number",
               "minimum": 0,
@@ -303,6 +314,20 @@
       "type": "string"
     },
     "sourceEvidencePackLocation": {
+      "type": "string"
+    },
+    "renderingGuideId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "renderingGuideLocation": {
+      "type": "string"
+    },
+    "renderingGuideMarkdownDocumentId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "renderingGuideMarkdownLocation": {
       "type": "string"
     },
     "renderedAssetManifestId": {

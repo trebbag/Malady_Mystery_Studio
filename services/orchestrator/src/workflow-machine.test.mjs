@@ -27,7 +27,7 @@ test('createDraftWorkflowRun seeds the starter stage and approvals', () => {
   );
 });
 
-test('workflow stages advance into review through STAGE_PASSED events', () => {
+test('workflow stages advance into review through explicit guide handoff after render prep', () => {
   let workflowRun = createDraftWorkflowRun(workflowSpec, baseProject, 'run.demo.002', initialTimestamp);
 
   ({ workflowRun } = applyWorkflowEvent(
@@ -44,7 +44,7 @@ test('workflow stages advance into review through STAGE_PASSED events', () => {
     '2026-04-21T00:00:01Z',
   ));
 
-  for (let index = 0; index < 8; index += 1) {
+  for (let index = 0; index < 6; index += 1) {
     ({ workflowRun } = applyWorkflowEvent(
       workflowSpec,
       workflowRun,
@@ -60,6 +60,20 @@ test('workflow stages advance into review through STAGE_PASSED events', () => {
     ));
   }
 
+  ({ workflowRun } = applyWorkflowEvent(
+    workflowSpec,
+    workflowRun,
+    {
+      eventType: 'ENTER_REVIEW',
+      actor: {
+        type: 'system',
+        id: 'render-guide-handoff',
+      },
+    },
+    createId('evt'),
+    '2026-04-21T00:00:08Z',
+  ));
+
   assert.equal(workflowRun.state, 'review');
   assert.equal(workflowRun.currentStage, 'review');
   assert.equal(
@@ -68,7 +82,7 @@ test('workflow stages advance into review through STAGE_PASSED events', () => {
   );
   assert.equal(
     workflowRun.stages.find((/** @type {{ name: string, status: string }} */ stage) => stage.name === 'render-execution')?.status,
-    'passed',
+    'pending',
   );
   assert.equal(
     workflowRun.stages.find((/** @type {{ name: string, status: string }} */ stage) => stage.name === 'review')?.status,
@@ -114,7 +128,7 @@ test('approval completion requires all configured reviewer roles', () => {
     '2026-04-21T00:00:01Z',
   ));
 
-  for (let index = 0; index < 8; index += 1) {
+  for (let index = 0; index < 6; index += 1) {
     ({ workflowRun } = applyWorkflowEvent(
       workflowSpec,
       workflowRun,
@@ -129,6 +143,20 @@ test('approval completion requires all configured reviewer roles', () => {
       `2026-04-21T00:00:1${index}Z`,
     ));
   }
+
+  ({ workflowRun } = applyWorkflowEvent(
+    workflowSpec,
+    workflowRun,
+    {
+      eventType: 'ENTER_REVIEW',
+      actor: {
+        type: 'system',
+        id: 'render-guide-handoff',
+      },
+    },
+    createId('evt'),
+    '2026-04-21T00:00:16Z',
+  ));
 
   for (const role of ['clinical', 'editorial', 'product']) {
     ({ workflowRun } = applyWorkflowEvent(

@@ -46,6 +46,14 @@
       "checksum": "demo-not-computed"
     },
     {
+      "artifactType": "rendering-guide",
+      "artifactId": "rgd.hcc.001",
+      "location": "examples/sample_rendering_guide.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
+    },
+    {
       "artifactType": "lettering-map",
       "artifactId": "ltm.hcc.004",
       "location": "examples/sample_lettering_map.json",
@@ -77,10 +85,11 @@
     "educationalSequencing": 0.93,
     "panelization": 0.9,
     "renderReadiness": 0.94,
-    "renderOutputQuality": 0.92,
+    "renderOutputQuality": 0,
     "sourceFreshness": 0.98,
     "contradictionStatus": "none",
-    "releaseVerdict": "approved"
+    "releaseVerdict": "approved",
+    "renderingGuideQuality": 1
   },
   "releaseGateChecks": [
     {
@@ -91,12 +100,17 @@
     {
       "name": "artifact-completeness",
       "status": "passed",
-      "details": "All required workbook, scene, panel, render, and QA artifacts are present."
+      "details": "All required workbook, scene, panel, guide, render-prep, and QA artifacts are present."
     },
     {
       "name": "quality-blockers",
       "status": "passed",
       "details": "No blocking QA verdicts remained at export time."
+    },
+    {
+      "name": "rendering-guide",
+      "status": "passed",
+      "details": "A rendering guide is attached for external handoff."
     },
     {
       "name": "source-governance",
@@ -107,11 +121,6 @@
       "name": "evaluation-status",
       "status": "passed",
       "details": "Eval run evr.hcc.001 passed all applicable thresholds."
-    },
-    {
-      "name": "rendered-output",
-      "status": "passed",
-      "details": "Rendered asset manifest rman.hcc.001 covered every required panel."
     }
   ],
   "approvals": [
@@ -149,7 +158,8 @@
       "panelization": 1,
       "render_readiness": 1,
       "render_output_quality": 1,
-      "governance_release": 1
+      "governance_release": 1,
+      "rendering_guide_quality": 1
     }
   },
   "exportTargets": [
@@ -160,9 +170,11 @@
   "exportedBy": "local-operator",
   "bundleIndexLocation": "examples/release_bundle_index.md",
   "sourceEvidencePackLocation": "examples/evidence_sources.json",
-  "renderedAssetManifestId": "rman.hcc.001",
-  "renderedAssetManifestLocation": "examples/sample_rendered_asset_manifest.json",
   "notes": [
     "Demo-only example release bundle."
-  ]
+  ],
+  "renderingGuideId": "rgd.hcc.001",
+  "renderingGuideLocation": "examples/sample_rendering_guide.json",
+  "renderingGuideMarkdownDocumentId": "rgd.hcc.001",
+  "renderingGuideMarkdownLocation": "tenant.local/rendering-guide-markdown/rgd.hcc.001.md"
 }

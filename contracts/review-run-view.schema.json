@@ -99,6 +99,9 @@
     "exportHistory": {
       "$ref": "export-history-view.schema.json"
     },
+    "renderingGuide": {
+      "$ref": "rendering-guide.schema.json"
+    },
     "renderJobs": {
       "type": "array",
       "items": {

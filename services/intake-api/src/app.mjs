@@ -15,11 +15,18 @@ import { findRepoRoot } from '../../../packages/shared-config/src/repo-paths.mjs
 import { createSchemaRegistry, formatValidationErrors } from '../../../packages/shared-config/src/schema-registry.mjs';
 import {
   createLocalRuntimeView,
+  createRenderingGuideView,
   createReviewDashboardView,
   createReviewRunView,
   createWorkflowArtifactListView,
 } from '../../../apps/web/src/view-model-adapters.mjs';
 import { createClinicalRetrievalService } from '../../clinical-retrieval/src/service.mjs';
+import { createResearchAssemblyService } from '../../clinical-retrieval/src/research-assembly.mjs';
+import { normalizeDiseaseInput } from '../../clinical-retrieval/src/ontology-adapter.mjs';
+import {
+  buildRenderingGuide,
+  renderRenderingGuideMarkdown,
+} from '../../exporter/src/rendering-guide.mjs';
 import { createExporterService } from '../../exporter/src/service.mjs';
 import {
   applyWorkflowEvent,
@@ -66,6 +73,7 @@ import {
 } from './review-service.mjs';
 import {
   buildReviewMessage,
+  buildReviewQueueAnalyticsView,
   buildReviewQueueView,
   buildReviewThread,
   buildWorkItem,
@@ -82,58 +90,55 @@ const SCHEMA_VERSION = '1.0.0';
 const WEB_ROUTE_ARTIFACT_GROUPS = Object.freeze({
   workbooks: ['story-workbook', 'narrative-review-trace', 'qa-report'],
   scenes: ['scene-card'],
-  panels: ['panel-plan', 'render-prompt', 'lettering-map', 'qa-report'],
+  panels: ['panel-plan', 'render-prompt', 'rendering-guide', 'lettering-map', 'qa-report'],
 });
+const MANUAL_RENDER_TARGET_PROFILE_ID = 'rtp.external-manual';
 const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
   areas: [
     {
       label: 'Foundation and local runtime',
-      percentComplete: 96,
+      percentComplete: 97,
     },
     {
       label: 'Clinical truth layer',
-      percentComplete: 91,
+      percentComplete: 94,
     },
     {
       label: 'Workbook and guardrails',
-      percentComplete: 75,
+      percentComplete: 76,
     },
     {
-      label: 'Scene, panel, render-prep',
-      percentComplete: 72,
+      label: 'Scene, panel, and rendering-guide prep',
+      percentComplete: 90,
     },
     {
-      label: 'Local review, eval, and export workflow',
-      percentComplete: 96,
+      label: 'Review, eval, and export workflow',
+      percentComplete: 98,
     },
     {
       label: 'Frontend structure and UX implementation',
-      percentComplete: 91,
-    },
-    {
-      label: 'Operational pilot readiness',
-      percentComplete: 52,
+      percentComplete: 95,
     },
     {
       label: 'Managed platform and pilot ops',
-      percentComplete: 54,
+      percentComplete: 64,
     },
     {
-      label: 'Live render execution',
-      percentComplete: 58,
+      label: 'Optional external-art attachment and downstream publishing',
+      percentComplete: 48,
     },
   ],
   overall: {
-    localMvpReadiness: 93,
-    pilotReadiness: 60,
+    localMvpReadiness: 96,
+    pilotReadiness: 72,
   },
   remainingWork: [
-    'Finish managed PostgreSQL metadata integration for runtime read/write paths, not just migration tooling and Azure scaffolding.',
-    'Deepen rendered-output review with richer visual QA and multi-provider retry strategies.',
-    'Expand governed primary-care coverage beyond the first tranche and add more source refresh ownership automation.',
-    'Run live Azure deployment, backup, restore, and worker drills with tenant credentials and production-grade secrets handling.',
+    'Broaden governed disease and source coverage beyond the current starter and primary-care tranches.',
+    'Deepen source refresh ownership automation, contradiction triage, and queue analytics for reviewer collaboration.',
+    'Finish the real managed runtime cutover from local SQLite/filesystem fallback to PostgreSQL plus Blob in the live execution path.',
+    'Run live Azure deployment, backup, restore, and observability drills with tenant credentials and production-grade secrets handling.',
     'Integrate external auth at the frontend or gateway layer when the app moves beyond local-open mode.',
-    'Expand governed disease and source coverage beyond the current starter and first primary-care tranche.',
+    'Add optional downstream publishing/export integrations after the rendering-guide-first handoff path is stable.',
   ],
 });
 const CONTENT_TYPES = new Map([
@@ -251,6 +256,69 @@ function matchWorkflowRunReviewViewPath(pathname) {
  * @param {string} pathname
  * @returns {{ runId: string } | null}
  */
+function matchWorkflowRunRenderingGuidePath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/rendering-guide$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunRenderingGuideRegeneratePath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/rendering-guide\/regenerate$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunResearchBriefPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/research-brief$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunKnowledgePackBuildReportPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/knowledge-pack-build-report$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunKnowledgePackRegeneratePath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/knowledge-pack\/regenerate$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunKnowledgePackApprovePath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/knowledge-pack\/approve$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunKnowledgePackPromotePath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/knowledge-pack\/promote$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
 function matchWorkflowRunArtifactsPath(pathname) {
   const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/artifacts$/);
   return match ? { runId: decodeURIComponent(match[1]) } : null;
@@ -298,6 +366,15 @@ function matchWorkflowRunThreadsPath(pathname) {
  */
 function matchWorkflowRunRenderJobsPath(pathname) {
   const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/render-jobs$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunRenderedAssetAttachmentPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/rendered-assets\/attach$/);
   return match ? { runId: decodeURIComponent(match[1]) } : null;
 }
 
@@ -375,6 +452,14 @@ function isReviewQueueViewPath(pathname) {
  * @param {string} pathname
  * @returns {boolean}
  */
+function isReviewQueueAnalyticsPath(pathname) {
+  return pathname === '/api/v1/review-queue/analytics';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
 function isLocalRuntimeViewPath(pathname) {
   return pathname === '/api/v1/local-runtime-view';
 }
@@ -385,6 +470,23 @@ function isLocalRuntimeViewPath(pathname) {
  */
 function isSourceCatalogPath(pathname) {
   return pathname === '/api/v1/source-catalog';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function isNotificationsPath(pathname) {
+  return pathname === '/api/v1/notifications';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ notificationId: string } | null}
+ */
+function matchNotificationPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/notifications\/([^/]+)$/);
+  return match ? { notificationId: decodeURIComponent(match[1]) } : null;
 }
 
 /**
@@ -431,7 +533,7 @@ function isSpaShellPath(pathname) {
   return pathname === '/review'
     || pathname === '/review/queue'
     || pathname === '/settings'
-    || /^\/runs\/[^/]+\/(pipeline|review|packets|evidence|workbooks|scenes|panels|sources|governance|evals|bundles)$/.test(pathname);
+    || /^\/runs\/[^/]+\/(pipeline|review|packets|evidence|workbooks|scenes|panels|sources|governance|evals|bundles|rendering-guide)$/.test(pathname);
 }
 
 /**
@@ -703,6 +805,15 @@ function matchReleaseBundleIndexPath(pathname) {
  */
 function matchReleaseEvidencePackPath(pathname) {
   const match = pathname.match(/^\/api\/v1\/release-bundles\/([^/]+)\/evidence-pack$/);
+  return match ? { releaseId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ releaseId: string } | null}
+ */
+function matchReleaseBundleRenderingGuidePath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/release-bundles\/([^/]+)\/rendering-guide$/);
   return match ? { releaseId: decodeURIComponent(match[1]) } : null;
 }
 
@@ -1039,11 +1150,127 @@ function loadLatestArtifact(store, workflowRun, artifactType) {
 }
 
 /**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {any | null}
+ */
+function loadLatestKnowledgePackForRun(store, workflowRun) {
+  return loadLatestArtifact(store, workflowRun, 'disease-knowledge-pack');
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {string} tenantId
+ * @returns {any[]}
+ */
+function listPromotedKnowledgePacks(store, tenantId) {
+  return listTenantArtifactsByType(store, 'disease-knowledge-pack', tenantId)
+    .filter((knowledgePack) => knowledgePack.packStatus === 'promoted' && knowledgePack.packScope === 'library');
+}
+
+/**
+ * @param {any} knowledgePack
+ * @returns {string[]}
+ */
+function collectKnowledgePackLookupTerms(knowledgePack) {
+  return uniqueStrings([
+    knowledgePack.canonicalDiseaseName,
+    ...(knowledgePack.aliases ?? []),
+  ]).map((value) => normalizeDiseaseInput(value));
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {string} tenantId
+ * @param {string} diseaseInput
+ * @returns {any | null}
+ */
+function findPromotedKnowledgePackByInput(store, tenantId, diseaseInput) {
+  const normalizedInput = normalizeDiseaseInput(diseaseInput);
+
+  return listPromotedKnowledgePacks(store, tenantId).find((knowledgePack) => (
+    collectKnowledgePackLookupTerms(knowledgePack).includes(normalizedInput)
+  )) ?? null;
+}
+
+/**
+ * @param {any} knowledgePack
+ * @param {string} workflowRunId
+ * @returns {any}
+ */
+function ensureKnowledgePackLifecycle(knowledgePack, workflowRunId) {
+  return {
+    schemaVersion: knowledgePack.schemaVersion ?? SCHEMA_VERSION,
+    ...clone(knowledgePack),
+    packStatus: knowledgePack.packStatus ?? 'seeded',
+    packScope: knowledgePack.packScope ?? 'library',
+    generationMode: knowledgePack.generationMode ?? 'seeded',
+    derivedFromRunId: knowledgePack.derivedFromRunId ?? workflowRunId,
+    sourceOrigins: knowledgePack.sourceOrigins ?? {
+      seeded: Array.isArray(knowledgePack.sourceCatalog) ? knowledgePack.sourceCatalog.length : 0,
+      'user-doc': 0,
+      'agent-web': 0,
+    },
+    generatedAt: knowledgePack.generatedAt ?? new Date().toISOString(),
+    generatedBy: knowledgePack.generatedBy ?? 'seed-library',
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, clinicalService: any, tenantId: string, diseaseInput: string }} options
+ * @returns {{ canonicalDisease: any, promotedKnowledgePack?: any }}
+ */
+function resolveDiseaseInput(options) {
+  const promotedKnowledgePack = findPromotedKnowledgePackByInput(
+    options.store,
+    options.tenantId,
+    options.diseaseInput,
+  );
+
+  if (promotedKnowledgePack) {
+    const normalizedInput = normalizeDiseaseInput(options.diseaseInput);
+    const matchType = normalizeDiseaseInput(promotedKnowledgePack.canonicalDiseaseName) === normalizedInput
+      ? 'exact'
+      : 'alias';
+
+    return {
+      canonicalDisease: options.clinicalService.buildCanonicalDiseaseFromKnowledgePack(
+        promotedKnowledgePack,
+        options.diseaseInput,
+        matchType,
+      ),
+      promotedKnowledgePack,
+    };
+  }
+
+  return {
+    canonicalDisease: options.clinicalService.canonicalizeDiseaseInput(options.diseaseInput),
+  };
+}
+
+/**
  * @param {any[]} values
  * @returns {string[]}
  */
 function collectUniqueClaimIds(values) {
   return [...new Set(values.filter((value) => typeof value === 'string' && value.trim().length > 0))];
+}
+
+/**
+ * @param {unknown[]} values
+ * @returns {string[]}
+ */
+function uniqueStrings(values) {
+  /** @type {string[]} */
+  const strings = [];
+
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0 && !strings.includes(value)) {
+      strings.push(value);
+    }
+  }
+
+  return strings;
 }
 
 /**
@@ -1074,6 +1301,85 @@ function collectArtifactsForRun(store, workflowRun) {
       artifact: loadArtifactByReference(store, artifactReference),
     }))
     .filter((/** @type {{ artifact: any }} */ entry) => entry.artifact);
+}
+
+/**
+ * @param {{
+ *   store: PlatformStore,
+ *   schemaRegistry: any,
+ *   workflowRun: any,
+ *   project: any,
+ *   diseasePacket: any,
+ *   storyWorkbook: any,
+ *   sceneCards: any[],
+ *   panelPlans: any[],
+ *   renderPrompts: any[],
+ *   letteringMaps: any[],
+ * }} options
+ * @returns {{ workflowRun: any, renderingGuide: any, markdown: string }}
+ */
+function generateAndPersistRenderingGuide(options) {
+  if (!options.diseasePacket || !options.storyWorkbook || options.panelPlans.length === 0 || options.renderPrompts.length === 0 || options.letteringMaps.length === 0) {
+    throw createHttpError(409, 'Rendering guide generation requires a disease packet, workbook, panel plans, render prompts, and lettering maps.');
+  }
+
+  const renderingGuide = buildRenderingGuide({
+    workflowRun: options.workflowRun,
+    project: options.project,
+    diseasePacket: options.diseasePacket,
+    storyWorkbook: options.storyWorkbook,
+    sceneCards: options.sceneCards,
+    panelPlans: options.panelPlans,
+    renderPrompts: options.renderPrompts,
+    letteringMaps: options.letteringMaps,
+    generatedAt: new Date().toISOString(),
+  });
+  const markdown = renderRenderingGuideMarkdown(renderingGuide);
+  const markdownDocument = options.store.saveDocument(
+    'rendering-guide-markdown',
+    renderingGuide.id,
+    markdown,
+    {
+      tenantId: options.workflowRun.tenantId,
+      contentType: 'text/markdown',
+      extension: 'md',
+      retentionClass: 'approved-artifact',
+    },
+  );
+  renderingGuide.markdownDocumentId = renderingGuide.id;
+  renderingGuide.markdownLocation = markdownDocument.location;
+
+  return {
+    workflowRun: persistArtifact(
+      options.store,
+      options.schemaRegistry,
+      options.workflowRun,
+      'rendering-guide',
+      'contracts/rendering-guide.schema.json',
+      renderingGuide,
+    ),
+    renderingGuide,
+    markdown,
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, workflowRun: any }} options
+ * @returns {{ renderingGuide: any, markdown: string } | null}
+ */
+function loadRenderingGuidePayload(options) {
+  const renderingGuide = loadLatestArtifact(options.store, options.workflowRun, 'rendering-guide');
+
+  if (!renderingGuide) {
+    return null;
+  }
+
+  const markdown = options.store.getDocument('rendering-guide-markdown', renderingGuide.markdownDocumentId);
+
+  return {
+    renderingGuide,
+    markdown: markdown ?? '',
+  };
 }
 
 /**
@@ -1166,6 +1472,41 @@ function collectReleaseArtifactManifest(store, workflowRun) {
 }
 
 /**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any }} options
+ * @returns {{ workflowRun: any, renderingGuide: any, markdown: string }}
+ */
+function regenerateRenderingGuideForRun(options) {
+  const project = getProjectForRun(options.store, options.workflowRun);
+  const diseasePacket = loadLatestArtifact(options.store, options.workflowRun, 'disease-packet');
+  const storyWorkbook = loadLatestArtifact(options.store, options.workflowRun, 'story-workbook');
+  const sceneCards = collectArtifactsForRun(options.store, options.workflowRun)
+    .filter((entry) => entry.artifactType === 'scene-card')
+    .map((entry) => entry.artifact);
+  const panelPlans = collectArtifactsForRun(options.store, options.workflowRun)
+    .filter((entry) => entry.artifactType === 'panel-plan')
+    .map((entry) => entry.artifact);
+  const renderPrompts = collectArtifactsForRun(options.store, options.workflowRun)
+    .filter((entry) => entry.artifactType === 'render-prompt')
+    .map((entry) => entry.artifact);
+  const letteringMaps = collectArtifactsForRun(options.store, options.workflowRun)
+    .filter((entry) => entry.artifactType === 'lettering-map')
+    .map((entry) => entry.artifact);
+
+  return generateAndPersistRenderingGuide({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowRun: options.workflowRun,
+    project,
+    diseasePacket,
+    storyWorkbook,
+    sceneCards,
+    panelPlans,
+    renderPrompts,
+    letteringMaps,
+  });
+}
+
+/**
  * @param {PlatformStore} store
  * @param {any} schemaRegistry
  * @param {any | null} actor
@@ -1219,6 +1560,84 @@ function appendAuditLog(store, schemaRegistry, actor, action, subjectType, subje
 function denyWithAudit(store, schemaRegistry, actor, action, subjectType, subjectId, message) {
   appendAuditLog(store, schemaRegistry, actor, action, subjectType, subjectId, 'denied', message);
   throw createHttpError(403, message);
+}
+
+/**
+ * @param {string} body
+ * @returns {string[]}
+ */
+function extractMentionStrings(body) {
+  return uniqueStrings([...body.matchAll(/@([A-Za-z0-9._:-]+)/g)].map((match) => match[1]));
+}
+
+/**
+ * @param {{ store: PlatformStore, actor: any }} options
+ * @returns {any[]}
+ */
+function listNotificationsForActor(options) {
+  const actorMentions = new Set([
+    options.actor.id,
+    normalizeDiseaseInput(options.actor.displayName ?? ''),
+  ].filter(Boolean));
+
+  return listTenantArtifactsByType(options.store, 'notification', options.actor.tenantId)
+    .filter((notification) => {
+      if (typeof notification.targetActorId === 'string' && notification.targetActorId === options.actor.id) {
+        return true;
+      }
+
+      return typeof notification.targetActorId === 'string' && actorMentions.has(normalizeDiseaseInput(notification.targetActorId));
+    })
+    .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
+}
+
+/**
+ * @param {{
+ *   store: PlatformStore,
+ *   schemaRegistry: any,
+ *   workflowRun: any,
+ *   actor: any,
+ *   threadId: string,
+ *   workItemId?: string,
+ *   subjectType: string,
+ *   subjectId: string,
+ *   body: string,
+ *   mentions?: string[],
+ *   mentionedActorIds?: string[],
+ * }} options
+ * @returns {any[]}
+ */
+function createMentionNotifications(options) {
+  const targetActorIds = uniqueStrings([
+    ...(options.mentions ?? []),
+    ...(options.mentionedActorIds ?? []),
+    ...extractMentionStrings(options.body),
+  ]);
+
+  return targetActorIds.map((targetActorId) => {
+    const notification = {
+      schemaVersion: SCHEMA_VERSION,
+      id: createId('ntf'),
+      tenantId: options.workflowRun.tenantId,
+      targetActorId,
+      workflowRunId: options.workflowRun.id,
+      ...(options.threadId ? { threadId: options.threadId } : {}),
+      ...(options.workItemId ? { workItemId: options.workItemId } : {}),
+      notificationType: 'mention',
+      status: 'unread',
+      message: `${options.actor.displayName} mentioned ${targetActorId}: ${options.body.slice(0, 160)}`,
+      subjectType: options.subjectType,
+      subjectId: options.subjectId,
+      createdBy: options.actor.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    assertSchema(options.schemaRegistry, 'contracts/notification.schema.json', notification);
+    options.store.saveArtifact('notification', notification.id, notification, {
+      tenantId: options.workflowRun.tenantId,
+    });
+    return notification;
+  });
 }
 
 /**
@@ -1322,31 +1741,40 @@ function loadClinicalGovernanceState(store, workflowRun, canonicalDiseaseName) {
 /**
  * @param {{
  *   store: PlatformStore,
- *   workflowRun: any,
- *   clinicalService: any,
- *   canonicalDisease: any,
+  *   workflowRun: any,
+  *   clinicalService: any,
+  *   canonicalDisease: any,
+ *   knowledgePack?: any,
  * }} options
  * @returns {any}
  */
 function buildClinicalPackageForRun(options) {
+  const knowledgePack = options.knowledgePack
+    ? ensureKnowledgePackLifecycle(options.knowledgePack, options.workflowRun.id)
+    : ensureKnowledgePackLifecycle(
+      loadLatestKnowledgePackForRun(options.store, options.workflowRun)
+        ?? options.clinicalService.getKnowledgePack(options.canonicalDisease.canonicalDiseaseName),
+      options.workflowRun.id,
+    );
   const governanceState = loadClinicalGovernanceState(
     options.store,
     options.workflowRun,
-    options.canonicalDisease.canonicalDiseaseName,
+    knowledgePack.canonicalDiseaseName,
   );
-  const clinicalPackage = options.clinicalService.buildClinicalPackage(
-    options.canonicalDisease,
+  const clinicalPackage = options.clinicalService.buildClinicalPackageFromKnowledgePack(
+    knowledgePack,
     governanceState,
   );
 
   return {
     ...clinicalPackage,
     evidenceRelationships: options.clinicalService.listEvidenceRelationships(
-      options.canonicalDisease.canonicalDiseaseName,
+      knowledgePack.canonicalDiseaseName,
       {
         contradictionResolutions: governanceState.contradictionResolutions,
       },
     ),
+    knowledgePack,
     ...governanceState,
   };
 }
@@ -1361,14 +1789,19 @@ function loadClinicalPackageForRun(options) {
   if (!canonicalDisease) {
     return null;
   }
+  const knowledgePack = ensureKnowledgePackLifecycle(
+    loadLatestKnowledgePackForRun(options.store, options.workflowRun)
+      ?? options.clinicalService.getKnowledgePack(canonicalDisease.canonicalDiseaseName),
+    options.workflowRun.id,
+  );
 
   const governanceState = loadClinicalGovernanceState(
     options.store,
     options.workflowRun,
-    canonicalDisease.canonicalDiseaseName,
+    knowledgePack.canonicalDiseaseName,
   );
-  const generatedClinicalPackage = options.clinicalService.buildClinicalPackage(
-    canonicalDisease,
+  const generatedClinicalPackage = options.clinicalService.buildClinicalPackageFromKnowledgePack(
+    knowledgePack,
     governanceState,
   );
   const diseasePacket = loadLatestArtifact(options.store, options.workflowRun, 'disease-packet') ?? generatedClinicalPackage.diseasePacket;
@@ -1398,10 +1831,11 @@ function loadClinicalPackageForRun(options) {
     evidenceGraph,
     clinicalTeachingPoints,
     visualAnchorCatalog,
+    knowledgePack,
     sourceRecords: generatedClinicalPackage.sourceRecords,
     evidenceRecords: generatedClinicalPackage.evidenceRecords,
     evidenceRelationships: options.clinicalService.listEvidenceRelationships(
-      canonicalDisease.canonicalDiseaseName,
+      knowledgePack.canonicalDiseaseName,
       {
         contradictionResolutions: governanceState.contradictionResolutions,
       },
@@ -1428,6 +1862,15 @@ function loadClinicalPackageForRun(options) {
 function persistClinicalArtifacts(options) {
   let workflowRun = options.workflowRun;
 
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'disease-knowledge-pack',
+    'contracts/disease-knowledge-pack.schema.json',
+    options.clinicalPackage.knowledgePack,
+    options.clinicalPackage.knowledgePack.packStatus === 'promoted' ? 'approved' : 'generated',
+  );
   workflowRun = persistArtifact(
     options.store,
     options.schemaRegistry,
@@ -1657,10 +2100,192 @@ function saveSourceRefreshTask(options) {
 }
 
 /**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {any[]}
+ */
+function listKnowledgePackPromotionDecisionsForRun(store, workflowRun) {
+  return listTenantArtifactsByType(store, 'knowledge-pack-promotion-decision', workflowRun.tenantId)
+    .filter((decision) => decision.workflowRunId === workflowRun.id)
+    .sort((left, right) => String(left.decidedAt).localeCompare(String(right.decidedAt)));
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {any | null}
+ */
+function getLatestKnowledgePackPromotionDecision(store, workflowRun) {
+  return listKnowledgePackPromotionDecisionsForRun(store, workflowRun).at(-1) ?? null;
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {boolean}
+ */
+function requiresKnowledgePackDecision(store, workflowRun) {
+  const knowledgePack = loadLatestKnowledgePackForRun(store, workflowRun);
+
+  if (!knowledgePack || knowledgePack.packStatus !== 'provisional') {
+    return false;
+  }
+
+  const latestDecision = getLatestKnowledgePackPromotionDecision(store, workflowRun);
+  return !latestDecision || latestDecision.decision === 'rejected';
+}
+
+/**
  * @param {{
  *   store: PlatformStore,
  *   schemaRegistry: any,
- *   workflowSpec: any,
+ *   workflowRun: any,
+ *   actor: any,
+ *   decision: 'approved-run-only' | 'promoted-to-library' | 'rejected',
+ *   notes?: string,
+ * }} options
+ * @returns {{ workflowRun: any, decision: any, knowledgePack: any }}
+ */
+function saveKnowledgePackPromotionDecision(options) {
+  const knowledgePack = loadLatestKnowledgePackForRun(options.store, options.workflowRun);
+
+  if (!knowledgePack) {
+    throw createHttpError(409, 'A disease knowledge pack is required before a reviewer can approve or promote it.');
+  }
+
+  const timestamp = new Date().toISOString();
+  const decision = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('kpd'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    knowledgePackId: knowledgePack.id,
+    decision: options.decision,
+    ...(typeof options.notes === 'string' && options.notes ? { notes: options.notes } : {}),
+    decidedBy: options.actor.id,
+    decidedByRoles: [...(options.actor.roles ?? [])],
+    decidedAt: timestamp,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/knowledge-pack-promotion-decision.schema.json', decision);
+  options.store.saveArtifact('knowledge-pack-promotion-decision', decision.id, decision, {
+    tenantId: options.workflowRun.tenantId,
+  });
+  let workflowRun = upsertArtifactReference(options.workflowRun, {
+    artifactType: 'knowledge-pack-promotion-decision',
+    artifactId: decision.id,
+    status: options.decision === 'rejected' ? 'rejected' : 'approved',
+  });
+
+  if (options.decision === 'promoted-to-library') {
+    const promotedKnowledgePack = {
+      ...knowledgePack,
+      packStatus: 'promoted',
+      packScope: 'library',
+      generatedAt: knowledgePack.generatedAt ?? timestamp,
+    };
+    workflowRun = persistArtifact(
+      options.store,
+      options.schemaRegistry,
+      workflowRun,
+      'disease-knowledge-pack',
+      'contracts/disease-knowledge-pack.schema.json',
+      promotedKnowledgePack,
+      'approved',
+    );
+  }
+
+  workflowRun = saveWorkflowRunRecord(
+    options.store,
+    options.schemaRegistry,
+    withPauseReason(
+      workflowRun,
+      options.decision === 'rejected' ? 'provisional-knowledge-pack-review-required' : undefined,
+    ),
+  );
+
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'knowledge-pack.decision',
+    'workflow-run',
+    workflowRun.id,
+    'success',
+    `Recorded ${options.decision} for disease knowledge pack ${knowledgePack.id}.`,
+    {
+      decisionId: decision.id,
+      knowledgePackId: knowledgePack.id,
+    },
+  );
+
+  return {
+    workflowRun,
+    decision,
+    knowledgePack,
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, actor?: any }} options
+ * @returns {any}
+ */
+function ensureKnowledgePackReviewWorkItem(options) {
+  if (!requiresKnowledgePackDecision(options.store, options.workflowRun)) {
+    return withPauseReason(options.workflowRun, undefined);
+  }
+
+  const knowledgePack = loadLatestKnowledgePackForRun(options.store, options.workflowRun);
+
+  if (!knowledgePack) {
+    return options.workflowRun;
+  }
+
+  const existingWorkItem = listWorkItemsForRun(options.store, options.workflowRun).find((workItem) => (
+    workItem.subjectType === 'disease-knowledge-pack'
+    && workItem.subjectId === knowledgePack.id
+    && workItem.status !== 'completed'
+    && workItem.status !== 'cancelled'
+  ));
+  const workItem = buildWorkItem({
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    workType: 'run-review',
+    queueName: 'review-queue',
+    subjectType: 'disease-knowledge-pack',
+    subjectId: knowledgePack.id,
+    reason: 'clinical-governance-review-required',
+    priority: 'high',
+    originType: 'knowledge-pack',
+    originId: knowledgePack.id,
+    notes: [
+      `Provisional knowledge pack ${knowledgePack.canonicalDiseaseName} must be approved for this run or promoted to the shared library before export.`,
+    ],
+    existingWorkItem,
+  });
+  assertSchema(options.schemaRegistry, 'contracts/work-item.schema.json', workItem);
+  options.store.saveArtifact('work-item', workItem.id, workItem, {
+    tenantId: options.workflowRun.tenantId,
+  });
+
+  return saveWorkflowRunRecord(
+    options.store,
+    options.schemaRegistry,
+    withPauseReason(
+      upsertArtifactReference(options.workflowRun, {
+        artifactType: 'work-item',
+        artifactId: workItem.id,
+        status: 'generated',
+      }),
+      'provisional-knowledge-pack-review-required',
+    ),
+  );
+}
+
+/**
+ * @param {{
+  *   store: PlatformStore,
+  *   schemaRegistry: any,
+  *   workflowSpec: any,
  *   clinicalService: any,
  *   storyEngineService: any,
  *   workflowRun: any,
@@ -1742,6 +2367,11 @@ function resetWorkflowForClinicalRebuild(workflowSpec, workflowRun, timestamp, n
     'project',
     'canonical-disease',
     'canonicalization-resolution',
+    'research-brief',
+    'source-harvest',
+    'knowledge-pack-build-report',
+    'disease-knowledge-pack',
+    'knowledge-pack-promotion-decision',
   ]);
 
   return withPauseReason({
@@ -1975,6 +2605,25 @@ function continueStoryPipeline(options) {
     );
   }
 
+  const project = options.store.getProject(workflowRun.projectId);
+
+  if (!project) {
+    throw createHttpError(500, `Project ${workflowRun.projectId} could not be loaded for rendering guide generation.`);
+  }
+
+  workflowRun = generateAndPersistRenderingGuide({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowRun,
+    project,
+    diseasePacket: options.diseasePacket,
+    storyWorkbook: storyWorkbookPackage.storyWorkbook,
+    sceneCards: visualPlanningPackage.sceneCards,
+    panelPlans: visualPlanningPackage.panelPlans,
+    renderPrompts: visualPlanningPackage.renderPrompts,
+    letteringMaps: visualPlanningPackage.letteringMaps,
+  }).workflowRun;
+
   workflowRun = persistArtifact(
     options.store,
     options.schemaRegistry,
@@ -2022,7 +2671,7 @@ function continueStoryPipeline(options) {
         letteringMapIds: visualPlanningPackage.letteringMaps.map((/** @type {{ id: string }} */ letteringMap) => letteringMap.id),
         qaReportId: visualPlanningPackage.qaReport.id,
       },
-      notes: `Generated ${visualPlanningPackage.renderPrompts.length} render prompts with separate lettering maps.`,
+      notes: `Generated ${visualPlanningPackage.renderPrompts.length} render prompts with separate lettering maps and queued the run for panel rendering.`,
     },
   );
 }
@@ -2035,9 +2684,10 @@ function continueStoryPipeline(options) {
  *   workflowRun: any,
  *   workflowInput: WorkflowInput,
  *   canonicalDisease: any,
- *   clinicalService: any,
- *   storyEngineService: any,
- *   actor?: any,
+  *   clinicalService: any,
+  *   storyEngineService: any,
+ *   knowledgePack?: any,
+  *   actor?: any,
  * }} options
  * @returns {any}
  */
@@ -2048,6 +2698,7 @@ function continueClinicalStage(options) {
     workflowRun,
     clinicalService: options.clinicalService,
     canonicalDisease: options.canonicalDisease,
+    knowledgePack: options.knowledgePack,
   });
 
   workflowRun = persistClinicalArtifacts({
@@ -2156,7 +2807,7 @@ function continueClinicalStage(options) {
 
 /**
  * @param {{
- *   store: PlatformStore,
+  *   store: PlatformStore,
  *   schemaRegistry: any,
  *   workflowSpec: any,
  *   workflowRun: any,
@@ -2189,6 +2840,24 @@ function continueResolvedPipeline(options) {
     },
   );
 
+  workflowRun = transitionWorkflow(
+    options.store,
+    options.schemaRegistry,
+    options.workflowSpec,
+    workflowRun,
+    {
+      eventType: 'STAGE_PASSED',
+      actor: {
+        type: 'system',
+        id: 'research-assembly-stage',
+      },
+      payload: {
+        resolutionMode: 'governed-library',
+      },
+      notes: 'Existing governed knowledge pack found. Research assembly used the approved library path.',
+    },
+  );
+
   return continueClinicalStage({
     store: options.store,
     schemaRegistry: options.schemaRegistry,
@@ -2198,6 +2867,163 @@ function continueResolvedPipeline(options) {
     canonicalDisease: options.canonicalDisease,
     clinicalService: options.clinicalService,
     storyEngineService: options.storyEngineService,
+    actor: options.actor,
+  });
+}
+
+/**
+ * @param {{
+ *   store: PlatformStore,
+ *   schemaRegistry: any,
+ *   workflowSpec: any,
+ *   workflowRun: any,
+ *   workflowInput: WorkflowInput,
+ *   canonicalDisease: any,
+ *   clinicalService: any,
+ *   storyEngineService: any,
+ *   researchAssemblyService: any,
+ *   actor?: any,
+ * }} options
+ * @returns {Promise<any>}
+ */
+async function continueNewDiseasePipeline(options) {
+  let workflowRun = options.workflowRun;
+
+  workflowRun = transitionWorkflow(
+    options.store,
+    options.schemaRegistry,
+    options.workflowSpec,
+    workflowRun,
+    {
+      eventType: 'STAGE_PASSED',
+      actor: {
+        type: 'system',
+        id: 'canonicalization-stage',
+      },
+      payload: {
+        canonicalDiseaseId: options.canonicalDisease.id,
+        resolutionStatus: 'new-disease',
+      },
+      notes: `No governed pack matched ${options.workflowInput.diseaseName}; starting research assembly for a provisional knowledge pack.`,
+    },
+  );
+
+  const researchAssembly = await options.researchAssemblyService.compileProvisionalKnowledgePack({
+    workflowRun,
+    workflowInput: options.workflowInput,
+    canonicalDisease: options.canonicalDisease,
+    actor: options.actor,
+  });
+
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'research-brief',
+    'contracts/research-brief.schema.json',
+    researchAssembly.researchBrief,
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'source-harvest',
+    'contracts/source-harvest.schema.json',
+    researchAssembly.sourceHarvest,
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'knowledge-pack-build-report',
+    'contracts/knowledge-pack-build-report.schema.json',
+    researchAssembly.buildReport,
+    researchAssembly.buildReport.status === 'blocked' ? 'rejected' : 'generated',
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'disease-knowledge-pack',
+    'contracts/disease-knowledge-pack.schema.json',
+    researchAssembly.knowledgePack,
+    'generated',
+  );
+
+  const resolvedCanonicalDisease = options.clinicalService.buildCanonicalDiseaseFromKnowledgePack(
+    researchAssembly.knowledgePack,
+    options.workflowInput.diseaseName,
+  );
+
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'canonical-disease',
+    'contracts/canonical-disease.schema.json',
+    resolvedCanonicalDisease,
+  );
+
+  if (!researchAssembly.buildReport.fitForStoryContinuation || researchAssembly.buildReport.status === 'blocked') {
+    workflowRun = transitionWorkflow(
+      options.store,
+      options.schemaRegistry,
+      options.workflowSpec,
+      workflowRun,
+      {
+        eventType: 'STAGE_FAILED',
+        actor: {
+          type: 'system',
+          id: 'research-assembly-stage',
+        },
+        payload: {
+          researchBriefId: researchAssembly.researchBrief.id,
+          sourceHarvestId: researchAssembly.sourceHarvest.id,
+          buildReportId: researchAssembly.buildReport.id,
+          knowledgePackId: researchAssembly.knowledgePack.id,
+        },
+        notes: researchAssembly.buildReport.blockingIssues.join(' ') || 'Research assembly could not produce a safe provisional knowledge pack.',
+      },
+    );
+
+    return saveWorkflowRunRecord(
+      options.store,
+      options.schemaRegistry,
+      withPauseReason(workflowRun, 'clinical-governance-review-required'),
+    );
+  }
+
+  workflowRun = transitionWorkflow(
+    options.store,
+    options.schemaRegistry,
+    options.workflowSpec,
+    workflowRun,
+    {
+      eventType: 'STAGE_PASSED',
+      actor: {
+        type: 'system',
+        id: 'research-assembly-stage',
+      },
+      payload: {
+        researchBriefId: researchAssembly.researchBrief.id,
+        sourceHarvestId: researchAssembly.sourceHarvest.id,
+        buildReportId: researchAssembly.buildReport.id,
+        knowledgePackId: researchAssembly.knowledgePack.id,
+      },
+      notes: `Research assembly compiled a provisional knowledge pack for ${researchAssembly.knowledgePack.canonicalDiseaseName}.`,
+    },
+  );
+
+  return continueClinicalStage({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowSpec: options.workflowSpec,
+    workflowRun,
+    workflowInput: options.workflowInput,
+    canonicalDisease: resolvedCanonicalDisease,
+    clinicalService: options.clinicalService,
+    storyEngineService: options.storyEngineService,
+    knowledgePack: researchAssembly.knowledgePack,
     actor: options.actor,
   });
 }
@@ -2564,12 +3390,17 @@ function buildReviewArtifactGroups(store, workflowRun) {
       artifacts: groupedArtifacts.get('render-prompt') ?? [],
     },
     {
+      title: 'Rendering guide',
+      description: 'Provider-fitted master handoff guide with one-panel-per-slide external rendering instructions.',
+      artifacts: groupedArtifacts.get('rendering-guide') ?? [],
+    },
+    {
       title: 'Lettering maps',
       artifacts: groupedArtifacts.get('lettering-map') ?? [],
     },
     {
-      title: 'Render execution',
-      description: 'Queued jobs, retry attempts, rendered assets, and the latest manifest.',
+      title: 'External rendered art attachments',
+      description: 'Optional externally rendered assets and manifests attached back to the run.',
       artifacts: [
         ...(groupedArtifacts.get('render-job') ?? []),
         ...(groupedArtifacts.get('render-attempt') ?? []),
@@ -2748,7 +3579,7 @@ function buildReviewDashboardContext(options) {
 
 /**
  * @param {{ store: PlatformStore, schemaRegistry: any, clinicalService: any, actor: any, runId: string }} options
- * @returns {{ workflowRun: any, project: any, canonicalDisease: any, clinicalPackage: any, approvableRoles: string[], latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[], auditLogs: any[], artifactGroups: any[], reviewAssignments: any[], reviewComments: any[], workItems: any[], reviewThreads: any[], renderJobs: any[] }}
+ * @returns {{ workflowRun: any, project: any, canonicalDisease: any, clinicalPackage: any, approvableRoles: string[], latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[], auditLogs: any[], artifactGroups: any[], reviewAssignments: any[], reviewComments: any[], workItems: any[], reviewThreads: any[], renderJobs: any[], renderingGuide: any | null }}
  */
 function buildReviewRunContext(options) {
   let workflowRun = options.store.getWorkflowRun(options.runId);
@@ -2771,6 +3602,27 @@ function buildReviewRunContext(options) {
     workflowRun,
     clinicalService: options.clinicalService,
   });
+  const workItems = listWorkItemsForRun(options.store, workflowRun);
+  const reviewThreads = listReviewThreadsForRun(options.store, workflowRun).map((reviewThread) => {
+    const messages = listMessagesForThread(options.store, workflowRun.tenantId, reviewThread.id);
+    const latestMessage = messages.at(-1) ?? null;
+    const linkedWorkItemIds = workItems
+      .filter((workItem) => (
+        (reviewThread.scopeType === 'run' && workItem.workflowRunId === workflowRun.id)
+        || (reviewThread.scopeId && workItem.subjectId === reviewThread.scopeId)
+      ))
+      .map((workItem) => workItem.id);
+
+    return {
+      ...reviewThread,
+      messages,
+      unreadCount: messages.filter((message) => message.status === 'posted').length,
+      latestMessagePreview: latestMessage?.body?.slice(0, 160) ?? '',
+      latestMessageAt: latestMessage?.updatedAt,
+      openActionCount: linkedWorkItemIds.length,
+      linkedWorkItemIds,
+    };
+  });
 
   return {
     workflowRun,
@@ -2782,11 +3634,9 @@ function buildReviewRunContext(options) {
     ),
     reviewAssignments: listReviewAssignmentsForRun(options.store, workflowRun),
     reviewComments: listReviewCommentsForRun(options.store, workflowRun),
-    workItems: listWorkItemsForRun(options.store, workflowRun),
-    reviewThreads: listReviewThreadsForRun(options.store, workflowRun).map((reviewThread) => ({
-      ...reviewThread,
-      messages: listMessagesForThread(options.store, workflowRun.tenantId, reviewThread.id),
-    })),
+    workItems,
+    reviewThreads,
+    renderingGuide: loadLatestArtifact(options.store, workflowRun, 'rendering-guide'),
     renderJobs: listRenderJobsForRun(options.store, workflowRun),
     latestEvalRun: getLatestEvalRun(options.store, workflowRun),
     latestEvalStatus: getLatestEvalStatus(options.store, workflowRun),
@@ -2823,6 +3673,36 @@ function buildWorkflowArtifactListViewPayload(options) {
         ...(artifactPayload ? { payload: artifactPayload } : {}),
       };
     }),
+  });
+}
+
+/**
+ * @param {{ store: PlatformStore, workflowRun: any }} options
+ * @returns {any}
+ */
+function buildRenderingGuideViewPayload(options) {
+  const guidePayload = loadRenderingGuidePayload({
+    store: options.store,
+    workflowRun: options.workflowRun,
+  });
+
+  if (!guidePayload) {
+    throw createHttpError(404, 'No rendering guide is available for this workflow run yet.');
+  }
+
+  const renderedAssets = listTenantArtifactsByType(options.store, 'rendered-asset', options.workflowRun.tenantId)
+    .filter((renderedAsset) => renderedAsset.workflowRunId === options.workflowRun.id);
+  const latestRenderedAssetManifest = loadLatestArtifact(options.store, options.workflowRun, 'rendered-asset-manifest');
+
+  return createRenderingGuideView({
+    runId: options.workflowRun.id,
+    renderingGuide: guidePayload.renderingGuide,
+    markdown: guidePayload.markdown,
+    attachmentSummary: {
+      attachedRenderedAssetCount: renderedAssets.length,
+      latestRenderedAssetManifestId: latestRenderedAssetManifest?.id,
+      attachmentMode: renderedAssets.length > 0 ? 'external-art-attached' : 'guide-only',
+    },
   });
 }
 
@@ -3123,7 +4003,7 @@ function ensureReviewThread(options) {
 }
 
 /**
- * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, thread: any, actor: any, body: string, parentMessageId?: string, mentions?: string[], resolutionNote?: string }} options
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, thread: any, actor: any, body: string, parentMessageId?: string, mentions?: string[], mentionedActorIds?: string[], resolutionNote?: string }} options
  * @returns {any}
  */
 function appendThreadMessage(options) {
@@ -3135,11 +4015,25 @@ function appendThreadMessage(options) {
     actor: options.actor,
     parentMessageId: options.parentMessageId,
     mentions: options.mentions,
+    mentionedActorIds: options.mentionedActorIds,
     resolutionNote: options.resolutionNote,
   });
   assertSchema(options.schemaRegistry, 'contracts/review-message.schema.json', reviewMessage);
   options.store.saveArtifact('review-message', reviewMessage.id, reviewMessage, {
     tenantId: options.workflowRun.tenantId,
+  });
+
+  createMentionNotifications({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowRun: options.workflowRun,
+    actor: options.actor,
+    threadId: options.thread.id,
+    subjectType: options.thread.scopeType,
+    subjectId: options.thread.scopeId ?? options.workflowRun.id,
+    body: options.body,
+    mentions: options.mentions,
+    mentionedActorIds: options.mentionedActorIds,
   });
   return reviewMessage;
 }
@@ -3329,6 +4223,230 @@ function buildSourceCatalogPayload(store, clinicalService, tenantId) {
   }
 
   return [...mergedRecords.values()].sort((/** @type {any} */ left, /** @type {any} */ right) => String(left.sourceLabel).localeCompare(String(right.sourceLabel)));
+}
+
+/**
+ * @param {{ renderPrompts: any[], attachment: any }} options
+ * @returns {any}
+ */
+function resolveRenderPromptForAttachment(options) {
+  if (typeof options.attachment.renderPromptId === 'string') {
+    const explicitMatch = options.renderPrompts.find((candidate) => candidate.id === options.attachment.renderPromptId);
+
+    if (!explicitMatch) {
+      throw createHttpError(400, `Render prompt ${options.attachment.renderPromptId} is not attached to this workflow run.`);
+    }
+
+    return explicitMatch;
+  }
+
+  if (typeof options.attachment.panelId !== 'string') {
+    throw createHttpError(400, 'Rendered asset attachment requires panelId or renderPromptId.');
+  }
+
+  const panelMatches = options.renderPrompts.filter((candidate) => candidate.panelId === options.attachment.panelId);
+
+  if (panelMatches.length === 0) {
+    throw createHttpError(400, `No render prompt is attached for panel ${options.attachment.panelId}.`);
+  }
+
+  if (panelMatches.length > 1) {
+    throw createHttpError(400, `Panel ${options.attachment.panelId} maps to multiple render prompts. Provide renderPromptId explicitly.`);
+  }
+
+  return panelMatches[0];
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, actor: any, attachments: any[] }} options
+ * @returns {{ workflowRun: any, renderJob: any, renderAttempt: any, renderedAssetManifest: any, renderedAssets: any[] }}
+ */
+function attachExternalRenderedAssets(options) {
+  if (options.attachments.length === 0) {
+    throw createHttpError(400, 'At least one external rendered asset must be provided.');
+  }
+
+  const renderPrompts = collectArtifactsForRun(options.store, options.workflowRun)
+    .filter((entry) => entry.artifactType === 'render-prompt')
+    .map((entry) => entry.artifact);
+
+  if (renderPrompts.length === 0) {
+    throw createHttpError(409, 'No render prompts are available for external art attachment.');
+  }
+
+  const timestamp = new Date().toISOString();
+  const attachmentPlans = options.attachments.map((attachment) => ({
+    attachment,
+    renderPrompt: resolveRenderPromptForAttachment({
+      renderPrompts,
+      attachment,
+    }),
+  }));
+  const renderPromptIds = uniqueStrings(attachmentPlans.map((plan) => plan.renderPrompt.id));
+
+  if (renderPromptIds.length !== attachmentPlans.length) {
+    throw createHttpError(400, 'Each attachment must target a unique panel or render prompt.');
+  }
+
+  /** @type {any} */
+  const initialRenderJob = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('rjob'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    status: 'completed',
+    approvalStatus: 'pending',
+    queueName: 'external-art-attachment',
+    provider: 'external-manual',
+    model: 'external-handoff',
+    renderTargetProfileId: MANUAL_RENDER_TARGET_PROFILE_ID,
+    renderPromptIds,
+    attemptIds: [],
+    createdBy: options.actor.id,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    completedAt: timestamp,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/render-job.schema.json', initialRenderJob);
+  options.store.saveArtifact('render-job', initialRenderJob.id, initialRenderJob, {
+    tenantId: options.workflowRun.tenantId,
+  });
+  let workflowRun = upsertArtifactReference(options.workflowRun, {
+    artifactType: 'render-job',
+    artifactId: initialRenderJob.id,
+    status: 'generated',
+  });
+  /** @type {any[]} */
+  const renderedAssets = [];
+
+  for (const plan of attachmentPlans) {
+    /** @type {any} */
+    const renderedAsset = {
+      schemaVersion: SCHEMA_VERSION,
+      id: createId('ras'),
+      tenantId: workflowRun.tenantId,
+      workflowRunId: workflowRun.id,
+      renderJobId: initialRenderJob.id,
+      renderPromptId: plan.renderPrompt.id,
+      panelId: plan.renderPrompt.panelId,
+      provider: 'external-manual',
+      model: 'external-handoff',
+      mimeType: plan.attachment.mimeType,
+      checksum: plan.attachment.checksum,
+      location: plan.attachment.location,
+      createdAt: timestamp,
+    };
+
+    if (typeof plan.attachment.thumbnailLocation === 'string') {
+      renderedAsset.thumbnailLocation = plan.attachment.thumbnailLocation;
+    }
+
+    if (typeof plan.attachment.width === 'number') {
+      renderedAsset.width = plan.attachment.width;
+    }
+
+    if (typeof plan.attachment.height === 'number') {
+      renderedAsset.height = plan.attachment.height;
+    }
+
+    assertSchema(options.schemaRegistry, 'contracts/rendered-asset.schema.json', renderedAsset);
+    options.store.saveArtifact('rendered-asset', renderedAsset.id, renderedAsset, {
+      tenantId: workflowRun.tenantId,
+    });
+    workflowRun = upsertArtifactReference(workflowRun, {
+      artifactType: 'rendered-asset',
+      artifactId: renderedAsset.id,
+      status: 'generated',
+    });
+    renderedAssets.push(renderedAsset);
+  }
+
+  const renderAttempt = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('ratm'),
+    renderJobId: initialRenderJob.id,
+    workflowRunId: workflowRun.id,
+    tenantId: workflowRun.tenantId,
+    attemptNumber: 1,
+    strategy: 'baseline',
+    status: 'succeeded',
+    providerRequestId: `manual-attachment:${initialRenderJob.id}`,
+    renderedAssetIds: renderedAssets.map((renderedAsset) => renderedAsset.id),
+    startedAt: timestamp,
+    completedAt: timestamp,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/render-attempt.schema.json', renderAttempt);
+  options.store.saveArtifact('render-attempt', renderAttempt.id, renderAttempt, {
+    tenantId: workflowRun.tenantId,
+  });
+  workflowRun = upsertArtifactReference(workflowRun, {
+    artifactType: 'render-attempt',
+    artifactId: renderAttempt.id,
+    status: 'generated',
+  });
+
+  const renderedAssetManifest = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('rman'),
+    tenantId: workflowRun.tenantId,
+    workflowRunId: workflowRun.id,
+    renderJobId: initialRenderJob.id,
+    renderTargetProfileId: MANUAL_RENDER_TARGET_PROFILE_ID,
+    allPanelsRendered: renderedAssets.length === renderPromptIds.length,
+    renderedAssets: renderedAssets.map((renderedAsset) => ({
+      renderedAssetId: renderedAsset.id,
+      renderPromptId: renderedAsset.renderPromptId,
+      panelId: renderedAsset.panelId,
+      location: renderedAsset.location,
+      checksum: renderedAsset.checksum,
+      mimeType: renderedAsset.mimeType,
+    })),
+    generatedAt: timestamp,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/rendered-asset-manifest.schema.json', renderedAssetManifest);
+  options.store.saveArtifact('rendered-asset-manifest', renderedAssetManifest.id, renderedAssetManifest, {
+    tenantId: workflowRun.tenantId,
+  });
+  workflowRun = upsertArtifactReference(workflowRun, {
+    artifactType: 'rendered-asset-manifest',
+    artifactId: renderedAssetManifest.id,
+    status: 'generated',
+  });
+
+  const completedRenderJob = {
+    ...initialRenderJob,
+    attemptIds: [renderAttempt.id],
+    renderedAssetManifestId: renderedAssetManifest.id,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/render-job.schema.json', completedRenderJob);
+  options.store.saveArtifact('render-job', completedRenderJob.id, completedRenderJob, {
+    tenantId: workflowRun.tenantId,
+  });
+  workflowRun = saveWorkflowRunRecord(options.store, options.schemaRegistry, workflowRun);
+
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'rendered-asset.attach',
+    'workflow-run',
+    workflowRun.id,
+    'success',
+    `Attached ${renderedAssets.length} external rendered assets to workflow run ${workflowRun.id}.`,
+    {
+      renderJobId: completedRenderJob.id,
+      renderedAssetCount: renderedAssets.length,
+      renderedAssetManifestId: renderedAssetManifest.id,
+    },
+  );
+
+  return {
+    workflowRun,
+    renderJob: completedRenderJob,
+    renderAttempt,
+    renderedAssetManifest,
+    renderedAssets,
+  };
 }
 
 /**
@@ -3555,6 +4673,11 @@ export async function processRenderJob(options) {
           notes: 'Rendered assets generated successfully.',
         },
       );
+      workflowRun = ensureKnowledgePackReviewWorkItem({
+        store: options.store,
+        schemaRegistry: options.schemaRegistry,
+        workflowRun,
+      });
       options.telemetry.info('render-job.completed', {
         renderJobId: renderJob.id,
         workflowRunId: workflowRun.id,
@@ -3791,6 +4914,10 @@ function exportWorkflowRun(options) {
     throw createHttpError(409, 'Export requires the latest eval run to pass all applicable thresholds.');
   }
 
+  if (requiresKnowledgePackDecision(options.store, options.workflowRun)) {
+    throw createHttpError(409, 'Export requires reviewer approval or promotion of the provisional disease knowledge pack.');
+  }
+
   const qaReports = options.workflowRun.artifacts
     .filter((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'qa-report')
     .map((/** @type {{ artifactType: string, artifactId: string }} */ artifact) => options.store.getArtifact(artifact.artifactType, artifact.artifactId))
@@ -3832,6 +4959,16 @@ function exportWorkflowRun(options) {
 
   releasePackage.releaseBundle.bundleIndexLocation = bundleIndexDocument.location;
   releasePackage.releaseBundle.sourceEvidencePackLocation = sourceEvidencePackDocument.location;
+  const renderingGuide = loadLatestArtifact(options.store, options.workflowRun, 'rendering-guide');
+
+  if (renderingGuide) {
+    releasePackage.releaseBundle.renderingGuideId = renderingGuide.id;
+    const renderingGuideMetadata = options.store.getArtifactMetadata('rendering-guide', renderingGuide.id);
+    releasePackage.releaseBundle.renderingGuideLocation = renderingGuideMetadata?.location ?? renderingGuide.markdownLocation;
+    releasePackage.releaseBundle.renderingGuideMarkdownDocumentId = renderingGuide.markdownDocumentId;
+    releasePackage.releaseBundle.renderingGuideMarkdownLocation = renderingGuide.markdownLocation;
+  }
+
   let workflowRun = persistArtifact(
     options.store,
     options.schemaRegistry,
@@ -3972,11 +5109,15 @@ export async function createApp(options = {}) {
   const schemaRegistry = await createSchemaRegistry(rootDir);
   const workflowSpec = await loadWorkflowSpec(rootDir);
   const clinicalService = createClinicalRetrievalService();
+  const researchAssemblyService = options.researchAssemblyService ?? createResearchAssemblyService({
+    apiKey: options.openaiApiKey,
+    model: options.researchModel,
+  });
   const storyEngineService = createStoryEngineService();
   const exporterService = createExporterService();
   const renderExecutionService = createRenderExecutionService({
     provider: options.renderProvider,
-    apiKey: options.geminiApiKey,
+    apiKey: options.renderProviderApiKey ?? options.openaiApiKey,
   });
   const evalService = createEvalService({
     rootDir,
@@ -4516,7 +5657,71 @@ export async function createApp(options = {}) {
         return;
       }
 
+      if (method === 'GET' && isReviewQueueAnalyticsPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot read review queue analytics.');
+        }
+
+        escalateOverdueWorkItems(store, actor.tenantId);
+        const accessibleWorkflowRuns = store.listWorkflowRuns().filter((workflowRun) => canAccessTenant(actor, getTenantId(workflowRun)));
+        const queueAnalyticsView = buildReviewQueueAnalyticsView(store, accessibleWorkflowRuns);
+        assertSchema(schemaRegistry, 'contracts/review-queue-analytics-view.schema.json', queueAnalyticsView);
+        sendJson(response, 200, queueAnalyticsView);
+        return;
+      }
+
+      if (method === 'GET' && isNotificationsPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot read notifications.');
+        }
+
+        const notifications = listNotificationsForActor({
+          store,
+          actor,
+        });
+        notifications.forEach((notification) => assertSchema(schemaRegistry, 'contracts/notification.schema.json', notification));
+        sendJson(response, 200, notifications);
+        return;
+      }
+
+      const notificationPath = matchNotificationPath(pathname);
+
+      if (method === 'PATCH' && notificationPath) {
+        const notification = store.getArtifact('notification', notificationPath.notificationId);
+
+        if (!notification) {
+          throw createHttpError(404, 'Notification not found.');
+        }
+
+        assertTenantAccess(actor, notification.tenantId, store, schemaRegistry, 'notification.update', 'notification', notification.id);
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body) || (body.status !== 'read' && body.status !== 'archived' && body.status !== 'unread')) {
+          throw createHttpError(400, 'Notification updates require a supported status value.');
+        }
+
+        const updatedNotification = {
+          ...notification,
+          status: body.status,
+          updatedAt: new Date().toISOString(),
+          ...(body.status === 'read' ? { readAt: new Date().toISOString() } : {}),
+        };
+        assertSchema(schemaRegistry, 'contracts/notification.schema.json', updatedNotification);
+        store.saveArtifact('notification', updatedNotification.id, updatedNotification, {
+          tenantId: updatedNotification.tenantId,
+        });
+        sendJson(response, 200, updatedNotification);
+        return;
+      }
+
       const workflowRunReviewViewPath = matchWorkflowRunReviewViewPath(pathname);
+      const workflowRunRenderingGuidePath = matchWorkflowRunRenderingGuidePath(pathname);
+      const workflowRunRenderingGuideRegeneratePath = matchWorkflowRunRenderingGuideRegeneratePath(pathname);
+      const workflowRunResearchBriefPath = matchWorkflowRunResearchBriefPath(pathname);
+      const workflowRunKnowledgePackBuildReportPath = matchWorkflowRunKnowledgePackBuildReportPath(pathname);
+      const workflowRunKnowledgePackRegeneratePath = matchWorkflowRunKnowledgePackRegeneratePath(pathname);
+      const workflowRunKnowledgePackApprovePath = matchWorkflowRunKnowledgePackApprovePath(pathname);
+      const workflowRunKnowledgePackPromotePath = matchWorkflowRunKnowledgePackPromotePath(pathname);
 
       if (method === 'GET' && workflowRunReviewViewPath) {
         const reviewRunContext = buildReviewRunContext({
@@ -4539,6 +5744,7 @@ export async function createApp(options = {}) {
           reviewComments: reviewRunContext.reviewComments,
           workItems: reviewRunContext.workItems,
           reviewThreads: reviewRunContext.reviewThreads,
+          renderingGuide: reviewRunContext.renderingGuide,
           renderJobs: reviewRunContext.renderJobs,
           latestEvalRun: reviewRunContext.latestEvalRun,
           latestEvalStatus: reviewRunContext.latestEvalStatus,
@@ -4546,6 +5752,213 @@ export async function createApp(options = {}) {
         });
         assertSchema(schemaRegistry, 'contracts/review-run-view.schema.json', reviewRunView);
         sendJson(response, 200, reviewRunView);
+        return;
+      }
+
+      if (method === 'GET' && workflowRunResearchBriefPath) {
+        const workflowRun = store.getWorkflowRun(workflowRunResearchBriefPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'research-brief.view', 'workflow-run', workflowRun.id);
+        const researchBrief = loadLatestArtifact(store, workflowRun, 'research-brief');
+
+        if (!researchBrief) {
+          throw createHttpError(404, 'No research brief is stored for this workflow run.');
+        }
+
+        assertSchema(schemaRegistry, 'contracts/research-brief.schema.json', researchBrief);
+        sendJson(response, 200, researchBrief);
+        return;
+      }
+
+      if (method === 'GET' && workflowRunKnowledgePackBuildReportPath) {
+        const workflowRun = store.getWorkflowRun(workflowRunKnowledgePackBuildReportPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'knowledge-pack-build-report.view', 'workflow-run', workflowRun.id);
+        const buildReport = loadLatestArtifact(store, workflowRun, 'knowledge-pack-build-report');
+
+        if (!buildReport) {
+          throw createHttpError(404, 'No knowledge-pack build report is stored for this workflow run.');
+        }
+
+        assertSchema(schemaRegistry, 'contracts/knowledge-pack-build-report.schema.json', buildReport);
+        sendJson(response, 200, buildReport);
+        return;
+      }
+
+      if (method === 'POST' && workflowRunKnowledgePackApprovePath) {
+        const workflowRun = store.getWorkflowRun(workflowRunKnowledgePackApprovePath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'knowledge-pack.approve', 'workflow-run', workflowRun.id);
+        const body = await readJsonBody(request);
+        const result = saveKnowledgePackPromotionDecision({
+          store,
+          schemaRegistry,
+          workflowRun,
+          actor,
+          decision: 'approved-run-only',
+          notes: isRecord(body) && typeof body.notes === 'string' ? body.notes : undefined,
+        });
+        sendJson(response, 200, result.workflowRun);
+        return;
+      }
+
+      if (method === 'POST' && workflowRunKnowledgePackPromotePath) {
+        const workflowRun = store.getWorkflowRun(workflowRunKnowledgePackPromotePath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'knowledge-pack.promote', 'workflow-run', workflowRun.id);
+        const body = await readJsonBody(request);
+        const result = saveKnowledgePackPromotionDecision({
+          store,
+          schemaRegistry,
+          workflowRun,
+          actor,
+          decision: 'promoted-to-library',
+          notes: isRecord(body) && typeof body.notes === 'string' ? body.notes : undefined,
+        });
+        sendJson(response, 200, result.workflowRun);
+        return;
+      }
+
+      if (method === 'POST' && workflowRunKnowledgePackRegeneratePath) {
+        const workflowRun = store.getWorkflowRun(workflowRunKnowledgePackRegeneratePath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'knowledge-pack.regenerate', 'workflow-run', workflowRun.id);
+        const existingKnowledgePack = loadLatestKnowledgePackForRun(store, workflowRun);
+
+        if (!existingKnowledgePack || existingKnowledgePack.packStatus !== 'provisional') {
+          throw createHttpError(409, 'Only provisional knowledge packs can be regenerated through research assembly.');
+        }
+
+        const researchAssembly = await researchAssemblyService.compileProvisionalKnowledgePack({
+          workflowRun,
+          workflowInput: clone(workflowRun.input),
+          canonicalDisease: {
+            schemaVersion: SCHEMA_VERSION,
+            id: createId('can'),
+            rawInput: workflowRun.input.diseaseName,
+            normalizedInput: normalizeDiseaseInput(workflowRun.input.diseaseName),
+            resolutionStatus: 'new-disease',
+            confidence: 0.56,
+            canonicalDiseaseName: existingKnowledgePack.canonicalDiseaseName,
+            candidateMatches: [],
+          },
+          actor,
+        });
+        let updatedWorkflowRun = persistArtifact(
+          store,
+          schemaRegistry,
+          workflowRun,
+          'research-brief',
+          'contracts/research-brief.schema.json',
+          researchAssembly.researchBrief,
+        );
+        updatedWorkflowRun = persistArtifact(
+          store,
+          schemaRegistry,
+          updatedWorkflowRun,
+          'source-harvest',
+          'contracts/source-harvest.schema.json',
+          researchAssembly.sourceHarvest,
+        );
+        updatedWorkflowRun = persistArtifact(
+          store,
+          schemaRegistry,
+          updatedWorkflowRun,
+          'knowledge-pack-build-report',
+          'contracts/knowledge-pack-build-report.schema.json',
+          researchAssembly.buildReport,
+          researchAssembly.buildReport.status === 'blocked' ? 'rejected' : 'generated',
+        );
+        updatedWorkflowRun = persistArtifact(
+          store,
+          schemaRegistry,
+          updatedWorkflowRun,
+          'disease-knowledge-pack',
+          'contracts/disease-knowledge-pack.schema.json',
+          researchAssembly.knowledgePack,
+          'generated',
+        );
+
+        updatedWorkflowRun = rebuildClinicalPackageForRun({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          clinicalService,
+          storyEngineService,
+          workflowRun: updatedWorkflowRun,
+          actor,
+          reason: 'Regenerated the provisional knowledge pack from research assembly and rebuilt the clinical package.',
+        });
+        updatedWorkflowRun = await resumeRenderExecutionIfReady({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          queueAdapter: platformRuntime.queueAdapter,
+          renderExecutionService,
+          workflowRun: updatedWorkflowRun,
+          actor,
+          telemetry: platformRuntime.telemetry,
+        });
+        sendJson(response, 200, updatedWorkflowRun);
+        return;
+      }
+
+      if (method === 'GET' && workflowRunRenderingGuidePath) {
+        const workflowRun = store.getWorkflowRun(workflowRunRenderingGuidePath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'rendering-guide.view', 'workflow-run', workflowRun.id);
+        const renderingGuideView = buildRenderingGuideViewPayload({
+          store,
+          workflowRun,
+        });
+        assertSchema(schemaRegistry, 'contracts/rendering-guide-view.schema.json', renderingGuideView);
+        sendJson(response, 200, renderingGuideView);
+        return;
+      }
+
+      if (method === 'POST' && workflowRunRenderingGuideRegeneratePath) {
+        let workflowRun = store.getWorkflowRun(workflowRunRenderingGuideRegeneratePath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'rendering-guide.regenerate', 'workflow-run', workflowRun.id);
+        workflowRun = regenerateRenderingGuideForRun({
+          store,
+          schemaRegistry,
+          workflowRun,
+        }).workflowRun;
+        const renderingGuideView = buildRenderingGuideViewPayload({
+          store,
+          workflowRun,
+        });
+        assertSchema(schemaRegistry, 'contracts/rendering-guide-view.schema.json', renderingGuideView);
+        sendJson(response, 200, renderingGuideView);
         return;
       }
 
@@ -4691,6 +6104,27 @@ export async function createApp(options = {}) {
         store.saveArtifact('review-assignment', reviewAssignment.id, reviewAssignment, {
           tenantId: workflowRun.tenantId,
         });
+        if (typeof reviewAssignment.assigneeId === 'string' || typeof reviewAssignment.assigneeDisplayName === 'string') {
+          const notification = {
+            schemaVersion: SCHEMA_VERSION,
+            id: createId('ntf'),
+            tenantId: workflowRun.tenantId,
+            targetActorId: reviewAssignment.assigneeId ?? reviewAssignment.assigneeDisplayName,
+            workflowRunId: workflowRun.id,
+            notificationType: 'assignment',
+            status: 'unread',
+            message: `${actor.displayName} assigned ${reviewAssignment.reviewRole} review for ${workflowRun.input.diseaseName}.`,
+            subjectType: 'workflow-run',
+            subjectId: workflowRun.id,
+            createdBy: actor.id,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          assertSchema(schemaRegistry, 'contracts/notification.schema.json', notification);
+          store.saveArtifact('notification', notification.id, notification, {
+            tenantId: workflowRun.tenantId,
+          });
+        }
         syncAssignmentWorkItem({
           store,
           schemaRegistry,
@@ -4727,12 +6161,29 @@ export async function createApp(options = {}) {
         }
 
         assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'review-threads.view', 'workflow-run', workflowRun.id);
-        const reviewThreads = listReviewThreadsForRun(store, workflowRun);
+        const workItems = listWorkItemsForRun(store, workflowRun);
+        const reviewThreads = listReviewThreadsForRun(store, workflowRun).map((reviewThread) => {
+          const messages = listMessagesForThread(store, workflowRun.tenantId, reviewThread.id);
+          const latestMessage = messages.at(-1) ?? null;
+          const linkedWorkItemIds = workItems
+            .filter((workItem) => (
+              (reviewThread.scopeType === 'run' && workItem.workflowRunId === workflowRun.id)
+              || (reviewThread.scopeId && workItem.subjectId === reviewThread.scopeId)
+            ))
+            .map((workItem) => workItem.id);
+
+          return {
+            ...reviewThread,
+            messages,
+            unreadCount: messages.filter((message) => message.status === 'posted').length,
+            latestMessagePreview: latestMessage?.body?.slice(0, 160) ?? '',
+            latestMessageAt: latestMessage?.updatedAt,
+            openActionCount: linkedWorkItemIds.length,
+            linkedWorkItemIds,
+          };
+        });
         reviewThreads.forEach((reviewThread) => assertSchema(schemaRegistry, 'contracts/review-thread.schema.json', reviewThread));
-        sendJson(response, 200, reviewThreads.map((reviewThread) => ({
-          ...reviewThread,
-          messages: listMessagesForThread(store, workflowRun.tenantId, reviewThread.id),
-        })));
+        sendJson(response, 200, reviewThreads);
         return;
       }
 
@@ -4808,6 +6259,7 @@ export async function createApp(options = {}) {
           body: body.body,
           parentMessageId: typeof body.parentMessageId === 'string' ? body.parentMessageId : undefined,
           mentions: Array.isArray(body.mentions) ? body.mentions.filter((value) => typeof value === 'string') : [],
+          mentionedActorIds: Array.isArray(body.mentionedActorIds) ? body.mentionedActorIds.filter((value) => typeof value === 'string') : [],
           resolutionNote: typeof body.resolutionNote === 'string' ? body.resolutionNote : undefined,
         });
         sendJson(response, 201, reviewMessage);
@@ -4866,6 +6318,33 @@ export async function createApp(options = {}) {
       }
 
       const workflowRunRenderJobsPath = matchWorkflowRunRenderJobsPath(pathname);
+      const workflowRunRenderedAssetAttachmentPath = matchWorkflowRunRenderedAssetAttachmentPath(pathname);
+
+      if (workflowRunRenderedAssetAttachmentPath && method === 'POST') {
+        let workflowRun = store.getWorkflowRun(workflowRunRenderedAssetAttachmentPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'rendered-asset.attach', 'workflow-run', workflowRun.id);
+        const body = /** @type {{ assets: any[] }} */ (await readJsonBody(request));
+        assertSchema(schemaRegistry, 'contracts/rendered-asset-attachment-request.schema.json', body);
+        workflowRun = attachExternalRenderedAssets({
+          store,
+          schemaRegistry,
+          workflowRun,
+          actor,
+          attachments: body.assets,
+        }).workflowRun;
+        const renderingGuideView = buildRenderingGuideViewPayload({
+          store,
+          workflowRun,
+        });
+        assertSchema(schemaRegistry, 'contracts/rendering-guide-view.schema.json', renderingGuideView);
+        sendJson(response, 201, renderingGuideView);
+        return;
+      }
 
       if (workflowRunRenderJobsPath && method === 'POST') {
         const workflowRun = store.getWorkflowRun(workflowRunRenderJobsPath.runId);
@@ -5189,7 +6668,13 @@ export async function createApp(options = {}) {
           notes: 'Input accepted and stored in workflow context.',
         });
 
-        const canonicalDisease = clinicalService.canonicalizeDiseaseInput(workflowInput.diseaseName);
+        const diseaseResolution = resolveDiseaseInput({
+          store,
+          clinicalService,
+          tenantId: getTenantId(project),
+          diseaseInput: workflowInput.diseaseName,
+        });
+        const canonicalDisease = diseaseResolution.canonicalDisease;
         workflowRun = persistArtifact(
           store,
           schemaRegistry,
@@ -5199,21 +6684,7 @@ export async function createApp(options = {}) {
           canonicalDisease,
         );
 
-        if (canonicalDisease.resolutionStatus !== 'resolved') {
-          workflowRun = transitionWorkflow(store, schemaRegistry, workflowSpec, workflowRun, {
-            eventType: 'STAGE_FAILED',
-            actor: {
-              type: 'system',
-              id: 'canonicalization-stage',
-            },
-            payload: {
-              canonicalDiseaseId: canonicalDisease.id,
-              candidateMatches: canonicalDisease.candidateMatches,
-              resolutionStatus: canonicalDisease.resolutionStatus,
-            },
-            notes: canonicalDisease.notes,
-          });
-        } else {
+        if (canonicalDisease.resolutionStatus === 'resolved') {
           workflowRun = continueResolvedPipeline({
             store,
             schemaRegistry,
@@ -5234,6 +6705,43 @@ export async function createApp(options = {}) {
             workflowRun,
             actor,
             telemetry: platformRuntime.telemetry,
+          });
+        } else if (canonicalDisease.resolutionStatus === 'new-disease') {
+          workflowRun = await continueNewDiseasePipeline({
+            store,
+            schemaRegistry,
+            workflowSpec,
+            workflowRun,
+            workflowInput,
+            canonicalDisease,
+            clinicalService,
+            storyEngineService,
+            researchAssemblyService,
+            actor,
+          });
+          workflowRun = await resumeRenderExecutionIfReady({
+            store,
+            schemaRegistry,
+            workflowSpec,
+            queueAdapter: platformRuntime.queueAdapter,
+            renderExecutionService,
+            workflowRun,
+            actor,
+            telemetry: platformRuntime.telemetry,
+          });
+        } else {
+          workflowRun = transitionWorkflow(store, schemaRegistry, workflowSpec, workflowRun, {
+            eventType: 'STAGE_FAILED',
+            actor: {
+              type: 'system',
+              id: 'canonicalization-stage',
+            },
+            payload: {
+              canonicalDiseaseId: canonicalDisease.id,
+              candidateMatches: canonicalDisease.candidateMatches,
+              resolutionStatus: canonicalDisease.resolutionStatus,
+            },
+            notes: canonicalDisease.notes,
           });
         }
 
@@ -5943,6 +7451,7 @@ export async function createApp(options = {}) {
       }
 
       const releaseBundlePath = matchReleaseBundlePath(pathname);
+      const releaseBundleRenderingGuidePath = matchReleaseBundleRenderingGuidePath(pathname);
 
       if (method === 'GET' && releaseBundlePath) {
         const releaseBundle = store.getArtifact('release-bundle', releaseBundlePath.releaseId);
@@ -5954,6 +7463,31 @@ export async function createApp(options = {}) {
         assertTenantAccess(actor, releaseBundle.tenantId, store, schemaRegistry, 'release-bundle.view', 'workflow-run', releaseBundle.workflowRunId);
         assertSchema(schemaRegistry, 'contracts/release-bundle.schema.json', releaseBundle);
         sendJson(response, 200, releaseBundle);
+        return;
+      }
+
+      if (method === 'GET' && releaseBundleRenderingGuidePath) {
+        const releaseBundle = store.getArtifact('release-bundle', releaseBundleRenderingGuidePath.releaseId);
+
+        if (!releaseBundle) {
+          throw createHttpError(404, 'Release bundle not found.');
+        }
+
+        assertTenantAccess(actor, releaseBundle.tenantId, store, schemaRegistry, 'release-bundle.rendering-guide.view', 'workflow-run', releaseBundle.workflowRunId);
+
+        if (!releaseBundle.renderingGuideMarkdownDocumentId) {
+          throw createHttpError(404, 'Release bundle rendering guide not found.');
+        }
+
+        const renderingGuideMarkdown = store.getDocument('rendering-guide-markdown', releaseBundle.renderingGuideMarkdownDocumentId);
+
+        if (!renderingGuideMarkdown) {
+          throw createHttpError(404, 'Release bundle rendering guide markdown could not be loaded.');
+        }
+
+        response.statusCode = 200;
+        response.setHeader('content-type', 'text/markdown; charset=utf-8');
+        response.end(renderingGuideMarkdown);
         return;
       }
 

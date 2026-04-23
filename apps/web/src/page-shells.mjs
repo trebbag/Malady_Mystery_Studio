@@ -50,6 +50,71 @@ export const webPageShells = [
     components: mapComponents(['ReviewDashboardShell', 'RunSummaryCard']),
   },
   {
+    path: '/review/queue',
+    title: 'Review Queue',
+    purpose: 'Shows cross-run work items, queue pressure, overdue badges, and escalation context.',
+    states: {
+      loading: ['Loading work items.', 'Loading due-date summaries.'],
+      empty: ['No work items match the current filters.'],
+      filtered: ['Queue filters applied.'],
+      error: ['Failed to load the review queue.'],
+    },
+    banners: [
+      'Make overdue and escalated work visually prominent.',
+      'Show queue origin so reviewers know whether the item came from clinical, render, or export flow.',
+    ],
+    components: mapComponents(['ReviewDashboardShell', 'RunSummaryCard']),
+  },
+  {
+    path: '/runs/:runId/pipeline',
+    title: 'Pipeline Timeline',
+    purpose: 'Shows stage progression, artifact status, and audit history for a single run.',
+    states: {
+      loading: ['Loading run timeline.', 'Loading artifact status.'],
+      blocked: ['Run is paused on a gate or blocker.'],
+      ready: ['Run timeline ready for inspection.'],
+      error: ['Failed to load pipeline details.'],
+    },
+    banners: [
+      'Keep the current stage and pause reason visible above the timeline.',
+      'Show which artifacts are required before export can continue.',
+    ],
+    components: mapComponents(['RunSummaryCard', 'AuditLogPanel']),
+  },
+  {
+    path: '/runs/:runId/review',
+    title: 'Run Review Workspace',
+    purpose: 'Primary run-centric workspace for approvals, comments, work items, evals, and export readiness.',
+    states: {
+      loading: ['Loading run review state.', 'Loading assignments and comments.'],
+      blocked: ['Clinical or export blockers need reviewer action.'],
+      reviewReady: ['Run is ready for reviewer actions.'],
+      exportReady: ['Run is export-ready.'],
+      error: ['Failed to load the run review workspace.'],
+    },
+    banners: [
+      'Highlight stale evals and export blockers before secondary metadata.',
+      'Show threaded review and work-item context alongside approval controls.',
+    ],
+    components: mapComponents(['RunSummaryCard', 'ApprovalActions', 'EvalRunPanel', 'ExportHistoryPanel']),
+  },
+  {
+    path: '/runs/:runId/rendering-guide',
+    title: 'Rendering Guide',
+    purpose: 'Shows the compiled guide, provider-specific prompt blocks, and optional external art attachment actions.',
+    states: {
+      loading: ['Loading rendering guide.', 'Loading panel prompt blocks.'],
+      guideOnly: ['Rendering guide is available for handoff.'],
+      externalArtAttached: ['Externally rendered art has been attached to this run.'],
+      error: ['Failed to load the rendering guide.'],
+    },
+    banners: [
+      'Keep lettering separation explicit in every panel block.',
+      'Show manual external-art attachment as optional rather than required.',
+    ],
+    components: mapComponents(['RunSummaryCard', 'ExportHistoryPanel']),
+  },
+  {
     path: '/review/runs/:runId',
     title: 'Review Run',
     purpose: 'Primary local run-detail page for clinical review, approvals, evals, and export actions.',

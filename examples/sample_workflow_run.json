@@ -146,6 +146,12 @@
       "path": "examples/sample_lettering_map.json"
     },
     {
+      "artifactType": "rendering-guide",
+      "artifactId": "rgd.hcc.001",
+      "status": "approved",
+      "path": "examples/sample_rendering_guide.json"
+    },
+    {
       "artifactType": "eval-run",
       "artifactId": "evr.hcc.001",
       "status": "approved",

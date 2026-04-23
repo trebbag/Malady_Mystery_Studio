@@ -32,6 +32,7 @@
       "enum": [
         "resolved",
         "ambiguous",
+        "new-disease",
         "unresolved"
       ]
     },

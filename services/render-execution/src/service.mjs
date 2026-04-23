@@ -17,15 +17,15 @@ function sha256(value) {
 
 export const DEFAULT_RENDER_TARGET_PROFILE = Object.freeze({
   schemaVersion: '1.0.0',
-  id: 'rtp.gemini-image-default',
-  provider: 'gemini-image',
-  model: 'gemini-3.1-flash-image-preview',
+  id: 'rtp.openai-image-default',
+  provider: 'openai-image',
+  model: 'gpt-image-2',
   supportedAspectRatios: ['4:3', '16:9', '1:1'],
   fallbackStrategies: ['baseline', 'simplified-composition', 'tight-anatomy'],
   textHandlingPolicy: 'Never request visible lettering in generated art; preserve lettering as a separate overlay.',
-  watermarkPolicy: 'Provider output includes SynthID watermarking metadata at generation time.',
+  watermarkPolicy: 'Provider output may include vendor safety metadata; do not rely on the generated image as the text layer.',
   notes: [
-    'Gemini image output must be continuity anchored and medically constrained.',
+    'OpenAI image output must be continuity anchored and medically constrained.',
     'Fallback prompts should simplify composition before weakening anatomy locks.',
   ],
 });
@@ -36,13 +36,19 @@ export const DEFAULT_RENDER_TARGET_PROFILE = Object.freeze({
  * @returns {string}
  */
 function strategyPrompt(renderPrompt, strategy) {
+  const basePrompt = [
+    renderPrompt.positivePrompt,
+    renderPrompt.aspectRatio ? `Target aspect ratio: ${renderPrompt.aspectRatio}.` : '',
+    renderPrompt.negativePrompt ? `Avoid the following problems: ${renderPrompt.negativePrompt}.` : '',
+  ].filter(Boolean).join(' ');
+
   switch (strategy) {
     case 'simplified-composition':
-      return `${renderPrompt.positivePrompt} Simplify the composition to a single clear focal action while preserving continuity anchors.`;
+      return `${basePrompt} Simplify the composition to a single clear focal action while preserving continuity anchors.`;
     case 'tight-anatomy':
-      return `${renderPrompt.positivePrompt} Make anatomy and mechanism unusually explicit and avoid ornamental background clutter.`;
+      return `${basePrompt} Make anatomy and mechanism unusually explicit and avoid ornamental background clutter.`;
     default:
-      return renderPrompt.positivePrompt;
+      return basePrompt;
   }
 }
 
@@ -71,14 +77,25 @@ class StubRenderProvider {
   }
 }
 
-class GeminiImageProvider {
+function mapAspectRatioToSize(aspectRatio) {
+  switch (aspectRatio) {
+    case '16:9':
+      return '1536x1024';
+    case '4:3':
+      return '1024x1024';
+    default:
+      return '1024x1024';
+  }
+}
+
+class OpenAiImageProvider {
   /**
    * @param {string} apiKey
    * @param {string} [model]
    */
   constructor(apiKey, model = DEFAULT_RENDER_TARGET_PROFILE.model) {
     this.apiKey = apiKey;
-    this.provider = 'gemini-image';
+    this.provider = 'openai-image';
     this.model = model;
   }
 
@@ -88,51 +105,50 @@ class GeminiImageProvider {
    * @returns {Promise<any>}
    */
   async generate(renderPrompt, strategy) {
+    if (!this.apiKey) {
+      throw new Error('OpenAI image generation requires OPENAI_API_KEY or RENDER_PROVIDER_API_KEY.');
+    }
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`,
+      'https://api.openai.com/v1/images/generations',
       {
         method: 'POST',
         headers: {
+          authorization: `Bearer ${this.apiKey}`,
           'content-type': 'application/json',
-          'x-goog-api-key': this.apiKey,
         },
         body: JSON.stringify({
-          contents: [{
-            parts: [
-              {
-                text: strategyPrompt(renderPrompt, strategy),
-              },
-            ],
-          }],
-          generationConfig: {
-            responseModalities: ['TEXT', 'IMAGE'],
-          },
+          model: this.model,
+          prompt: strategyPrompt(renderPrompt, strategy),
+          size: mapAspectRatioToSize(renderPrompt.aspectRatio),
+          quality: 'high',
+          background: 'opaque',
+          output_format: 'png',
         }),
       },
     );
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Gemini image request failed: ${response.status} ${response.statusText}. ${text}`);
+      throw new Error(`OpenAI image request failed: ${response.status} ${response.statusText}. ${text}`);
     }
 
     const payload = await response.json();
-    const parts = payload?.candidates?.[0]?.content?.parts ?? [];
-    const imagePart = parts.find((/** @type {any} */ part) => part.inlineData?.data);
+    const imagePart = payload?.data?.find((/** @type {any} */ item) => typeof item?.b64_json === 'string');
 
     if (!imagePart) {
-      throw new Error('Gemini image response did not include inline image data.');
+      throw new Error('OpenAI image response did not include b64_json image data.');
     }
 
     return {
       provider: this.provider,
       model: this.model,
       strategy,
-      mimeType: imagePart.inlineData.mimeType ?? 'image/png',
-      buffer: Buffer.from(imagePart.inlineData.data, 'base64'),
-      providerRequestId: payload?.responseId ?? payload?.candidates?.[0]?.id ?? createId('greq'),
-      width: undefined,
-      height: undefined,
+      mimeType: 'image/png',
+      buffer: Buffer.from(imagePart.b64_json, 'base64'),
+      providerRequestId: payload?.id ?? createId('greq'),
+      width: Number.parseInt(String(mapAspectRatioToSize(renderPrompt.aspectRatio).split('x')[0] ?? ''), 10) || undefined,
+      height: Number.parseInt(String(mapAspectRatioToSize(renderPrompt.aspectRatio).split('x')[1] ?? ''), 10) || undefined,
     };
   }
 }
@@ -141,9 +157,14 @@ class GeminiImageProvider {
  * @param {{ provider?: string, apiKey?: string }} [options]
  */
 export function createRenderExecutionService(options = {}) {
-  const providerName = options.provider ?? process.env.RENDER_PROVIDER ?? (process.env.GEMINI_API_KEY ? 'gemini-image' : 'stub-image');
-  const provider = providerName === 'gemini-image'
-    ? new GeminiImageProvider(options.apiKey ?? process.env.GEMINI_API_KEY ?? '')
+  const providerName = options.provider
+    ?? process.env.RENDER_PROVIDER
+    ?? (process.env.OPENAI_API_KEY ? 'openai-image' : 'stub-image');
+  const provider = providerName === 'openai-image'
+    ? new OpenAiImageProvider(
+      options.apiKey ?? process.env.RENDER_PROVIDER_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
+      process.env.OPENAI_RENDER_MODEL ?? DEFAULT_RENDER_TARGET_PROFILE.model,
+    )
     : new StubRenderProvider();
 
   return {

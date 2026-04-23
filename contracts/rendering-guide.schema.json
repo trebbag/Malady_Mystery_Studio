@@ -1,0 +1,476 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/rendering-guide.schema.json",
+  "title": "RenderingGuide",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "workflowRunId",
+    "tenantId",
+    "projectTitle",
+    "canonicalDiseaseName",
+    "providerTargets",
+    "generatedAt",
+    "markdownDocumentId",
+    "markdownLocation",
+    "runSummary",
+    "franchiseRules",
+    "continuityBible",
+    "slideStrategy",
+    "globalNegativeConstraints",
+    "gensparkDeckBootstrapPrompt",
+    "retryGuidance",
+    "panels"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflowRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "tenantId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "projectTitle": {
+      "type": "string"
+    },
+    "canonicalDiseaseName": {
+      "type": "string"
+    },
+    "providerTargets": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string",
+        "enum": [
+          "nano-banana-pro",
+          "genspark-ai-slides"
+        ]
+      }
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "markdownDocumentId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "markdownLocation": {
+      "type": "string"
+    },
+    "runSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "oneSentence",
+        "patientExperienceSummary",
+        "keyMechanism",
+        "timeScale",
+        "educationalFocus",
+        "audienceTier",
+        "styleProfile"
+      ],
+      "properties": {
+        "oneSentence": {
+          "type": "string"
+        },
+        "patientExperienceSummary": {
+          "type": "string"
+        },
+        "keyMechanism": {
+          "type": "string"
+        },
+        "timeScale": {
+          "type": "string"
+        },
+        "educationalFocus": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "audienceTier": {
+          "type": "string"
+        },
+        "styleProfile": {
+          "type": "string"
+        }
+      }
+    },
+    "franchiseRules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "continuityBible": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "continuityAnchors",
+        "characterLocks",
+        "anatomyLocks",
+        "styleLocks",
+        "letteringPolicy"
+      ],
+      "properties": {
+        "continuityAnchors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "characterLocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "anatomyLocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "styleLocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "letteringPolicy": {
+          "type": "string"
+        }
+      }
+    },
+    "slideStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "onePanelPerSlide",
+        "sequentialGenerationRequired",
+        "firstSlideStyleLockRequired",
+        "forbidLiveResearch"
+      ],
+      "properties": {
+        "onePanelPerSlide": {
+          "type": "boolean"
+        },
+        "sequentialGenerationRequired": {
+          "type": "boolean"
+        },
+        "firstSlideStyleLockRequired": {
+          "type": "boolean"
+        },
+        "forbidLiveResearch": {
+          "type": "boolean"
+        }
+      }
+    },
+    "globalNegativeConstraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "gensparkDeckBootstrapPrompt": {
+      "type": "string"
+    },
+    "retryGuidance": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "panels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "panelId",
+          "sceneId",
+          "pageNumber",
+          "order",
+          "storyFunction",
+          "beatGoal",
+          "medicalObjective",
+          "location",
+          "bodyScale",
+          "actionSummary",
+          "cameraFraming",
+          "cameraAngle",
+          "compositionNotes",
+          "lightingMood",
+          "continuityAnchors",
+          "acceptanceChecks",
+          "claimReferences",
+          "letteringEntries",
+          "nanoBananaPrompt",
+          "gensparkSlide"
+        ],
+        "properties": {
+          "panelId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "sceneId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "storyFunction": {
+            "type": "string"
+          },
+          "beatGoal": {
+            "type": "string"
+          },
+          "medicalObjective": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "bodyScale": {
+            "type": "string"
+          },
+          "actionSummary": {
+            "type": "string"
+          },
+          "clueRevealed": {
+            "type": "string"
+          },
+          "cameraFraming": {
+            "type": "string"
+          },
+          "cameraAngle": {
+            "type": "string"
+          },
+          "compositionNotes": {
+            "type": "string"
+          },
+          "lightingMood": {
+            "type": "string"
+          },
+          "continuityAnchors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "linkedClaimIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          },
+          "acceptanceChecks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "claimReferences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "claimId",
+                "claimText",
+                "sourceId",
+                "sourceLabel"
+              ],
+              "properties": {
+                "claimId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                },
+                "claimText": {
+                  "type": "string"
+                },
+                "sourceId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                },
+                "sourceLabel": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "letteringEntries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "entryId",
+                "layerType",
+                "text",
+                "placement",
+                "purpose"
+              ],
+              "properties": {
+                "entryId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                },
+                "layerType": {
+                  "type": "string",
+                  "enum": [
+                    "dialogue",
+                    "caption",
+                    "label",
+                    "sound-effect"
+                  ]
+                },
+                "speaker": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "placement": {
+                  "type": "string"
+                },
+                "purpose": {
+                  "type": "string"
+                },
+                "spoilerLevel": {
+                  "type": "string"
+                },
+                "linkedClaimIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9._:-]+$"
+                  }
+                }
+              }
+            }
+          },
+          "nanoBananaPrompt": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "aspectRatio",
+              "prompt",
+              "negativePrompt",
+              "styleLocks",
+              "characterLocks",
+              "anatomyLocks",
+              "notes"
+            ],
+            "properties": {
+              "aspectRatio": {
+                "type": "string"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "negativePrompt": {
+                "type": "string"
+              },
+              "styleLocks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "characterLocks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "anatomyLocks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "gensparkSlide": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "slideNumber",
+              "title",
+              "creationPrompt",
+              "styleLockInstruction",
+              "sequentialInstruction",
+              "overlayInstructions",
+              "useOnlyProvidedContent",
+              "forbidLiveResearch",
+              "notes"
+            ],
+            "properties": {
+              "slideNumber": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "title": {
+                "type": "string"
+              },
+              "creationPrompt": {
+                "type": "string"
+              },
+              "styleLockInstruction": {
+                "type": "string"
+              },
+              "sequentialInstruction": {
+                "type": "string"
+              },
+              "overlayInstructions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "useOnlyProvidedContent": {
+                "type": "boolean"
+              },
+              "forbidLiveResearch": {
+                "type": "boolean"
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

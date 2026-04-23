@@ -1,6 +1,6 @@
 # Needs From You
 
-The current repo still runs locally without any external credentials. The items below are only required to complete the managed Azure pilot path and live Gemini-backed rendering that are now scaffolded in code.
+The current repo still runs locally without any external credentials. The items below are only required to complete the managed Azure pilot path and any optional downstream integrations beyond the default rendering-guide export path.
 
 ## Azure Pilot Foundations
 
@@ -25,13 +25,12 @@ The current repo still runs locally without any external credentials. The items 
 - `AZURE_SERVICE_BUS_CONNECTION_STRING`
 - Container image references for the API and worker when the Azure deployment tranche is actually cut over.
 
-## Live Rendering
+## Optional External Art Attachments
 
-- `GEMINI_API_KEY` for the first live render-enabled environment.
-- Confirmation that Gemini Image is the intended first render provider for the pilot.
-- Confirmation of the first pilot release policy for rendered output approval:
-  - who can approve rendered-output quality
-  - whether prompt-only export must remain allowed anywhere beyond local/dev use
+- Confirmation of whether externally rendered art should stay reference-only or also support mirrored binary ingestion later.
+- Confirmation of the first downstream manual-attachment review policy:
+  - who can approve externally attached rendered-output quality
+  - whether optional rendered-output review should ever block guide-first export
 
 ## Clinical Governance and Ownership
 

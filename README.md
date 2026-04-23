@@ -1,6 +1,6 @@
 # Disease Comic Platform
 
-Local-first starter platform for turning a disease or condition into a medically traceable comic production package with workbook, scene, panel, render, review, eval, and export artifacts.
+Local-first starter platform for turning a disease or condition into a medically traceable comic production package with workbook, scene, panel, rendering-guide, review, eval, and export artifacts.
 
 ## Local runtime
 
@@ -44,6 +44,7 @@ pnpm ops:restore-smoke
   - `/review/queue`
   - `/runs/:runId/pipeline`
   - `/runs/:runId/review`
+  - `/runs/:runId/rendering-guide`
   - `/runs/:runId/packets`
   - `/runs/:runId/evidence`
   - `/runs/:runId/workbooks`
@@ -61,24 +62,24 @@ pnpm ops:restore-smoke
 
 ## Current local MVP status
 
-- Foundation and local runtime: `96%`
-- Clinical truth layer: `93%`
+- Foundation and local runtime: `97%`
+- Clinical truth layer: `94%`
 - Workbook and guardrails: `76%`
-- Scene, panel, render-prep: `79%`
-- Local review, eval, export, and queue workflow: `97%`
-- Frontend structure and UX implementation: `93%`
-- Managed platform and pilot ops: `58%`
-- Live render execution: `62%`
+- Scene, panel, and rendering-guide prep: `90%`
+- Review, eval, and export workflow: `98%`
+- Frontend structure and UX implementation: `95%`
+- Managed platform and pilot ops: `64%`
+- Optional external-art attachment and downstream publishing: `48%`
 
 Overall:
-- Local MVP readiness: `93%`
-- Pilot readiness: `61%`
+- Prompt-handoff MVP readiness: `96%`
+- Prompt-handoff pilot readiness: `72%`
 
 ## What remains before MVP and pilot
 
-- Finish the true managed runtime cutover from local SQLite/filesystem fallback to PostgreSQL plus Blob in the live execution path.
+- Broaden governed disease and source coverage beyond the current starter, expansion, and primary-care tranches.
+- Deepen source refresh ownership automation, contradiction triage, queue analytics, and richer reviewer collaboration.
+- Finish the real managed runtime cutover from local SQLite/filesystem fallback to PostgreSQL plus Blob in the live execution path.
 - Harden Azure deployment, secrets wiring, restore drills, and operational observability beyond the current scaffold.
-- Add deeper multi-user reviewer collaboration features such as delivery-grade mentions, queue analytics, and richer escalation handling.
-- Expand governed disease and source coverage beyond the current starter, expansion, and primary-care tranches.
-- Harden render-output review, retry ergonomics, and downstream publishing beyond the current Gemini-first pilot path.
 - Integrate external auth and gateway identity when the product moves beyond local-open operator mode.
+- Add optional downstream publishing/export integrations after the rendering-guide-first handoff path is stable.

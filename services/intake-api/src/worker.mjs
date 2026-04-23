@@ -34,7 +34,7 @@ const schemaRegistry = await createSchemaRegistry(rootDir);
 const workflowSpec = await loadWorkflowSpec(rootDir);
 const renderExecutionService = createRenderExecutionService({
   provider: process.env.RENDER_PROVIDER,
-  apiKey: process.env.GEMINI_API_KEY,
+  apiKey: process.env.RENDER_PROVIDER_API_KEY ?? process.env.OPENAI_API_KEY,
 });
 
 const shutdownReceiver = await platformRuntime.queueAdapter.createReceiver('render-execution', async (/** @type {any} */ message) => {

@@ -221,6 +221,42 @@ export interface WorkItem {
   updatedAt: string;
 }
 
+export interface ReviewQueueAnalyticsView {
+  schemaVersion: string;
+  summary: {
+    totalItemCount: number;
+    overdueItemCount: number;
+    escalatedItemCount: number;
+    overdueRate: number;
+    escalationRate: number;
+    medianAgeHours: number;
+  };
+  countsByWorkType: Array<{ workType: string; count: number }>;
+  countsByStatus: Array<{ status: string; count: number }>;
+  countsByPriority: Array<{ priority: string; count: number }>;
+  assigneeLoad: Array<{ assignee: string; count: number }>;
+  runBlockersByStage: Array<{ stage: string; count: number }>;
+}
+
+export interface Notification {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  targetActorId?: string;
+  workflowRunId?: string;
+  threadId?: string;
+  workItemId?: string;
+  notificationType: 'mention' | 'assignment' | 'due-soon' | 'overdue' | 'promotion-ready' | 'source-refresh';
+  status: 'unread' | 'read' | 'archived';
+  message: string;
+  subjectType?: string;
+  subjectId?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  readAt?: string;
+}
+
 export interface ReviewMessage {
   schemaVersion: string;
   id: string;
@@ -232,6 +268,7 @@ export interface ReviewMessage {
   authorDisplayName: string;
   body: string;
   mentions?: string[];
+  mentionedActorIds?: string[];
   status: 'posted' | 'edited' | 'resolved';
   resolutionNote?: string;
   createdAt: string;
@@ -253,6 +290,11 @@ export interface ReviewThread {
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
+  unreadCount?: number;
+  latestMessagePreview?: string;
+  latestMessageAt?: string;
+  openActionCount?: number;
+  linkedWorkItemIds?: string[];
   messages?: ReviewMessage[];
 }
 
@@ -277,6 +319,56 @@ export interface RenderJob {
   completedAt?: string;
 }
 
+export interface RenderingGuide {
+  id: string;
+  workflowRunId: string;
+  tenantId: string;
+  projectTitle: string;
+  canonicalDiseaseName: string;
+  generatedAt: string;
+  markdownDocumentId: string;
+  markdownLocation: string;
+  runSummary: Record<string, unknown>;
+  franchiseRules: string[];
+  continuityBible: Record<string, unknown>;
+  slideStrategy: {
+    onePanelPerSlide: boolean;
+    sequentialGenerationRequired: boolean;
+    firstSlideStyleLockRequired: boolean;
+    forbidLiveResearch: boolean;
+  };
+  globalNegativeConstraints: string[];
+  gensparkDeckBootstrapPrompt: string;
+  retryGuidance: string[];
+  panels: Array<Record<string, unknown>>;
+}
+
+export interface RenderingGuideView {
+  schemaVersion: string;
+  runId: string;
+  renderingGuide: RenderingGuide;
+  markdown: string;
+  attachmentSummary: {
+    attachedRenderedAssetCount: number;
+    latestRenderedAssetManifestId?: string;
+    attachmentMode: 'guide-only' | 'external-art-attached';
+  };
+  availableActions: string[];
+}
+
+export interface RenderedAssetAttachmentRequest {
+  assets: Array<{
+    panelId: string;
+    renderPromptId?: string;
+    location: string;
+    mimeType: string;
+    checksum: string;
+    thumbnailLocation?: string;
+    width?: number;
+    height?: number;
+  }>;
+}
+
 export interface ReviewRunView {
   schemaVersion: string;
   runId: string;
@@ -293,6 +385,7 @@ export interface ReviewRunView {
   reviewThreads: ReviewThread[];
   evaluationSummary: EvaluationSummaryView;
   exportHistory: ExportHistoryView;
+  renderingGuide?: RenderingGuide;
   renderJobs?: RenderJob[];
   availableActions: string[];
 }
@@ -440,6 +533,10 @@ export interface ReleaseBundle {
   version: string;
   bundleIndexLocation?: string;
   sourceEvidencePackLocation?: string;
+  renderingGuideId?: string;
+  renderingGuideLocation?: string;
+  renderingGuideMarkdownDocumentId?: string;
+  renderingGuideMarkdownLocation?: string;
   renderedAssetManifestId?: string;
   renderedAssetManifestLocation?: string;
   qualitySummary?: Record<string, unknown>;

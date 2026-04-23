@@ -6,7 +6,7 @@ import { SectionStack } from '@/components/StatePanel';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
-import { exportBundle, fetchExports, fetchReleaseBundle, fetchReviewRunView } from '@/lib/api';
+import { exportBundle, fetchExports, fetchReleaseBundle, fetchReviewRunView, getReleaseBundleRenderingGuideUrl } from '@/lib/api';
 import { useRefreshSignal } from '@/lib/refresh-context';
 import { useRemoteData } from '@/lib/use-remote-data';
 import { formatDateTime } from '@/lib/utils';
@@ -23,19 +23,19 @@ export function BundlesPage() {
     () => releaseId ? fetchReleaseBundle(releaseId) : Promise.resolve(null),
     [releaseId, refreshSignal],
   );
-  const latestRenderJob = reviewState.data?.renderJobs?.[0];
   const exportDisabledReason = workflowRun.latestEvalStatus !== 'passed'
     ? 'Export is blocked until the latest eval run is fresh and passing.'
-    : (!latestRenderJob || latestRenderJob.status !== 'completed'
-      ? 'Pilot-ready bundle export requires completed render execution and a rendered asset manifest.'
+    : (!reviewState.data?.renderingGuide
+      ? 'Export is blocked until a rendering guide exists for this run.'
       : undefined);
-  const renderedAssetManifestId = bundleState.data?.renderedAssetManifestId ?? latestRenderJob?.renderedAssetManifestId;
+  const renderedAssetManifestId = bundleState.data?.renderedAssetManifestId;
   const renderedManifestLink = renderedAssetManifestId
     ? `/api/v1/artifacts/rendered-asset-manifest/${encodeURIComponent(renderedAssetManifestId)}`
     : undefined;
   const bundleLinks = useMemo(() => ({
     bundleIndex: releaseId ? `/api/v1/release-bundles/${encodeURIComponent(releaseId)}/index` : null,
     evidencePack: releaseId ? `/api/v1/release-bundles/${encodeURIComponent(releaseId)}/evidence-pack` : null,
+    renderingGuide: releaseId ? getReleaseBundleRenderingGuideUrl(releaseId) : null,
   }), [releaseId]);
 
   return (
@@ -64,14 +64,14 @@ export function BundlesPage() {
           ))}
         </div>
       </Card>
-      {latestRenderJob ? (
+      {reviewState.data?.renderingGuide ? (
         <Card>
-          <CardTitle>Render bundle readiness</CardTitle>
-          <CardDescription>Rendered panels and their manifest must exist before a pilot-ready bundle can be exported.</CardDescription>
+          <CardTitle>Guide-first bundle readiness</CardTitle>
+          <CardDescription>The default release path exports the master rendering guide. External art manifests are optional secondary attachments.</CardDescription>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <Metric label="Render job status" value={latestRenderJob.status} />
-            <Metric label="Provider" value={latestRenderJob.provider} />
-            <Metric label="Updated" value={formatDateTime(latestRenderJob.updatedAt)} />
+            <Metric label="Guide id" value={reviewState.data.renderingGuide.id} />
+            <Metric label="Guide updated" value={formatDateTime(reviewState.data.renderingGuide.generatedAt)} />
+            <Metric label="Attached render manifest" value={renderedAssetManifestId ?? 'none'} />
           </div>
         </Card>
       ) : null}
@@ -83,6 +83,7 @@ export function BundlesPage() {
           <div className="mt-4 flex flex-wrap gap-3">
             {bundleLinks.bundleIndex ? <a href={bundleLinks.bundleIndex} className="rounded-xl bg-shell-950 px-4 py-2 text-sm font-semibold text-white">Open bundle index</a> : null}
             {bundleLinks.evidencePack ? <a href={bundleLinks.evidencePack} className="rounded-xl bg-shell-800 px-4 py-2 text-sm font-semibold text-white">Open evidence pack</a> : null}
+            {bundleLinks.renderingGuide ? <a href={bundleLinks.renderingGuide} className="rounded-xl bg-shell-900 px-4 py-2 text-sm font-semibold text-white">Open rendering guide</a> : null}
             {renderedManifestLink ? <a href={renderedManifestLink} className="rounded-xl bg-shell-700 px-4 py-2 text-sm font-semibold text-white">Open rendered asset manifest</a> : null}
           </div>
         </Card>

@@ -40,6 +40,25 @@ function fractionOfSla(isoTimestamp, fraction, totalHours) {
 }
 
 /**
+ * @param {number[]} values
+ * @returns {number}
+ */
+function median(values) {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 0) {
+    return Number(((sorted[middle - 1] + sorted[middle]) / 2).toFixed(2));
+  }
+
+  return Number(sorted[middle].toFixed(2));
+}
+
+/**
  * @param {any} workItem
  * @param {string} [referenceTimestamp]
  * @returns {boolean}
@@ -147,7 +166,7 @@ export function buildReviewThread(options) {
 }
 
 /**
- * @param {{ tenantId: string, workflowRunId: string, threadId: string, body: string, actor: any, parentMessageId?: string, mentions?: string[], existingMessage?: any | null, resolutionNote?: string }} options
+ * @param {{ tenantId: string, workflowRunId: string, threadId: string, body: string, actor: any, parentMessageId?: string, mentions?: string[], mentionedActorIds?: string[], existingMessage?: any | null, resolutionNote?: string }} options
  * @returns {any}
  */
 export function buildReviewMessage(options) {
@@ -165,6 +184,7 @@ export function buildReviewMessage(options) {
     authorDisplayName: options.actor.displayName,
     body: options.body,
     mentions: options.mentions ?? existing?.mentions ?? [],
+    mentionedActorIds: options.mentionedActorIds ?? existing?.mentionedActorIds ?? [],
     status: options.resolutionNote ? 'resolved' : (existing ? 'edited' : 'posted'),
     resolutionNote: options.resolutionNote,
     createdAt: existing?.createdAt ?? timestamp,
@@ -290,6 +310,60 @@ export function buildReviewQueueView(store, workflowRuns, projectsById, searchPa
       sourceRefreshCount: items.filter((item) => item.workType === 'source-refresh').length,
     },
     items,
+  };
+}
+
+/**
+ * @param {import('./store.mjs').PlatformStore} store
+ * @param {any[]} workflowRuns
+ * @returns {any}
+ */
+export function buildReviewQueueAnalyticsView(store, workflowRuns) {
+  const allWorkItems = store.listArtifactsByType('work-item', { tenantId: workflowRuns[0]?.tenantId ?? 'tenant.local' });
+  const ageHours = allWorkItems.map((workItem) => (
+    Math.max(0, (Date.now() - new Date(workItem.createdAt).getTime()) / (1000 * 60 * 60))
+  ));
+  const overdueItemCount = allWorkItems.filter((workItem) => isWorkItemOverdue(workItem)).length;
+  const escalatedItemCount = allWorkItems.filter((workItem) => workItem.status === 'escalated').length;
+  const countsByWorkType = Object.entries(allWorkItems.reduce((totals, workItem) => {
+    totals[workItem.workType] = (totals[workItem.workType] ?? 0) + 1;
+    return totals;
+  }, /** @type {Record<string, number>} */ ({}))).map(([workType, count]) => ({ workType, count }));
+  const countsByStatus = Object.entries(allWorkItems.reduce((totals, workItem) => {
+    totals[workItem.status] = (totals[workItem.status] ?? 0) + 1;
+    return totals;
+  }, /** @type {Record<string, number>} */ ({}))).map(([status, count]) => ({ status, count }));
+  const countsByPriority = Object.entries(allWorkItems.reduce((totals, workItem) => {
+    totals[workItem.priority] = (totals[workItem.priority] ?? 0) + 1;
+    return totals;
+  }, /** @type {Record<string, number>} */ ({}))).map(([priority, count]) => ({ priority, count }));
+  const assigneeLoad = Object.entries(allWorkItems.reduce((totals, workItem) => {
+    const assignee = String(workItem.assignedActorDisplayName ?? 'Unassigned');
+    totals[assignee] = (totals[assignee] ?? 0) + 1;
+    return totals;
+  }, /** @type {Record<string, number>} */ ({}))).map(([assignee, count]) => ({ assignee, count }));
+  const runBlockersByStage = Object.entries(workflowRuns.reduce((totals, workflowRun) => {
+    if (workflowRun.pauseReason) {
+      totals[workflowRun.currentStage] = (totals[workflowRun.currentStage] ?? 0) + 1;
+    }
+    return totals;
+  }, /** @type {Record<string, number>} */ ({}))).map(([stage, count]) => ({ stage, count }));
+
+  return {
+    schemaVersion: '1.0.0',
+    summary: {
+      totalItemCount: allWorkItems.length,
+      overdueItemCount,
+      escalatedItemCount,
+      overdueRate: allWorkItems.length > 0 ? Number((overdueItemCount / allWorkItems.length).toFixed(3)) : 0,
+      escalationRate: allWorkItems.length > 0 ? Number((escalatedItemCount / allWorkItems.length).toFixed(3)) : 0,
+      medianAgeHours: median(ageHours),
+    },
+    countsByWorkType,
+    countsByStatus,
+    countsByPriority,
+    assigneeLoad,
+    runBlockersByStage,
   };
 }
 

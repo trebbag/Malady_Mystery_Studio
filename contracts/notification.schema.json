@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/notification.schema.json",
+  "title": "Notification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "notificationType",
+    "status",
+    "message",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "targetActorId": { "type": "string" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "threadId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workItemId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "notificationType": {
+      "type": "string",
+      "enum": [
+        "mention",
+        "assignment",
+        "due-soon",
+        "overdue",
+        "promotion-ready",
+        "source-refresh"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["unread", "read", "archived"]
+    },
+    "message": { "type": "string" },
+    "subjectType": { "type": "string" },
+    "subjectId": { "type": "string" },
+    "createdBy": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "readAt": { "type": "string", "format": "date-time" }
+  }
+}

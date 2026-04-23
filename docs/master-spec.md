@@ -842,7 +842,7 @@ The product should treat image generation as a **downstream production stage** r
 
 ### 17.2 Current model assumptions (as of April 2026)
 
-Google documents Nano Banana 2 as Gemini 3.1 Flash Image Preview, the high-efficiency counterpart to Gemini 3 Pro Image, optimized for speed and high-volume image generation. Google’s developer guide lists it as a preview model with a 128k input / 32k output context window and a January 2025 knowledge cutoff. Google’s model card states that it can support clear text and localized text rendering in some use cases, but also notes limitations with small text, long paragraphs, character consistency, and occasional left/right spatial confusion. These facts mean the system should use the model for art generation, but preserve a separate lettering and continuity layer, and avoid depending on it to invent or remember medical truth. [R1][R2][R3]
+The default product path now ends at a compiled rendering guide rather than in-app provider execution. External tools may still be used downstream, so the platform keeps prompt-fitting guidance for currently relevant targets. Google documents Nano Banana 2 as Gemini 3.1 Flash Image Preview, the high-efficiency counterpart to Gemini 3 Pro Image, optimized for speed and high-volume image generation. Google’s developer guide lists it as a preview model with a 128k input / 32k output context window and a January 2025 knowledge cutoff. Google’s model card states that it can support clear text and localized text rendering in some use cases, but also notes limitations with small text, long paragraphs, character consistency, and occasional left/right spatial confusion. These facts mean the system should preserve a separate lettering and continuity layer, avoid depending on the model to invent or remember medical truth, and emit provider-fitted prompt blocks inside the rendering guide instead of treating provider execution as the source of truth. [R1][R2][R3]
 
 ### 17.3 Practical render requirements derived from model behavior
 
@@ -869,7 +869,7 @@ The render subsystem shall:
 
 ### 17.5 Render target abstraction
 
-Even if Nano Banana 2 is the initial image target, the application must abstract rendering so that another model can be swapped in later with minimal business-logic change.
+Even if Nano Banana 2 is an initial external image target, the application must abstract rendering so that another model can be swapped in later with minimal business-logic change, and so that the rendering guide remains the stable handoff contract regardless of which external tool is used.
 
 The render target profile should include:
 - input limits,

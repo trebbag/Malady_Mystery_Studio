@@ -33,6 +33,49 @@ function sameCanonicalDisease(left, right) {
   return normalizeCanonicalDiseaseName(left) === normalizeCanonicalDiseaseName(right);
 }
 
+const VAGUE_DISEASE_INPUTS = new Set([
+  '',
+  'condition',
+  'disease',
+  'illness',
+  'medical-problem',
+  'mystery-disease',
+  'problem',
+  'syndrome',
+  'unknown',
+]);
+
+/**
+ * @param {string} rawInput
+ * @returns {boolean}
+ */
+function isResearchableDiseaseInput(rawInput) {
+  const normalizedInput = normalizeDiseaseInput(rawInput);
+
+  if (!normalizedInput || normalizedInput.length < 4) {
+    return false;
+  }
+
+  if (VAGUE_DISEASE_INPUTS.has(normalizedInput)) {
+    return false;
+  }
+
+  return /[a-z]/i.test(rawInput);
+}
+
+/**
+ * @param {string} rawInput
+ * @returns {string}
+ */
+function toCanonicalDiseaseLabel(rawInput) {
+  return rawInput
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map((token) => token ? `${token[0].toUpperCase()}${token.slice(1)}` : token)
+    .join(' ');
+}
+
 /**
  * @param {string} relationshipType
  * @param {string} status
@@ -307,6 +350,22 @@ export class ClinicalRetrievalService {
     const lookup = this.ontologyAdapter.findDiseaseByInput(normalizedInput);
 
     if (!lookup) {
+      if (isResearchableDiseaseInput(rawInput)) {
+        return {
+          schemaVersion: SCHEMA_VERSION,
+          id: createId('can'),
+          rawInput,
+          normalizedInput,
+          resolutionStatus: 'new-disease',
+          confidence: 0.56,
+          canonicalDiseaseName: toCanonicalDiseaseLabel(rawInput),
+          aliases: [rawInput.trim()],
+          diseaseCategory: 'provisional-research-needed',
+          candidateMatches: [],
+          notes: 'No governed disease entry matched the intake string, but the input is specific enough to build a provisional knowledge pack through research assembly.',
+        };
+      }
+
       return {
         schemaVersion: SCHEMA_VERSION,
         id: createId('can'),
@@ -708,10 +767,10 @@ export class ClinicalRetrievalService {
       throw new Error('Disease packet generation requires a resolved canonical disease.');
     }
 
-    return this.buildGovernedClinicalArtifacts(
+    return this.buildDiseasePacketFromKnowledgePack(
       this.getKnowledgePack(canonicalDisease.canonicalDiseaseName),
       options,
-    ).diseasePacket;
+    );
   }
 
   /**
@@ -724,10 +783,59 @@ export class ClinicalRetrievalService {
       throw new Error('Clinical package generation requires a resolved canonical disease.');
     }
 
-    return this.buildGovernedClinicalArtifacts(
+    return this.buildClinicalPackageFromKnowledgePack(
       this.getKnowledgePack(canonicalDisease.canonicalDiseaseName),
       options,
     );
+  }
+
+  /**
+   * @param {any} knowledgePack
+   * @param {{ governanceDecisions?: any[], contradictionResolutions?: any[] }} [options]
+   * @returns {any}
+   */
+  buildDiseasePacketFromKnowledgePack(knowledgePack, options = {}) {
+    return this.buildGovernedClinicalArtifacts(knowledgePack, options).diseasePacket;
+  }
+
+  /**
+   * @param {any} knowledgePack
+   * @param {{ governanceDecisions?: any[], contradictionResolutions?: any[] }} [options]
+   * @returns {{ diseasePacket: any, factTable: any, evidenceGraph: any, clinicalTeachingPoints: any, visualAnchorCatalog: any, sourceRecords: any[], evidenceRecords: any[] }}
+   */
+  buildClinicalPackageFromKnowledgePack(knowledgePack, options = {}) {
+    return this.buildGovernedClinicalArtifacts(knowledgePack, options);
+  }
+
+  /**
+   * @param {any} knowledgePack
+   * @param {string} rawInput
+   * @param {'exact' | 'alias' | 'ambiguous-suggestion'} [matchType]
+   * @returns {any}
+   */
+  buildCanonicalDiseaseFromKnowledgePack(knowledgePack, rawInput, matchType = 'exact') {
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      id: createId('can'),
+      rawInput,
+      normalizedInput: normalizeDiseaseInput(rawInput),
+      resolutionStatus: 'resolved',
+      confidence: matchType === 'exact' ? 0.99 : 0.96,
+      canonicalDiseaseName: knowledgePack.canonicalDiseaseName,
+      aliases: clone(knowledgePack.aliases),
+      ontologyId: knowledgePack.ontologyId,
+      diseaseCategory: knowledgePack.diseaseCategory,
+      candidateMatches: [
+        {
+          canonicalDiseaseName: knowledgePack.canonicalDiseaseName,
+          ontologyId: knowledgePack.ontologyId,
+          matchType,
+        },
+      ],
+      notes: knowledgePack.packStatus === 'promoted'
+        ? 'Resolved through a promoted governed knowledge pack.'
+        : 'Resolved through a governed knowledge pack.',
+    };
   }
 }
 

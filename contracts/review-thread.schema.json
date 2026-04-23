@@ -77,6 +77,28 @@
       "type": "string",
       "format": "date-time"
     },
+    "unreadCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "latestMessagePreview": {
+      "type": "string"
+    },
+    "latestMessageAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "openActionCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "linkedWorkItemIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      }
+    },
     "messages": {
       "type": "array",
       "items": {

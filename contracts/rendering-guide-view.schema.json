@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/rendering-guide-view.schema.json",
+  "title": "RenderingGuideView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "renderingGuide",
+    "markdown",
+    "attachmentSummary",
+    "availableActions"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "renderingGuide": {
+      "$ref": "rendering-guide.schema.json"
+    },
+    "markdown": {
+      "type": "string"
+    },
+    "attachmentSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attachedRenderedAssetCount",
+        "attachmentMode"
+      ],
+      "properties": {
+        "attachedRenderedAssetCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "latestRenderedAssetManifestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]+$"
+        },
+        "attachmentMode": {
+          "type": "string",
+          "enum": [
+            "guide-only",
+            "external-art-attached"
+          ]
+        }
+      }
+    },
+    "availableActions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

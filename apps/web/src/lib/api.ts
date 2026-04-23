@@ -5,7 +5,11 @@ import type {
   EvalRun,
   ExportHistoryEntry,
   LocalRuntimeView,
+  Notification,
+  RenderedAssetAttachmentRequest,
+  RenderingGuideView,
   ReviewMessage,
+  ReviewQueueAnalyticsView,
   ReviewQueueView,
   ReleaseBundle,
   ReviewAssignment,
@@ -93,12 +97,74 @@ export function fetchReviewQueue(filters: Partial<ReviewQueueView['filters']> = 
   return request<ReviewQueueView>(`/api/v1/review-queue${buildQuery(filters)}`);
 }
 
+export function fetchReviewQueueAnalytics() {
+  return request<ReviewQueueAnalyticsView>('/api/v1/review-queue/analytics');
+}
+
+export function fetchNotifications() {
+  return request<Notification[]>('/api/v1/notifications');
+}
+
+export function updateNotification(notificationId: string, payload: Record<string, unknown>) {
+  return request<Notification>(`/api/v1/notifications/${encodeURIComponent(notificationId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function fetchWorkflowRun(runId: string) {
   return request<WorkflowRun>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}`);
 }
 
 export function fetchReviewRunView(runId: string) {
   return request<ReviewRunView>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/review-run-view`);
+}
+
+export function fetchRenderingGuideView(runId: string) {
+  return request<RenderingGuideView>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/rendering-guide`);
+}
+
+export function fetchResearchBrief(runId: string) {
+  return request<Record<string, unknown>>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/research-brief`);
+}
+
+export function fetchKnowledgePackBuildReport(runId: string) {
+  return request<Record<string, unknown>>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/knowledge-pack-build-report`);
+}
+
+export function regenerateKnowledgePack(runId: string) {
+  return request<WorkflowRun>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/knowledge-pack/regenerate`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export function approveKnowledgePack(runId: string, payload: Record<string, unknown> = {}) {
+  return request<WorkflowRun>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/knowledge-pack/approve`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function promoteKnowledgePack(runId: string, payload: Record<string, unknown> = {}) {
+  return request<WorkflowRun>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/knowledge-pack/promote`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function regenerateRenderingGuide(runId: string) {
+  return request<RenderingGuideView>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/rendering-guide/regenerate`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export function attachRenderedAssets(runId: string, payload: RenderedAssetAttachmentRequest) {
+  return request<RenderingGuideView>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/rendered-assets/attach`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export function fetchClinicalPackage(runId: string) {
@@ -227,6 +293,10 @@ export function fetchExports(runId: string) {
 
 export function fetchReleaseBundle(releaseId: string) {
   return request<ReleaseBundle>(`/api/v1/release-bundles/${encodeURIComponent(releaseId)}`);
+}
+
+export function getReleaseBundleRenderingGuideUrl(releaseId: string) {
+  return toUrl(`/api/v1/release-bundles/${encodeURIComponent(releaseId)}/rendering-guide`);
 }
 
 export function fetchSourceRecords(canonicalDiseaseName: string) {

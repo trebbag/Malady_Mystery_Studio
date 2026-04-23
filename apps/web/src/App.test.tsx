@@ -314,6 +314,99 @@ const reviewRunView = {
       },
     ],
   },
+  renderingGuide: {
+    id: 'rgd.local.001',
+    workflowRunId: 'run.local.001',
+    tenantId: 'tenant.local',
+    projectTitle: 'Community-acquired pneumonia starter project',
+    canonicalDiseaseName: 'Community-acquired pneumonia',
+    generatedAt: '2026-04-22T12:10:00Z',
+    markdownDocumentId: 'rgd.local.001',
+    markdownLocation: '/api/v1/release-bundles/rel.local.001/rendering-guide',
+    runSummary: {
+      oneSentence: 'A lung infection should emerge through fair mystery clues.',
+      patientExperienceSummary: 'The patient becomes progressively short of breath and febrile.',
+      keyMechanism: 'Inflammatory filling impairs gas exchange.',
+      timeScale: 'hours to days',
+      educationalFocus: ['gas exchange'],
+      audienceTier: 'provider-education',
+      styleProfile: 'whimsical-mystery',
+    },
+    franchiseRules: ['Mystery first', 'Treatment is the climax'],
+    continuityBible: {
+      continuityAnchors: ['jet packs', 'alveoli', 'case tablet'],
+      characterLocks: ['Detective A short', 'Detective B tall'],
+      anatomyLocks: ['alveoli readable', 'no generic cave interiors'],
+      styleLocks: ['comic mystery', 'clean staging'],
+      letteringPolicy: 'Keep lettering separate from art.',
+    },
+    slideStrategy: {
+      onePanelPerSlide: true,
+      sequentialGenerationRequired: true,
+      firstSlideStyleLockRequired: true,
+      forbidLiveResearch: true,
+    },
+    globalNegativeConstraints: ['no labels', 'no text in art'],
+    gensparkDeckBootstrapPrompt: 'Create the outline first, then generate one panel per slide in sequence.',
+    retryGuidance: ['Reuse slide 1 as the style lock for the remaining slides.'],
+    panels: [
+      {
+        panelId: 'pnl.local.001',
+        sceneId: 'scn.local.001',
+        pageNumber: 1,
+        order: 1,
+        storyFunction: 'opener',
+        beatGoal: 'Introduce the case.',
+        medicalObjective: 'Bridge symptoms to the lung environment.',
+        location: 'alveolar district',
+        bodyScale: 'tissue',
+        actionSummary: 'The detectives hover beside crowded air sacs.',
+        cameraFraming: 'medium shot',
+        cameraAngle: 'slightly low',
+        compositionNotes: 'Use vessel lines toward the affected alveoli.',
+        lightingMood: 'humid tension',
+        continuityAnchors: ['jet packs', 'alveoli', 'case tablet'],
+        acceptanceChecks: ['alveoli readable'],
+        claimReferences: [
+          {
+            claimId: 'claim.local.001',
+            claimText: 'Inflammation fills alveoli and impairs gas exchange.',
+            sourceId: 'src.local.001',
+            sourceLabel: 'Starter source',
+          },
+        ],
+        letteringEntries: [
+          {
+            entryId: 'lte.local.001',
+            layerType: 'caption',
+            text: 'The air sacs are crowding with inflammatory fluid.',
+            placement: 'lower-third',
+            purpose: 'Teaching overlay',
+          },
+        ],
+        nanoBananaPrompt: {
+          aspectRatio: '4:3',
+          prompt: 'Create a detailed comic-book illustration of detectives hovering beside crowded air sacs.',
+          negativePrompt: 'no labels, no text in art',
+          styleLocks: ['comic mystery'],
+          characterLocks: ['Detective A short', 'Detective B tall'],
+          anatomyLocks: ['alveoli readable', 'no generic cave interiors'],
+          notes: ['Keep lettering separate.'],
+        },
+        gensparkSlide: {
+          slideNumber: 1,
+          title: 'Panel 1.1',
+          creationPrompt: 'Create one slide for this panel only and keep the deck sequential.',
+          styleLockInstruction: 'Use slide 1 as the style lock.',
+          sequentialInstruction: 'Do not generate slides in parallel.',
+          overlayInstructions: ['caption: The air sacs are crowding with inflammatory fluid.'],
+          useOnlyProvidedContent: true,
+          forbidLiveResearch: true,
+          notes: ['Keep text editable.'],
+        },
+      },
+    ],
+  },
   renderJobs: [
     {
       schemaVersion: '1.0.0',
@@ -349,6 +442,18 @@ const evaluations = [
     familyResults: reviewRunView.evaluationSummary.familyStatuses,
   },
 ];
+
+const renderingGuideView = {
+  schemaVersion: '1.0.0',
+  runId: 'run.local.001',
+  renderingGuide: reviewRunView.renderingGuide,
+  markdown: '# Rendering Guide rgd.local.001',
+  attachmentSummary: {
+    attachedRenderedAssetCount: 0,
+    attachmentMode: 'guide-only',
+  },
+  availableActions: ['regenerate-rendering-guide', 'attach-rendered-assets'],
+};
 
 const auditEntries = [
   {
@@ -484,6 +589,10 @@ function mockFetch(url: string) {
     return Response.json(reviewRunView);
   }
 
+  if (parsed.pathname === '/api/v1/workflow-runs/run.local.001/rendering-guide') {
+    return Response.json(renderingGuideView);
+  }
+
   if (parsed.pathname === '/api/v1/workflow-runs/run.local.001/clinical-package') {
     return Response.json(clinicalPackage);
   }
@@ -532,7 +641,7 @@ function mockFetch(url: string) {
     });
   }
 
-  if (parsed.pathname.endsWith('/approvals') || parsed.pathname.endsWith('/canonicalization-resolution') || parsed.pathname.endsWith('/rebuild') || parsed.pathname.endsWith('/governance-decisions') || parsed.pathname.endsWith('/contradiction-resolutions') || parsed.pathname.endsWith('/exports') || parsed.pathname.endsWith('/comments') || parsed.pathname.endsWith('/assignments')) {
+  if (parsed.pathname.endsWith('/approvals') || parsed.pathname.endsWith('/canonicalization-resolution') || parsed.pathname.endsWith('/rebuild') || parsed.pathname.endsWith('/governance-decisions') || parsed.pathname.endsWith('/contradiction-resolutions') || parsed.pathname.endsWith('/exports') || parsed.pathname.endsWith('/comments') || parsed.pathname.endsWith('/assignments') || parsed.pathname.endsWith('/rendering-guide/regenerate') || parsed.pathname.endsWith('/rendered-assets/attach')) {
     return Response.json({});
   }
 
@@ -569,6 +678,7 @@ describe('web app routes', () => {
     ['/runs/run.local.001/workbooks', 'Workbooks Page'],
     ['/runs/run.local.001/scenes', 'Scenes Page'],
     ['/runs/run.local.001/panels', 'Panels Page'],
+    ['/runs/run.local.001/rendering-guide', 'Rendering Guide'],
     ['/runs/run.local.001/sources', 'Sources Page'],
     ['/runs/run.local.001/governance', 'Governance Page'],
     ['/runs/run.local.001/evals', 'Evals Page'],
@@ -596,5 +706,14 @@ describe('web app routes', () => {
     });
     expect(screen.getByText('Tie the opening panel more directly to the evidence claim.')).toBeInTheDocument();
     expect(screen.getAllByText('Local Operator').length).toBeGreaterThan(0);
+  });
+
+  it('shows the rendering guide page with provider-fitted prompt content', async () => {
+    renderRoute('/runs/run.local.001/rendering-guide');
+    await waitFor(async () => {
+      expect(await screen.findByText('Rendering Guide')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/One master handoff guide/i)).toBeInTheDocument();
+    expect(screen.getByText(/Genspark deck bootstrap/i)).toBeInTheDocument();
   });
 });

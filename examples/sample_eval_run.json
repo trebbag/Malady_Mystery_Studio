@@ -143,10 +143,10 @@
       ]
     },
     {
-      "family": "render_output_quality",
+      "family": "rendering_guide_quality",
       "mode": "ratio",
       "releaseGate": "Gate 4 and Gate 5",
-      "threshold": 0.9,
+      "threshold": 0.95,
       "status": "passed",
       "score": 1,
       "applicableCaseCount": 1,
@@ -154,14 +154,26 @@
       "failedCaseCount": 0,
       "cases": [
         {
-          "caseId": "rout.hcc.001",
-          "artifactType": "rendered-asset-manifest",
+          "caseId": "rgq.hcc.001",
+          "artifactType": "rendering-guide",
           "status": "passed",
-          "score": 0.93,
-          "threshold": 0.9,
-          "message": "Case satisfied render_output_quality requirements."
+          "score": 0.97,
+          "threshold": 0.95,
+          "message": "Case satisfied rendering_guide_quality requirements."
         }
       ]
+    },
+    {
+      "family": "render_output_quality",
+      "mode": "ratio",
+      "releaseGate": "Optional manual Gate 5",
+      "threshold": 0.9,
+      "status": "not-applicable",
+      "score": 1,
+      "applicableCaseCount": 0,
+      "passedCaseCount": 0,
+      "failedCaseCount": 0,
+      "cases": []
     },
     {
       "family": "governance_release",
@@ -233,7 +245,8 @@
       "panelization": 1,
       "render_readiness": 1,
       "render_output_quality": 1,
-      "governance_release": 1
+      "governance_release": 1,
+      "rendering_guide_quality": 1
     }
   }
 }

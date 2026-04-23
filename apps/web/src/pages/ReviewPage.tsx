@@ -16,15 +16,15 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   createReviewAssignment,
   createReviewComment,
-  createRenderJob,
   createReviewThread,
   createThreadMessage,
   exportBundle,
+  fetchRenderingGuideView,
   fetchLocalRuntimeView,
   fetchReviewRunView,
   fetchWorkflowArtifacts,
+  regenerateRenderingGuide,
   resolveCanonicalization,
-  retryRenderJob,
   runEvaluations,
   submitApproval,
   updateWorkItem,
@@ -43,16 +43,16 @@ export function ReviewPage() {
   const [threadScopeType, setThreadScopeType] = useState('run');
   const [messageByThreadId, setMessageByThreadId] = useState<Record<string, string>>({});
   const reviewRunState = useRemoteData(() => fetchReviewRunView(runId), [runId, refreshSignal]);
+  const renderingGuideState = useRemoteData(() => fetchRenderingGuideView(runId), [runId, refreshSignal]);
   const runtimeViewState = useRemoteData(() => fetchLocalRuntimeView(), [refreshSignal]);
   const canonicalArtifactState = useRemoteData(
     () => fetchWorkflowArtifacts(runId, ['canonical-disease'], true),
     [runId, refreshSignal],
   );
-  const latestRenderJob = reviewRunState.data?.renderJobs?.[0];
   const exportDisabledReason = workflowRun.latestEvalStatus !== 'passed'
     ? 'Export requires a fresh passing eval run.'
-    : (!latestRenderJob || latestRenderJob.status !== 'completed'
-      ? 'Pilot-ready export requires a completed render job and rendered asset manifest.'
+    : (!reviewRunState.data?.renderingGuide
+      ? 'Export requires a current rendering guide for external handoff.'
       : undefined);
   const artifactTypes = uniqueStrings(workflowRun.artifacts.map((artifact) => artifact.artifactType));
 
@@ -271,32 +271,33 @@ export function ReviewPage() {
             <Card>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <CardTitle>Render execution</CardTitle>
-                  <CardDescription>Queue real render execution, inspect retry state, and keep release gating tied to rendered output instead of prompt prep alone.</CardDescription>
+                  <CardTitle>Rendering guide delivery</CardTitle>
+                  <CardDescription>The active product path ends at a provider-fitted handoff guide. External rendered art can still be attached later, but it is now secondary.</CardDescription>
                 </div>
-                <Button onClick={() => void createRenderJob(runId).then(() => refreshRun())}>
-                  Run render job
+                <Button variant="secondary" onClick={() => void regenerateRenderingGuide(runId).then(() => refreshRun())}>
+                  Regenerate guide
                 </Button>
               </div>
               <div className="mt-4 space-y-3">
-                {(reviewRunState.data.renderJobs ?? []).map((renderJob) => (
-                  <div key={renderJob.id} className="rounded-2xl border border-black/10 bg-slate-50 p-4">
+                {reviewRunState.data.renderingGuide ? (
+                  <div className="rounded-2xl border border-black/10 bg-slate-50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="font-medium text-shell-950">{renderJob.provider} · {renderJob.model}</p>
-                        <p className="text-xs text-slate-500">{renderJob.status} · prompts {renderJob.renderPromptIds.length}</p>
-                        {renderJob.lastError ? <p className="mt-2 text-sm text-red-700">{renderJob.lastError}</p> : null}
+                        <p className="font-medium text-shell-950">{reviewRunState.data.renderingGuide.id}</p>
+                        <p className="text-xs text-slate-500">Guide-first export path · markdown handoff ready</p>
+                        <p className="mt-2 text-sm text-slate-700">
+                          Panel prompts are now fitted for Nano Banana Pro and Genspark AI Slides, with one panel per slide and separate lettering overlays.
+                        </p>
                       </div>
-                      {renderJob.status === 'retry-required' || renderJob.status === 'failed' ? (
-                        <Button variant="secondary" onClick={() => void retryRenderJob(renderJob.id).then(() => refreshRun())}>
-                          Retry render
-                        </Button>
-                      ) : null}
                     </div>
                   </div>
-                ))}
-                {(reviewRunState.data.renderJobs?.length ?? 0) === 0 ? (
-                  <Alert tone="warning">No render job has been created for this run yet.</Alert>
+                ) : (
+                  <Alert tone="warning">No rendering guide is attached to this run yet.</Alert>
+                )}
+                {renderingGuideState.data?.attachmentSummary.attachedRenderedAssetCount ? (
+                  <Alert tone="info">
+                    Optional external art is attached for {renderingGuideState.data.attachmentSummary.attachedRenderedAssetCount} panel assets.
+                  </Alert>
                 ) : null}
               </div>
             </Card>

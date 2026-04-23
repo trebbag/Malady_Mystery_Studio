@@ -8,6 +8,7 @@ import {
   createEvaluationSummaryView,
   createExportHistoryView,
   createLocalRuntimeView,
+  createRenderingGuideView,
   createReviewDashboardView,
   createReviewRunView,
   createSourceGovernanceView,
@@ -20,6 +21,9 @@ const rootDir = findRepoRoot(import.meta.url);
 
 test('route manifest exposes the required placeholder review routes', () => {
   assert.equal(webRouteManifest.some((route) => route.path === '/review'), true);
+  assert.equal(webRouteManifest.some((route) => route.path === '/review/queue'), true);
+  assert.equal(webRouteManifest.some((route) => route.path === '/runs/:runId/review'), true);
+  assert.equal(webRouteManifest.some((route) => route.path === '/runs/:runId/rendering-guide'), true);
   assert.equal(webRouteManifest.some((route) => route.path === '/review/runs/:runId'), true);
   assert.equal(webRouteManifest.some((route) => route.path === '/review/runs/:runId/clinical-package'), true);
 });
@@ -103,6 +107,7 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
     },
   });
   const latestEvalRun = (await import('../../../examples/sample_eval_run.json', { with: { type: 'json' } })).default;
+  const renderingGuide = (await import('../../../examples/sample_rendering_guide.json', { with: { type: 'json' } })).default;
   const reviewAssignment = (await import('../../../examples/sample_review_assignment.json', { with: { type: 'json' } })).default;
   const reviewComment = (await import('../../../examples/sample_review_comment.json', { with: { type: 'json' } })).default;
   const workItem = (await import('../../../examples/sample_work_item.json', { with: { type: 'json' } })).default;
@@ -135,6 +140,15 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
         },
       },
     ],
+  });
+  const renderingGuideView = createRenderingGuideView({
+    runId: 'run.hcc.001',
+    renderingGuide,
+    markdown: String((await import('../../../examples/sample_rendering_guide_view.json', { with: { type: 'json' } })).default.markdown),
+    attachmentSummary: {
+      attachedRenderedAssetCount: 0,
+      attachmentMode: 'guide-only',
+    },
   });
   const localRuntimeView = createLocalRuntimeView({
     actor: {
@@ -247,6 +261,7 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
     reviewComments: [reviewComment],
     workItems: [workItem],
     reviewThreads: [reviewThread],
+    renderingGuide,
     renderJobs: [renderJob],
     latestEvalRun,
     latestEvalStatus: 'passed',
@@ -265,6 +280,8 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
   schemaRegistry.assertValid('contracts/evaluation-summary-view.schema.json', evaluationSummary);
   schemaRegistry.assertValid('contracts/export-history-view.schema.json', exportHistory);
   schemaRegistry.assertValid('contracts/workflow-artifact-list-view.schema.json', artifactListView);
+  schemaRegistry.assertValid('contracts/rendering-guide.schema.json', renderingGuide);
+  schemaRegistry.assertValid('contracts/rendering-guide-view.schema.json', renderingGuideView);
   schemaRegistry.assertValid('contracts/local-runtime-view.schema.json', localRuntimeView);
   schemaRegistry.assertValid('contracts/review-dashboard-view.schema.json', dashboard);
   schemaRegistry.assertValid('contracts/review-run-view.schema.json', reviewRun);

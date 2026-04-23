@@ -9,6 +9,7 @@ requiredApprovalRoles:
 stageOrder:
   - intake
   - canonicalization
+  - research-assembly
   - disease-packet
   - story-workbook
   - scene-planning
@@ -25,6 +26,7 @@ states:
   running:
     on:
       - STAGE_PASSED
+      - ENTER_REVIEW
       - STAGE_FAILED
       - REQUEST_REVIEW
       - CANCEL_RUN
@@ -54,6 +56,9 @@ events:
     targetStage: intake
   STAGE_PASSED:
     usesNextStage: true
+  ENTER_REVIEW:
+    targetState: review
+    targetStage: review
   STAGE_FAILED:
     targetState: failed
     keepCurrentStage: true

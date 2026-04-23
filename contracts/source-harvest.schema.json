@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/source-harvest.schema.json",
+  "title": "SourceHarvest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "targetCanonicalDiseaseName",
+    "sources",
+    "droppedSources",
+    "generatedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "targetCanonicalDiseaseName": { "type": "string" },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceId",
+          "sourceLabel",
+          "sourceType",
+          "origin",
+          "sourceUrl",
+          "retrievedAt"
+        ],
+        "properties": {
+          "sourceId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "sourceLabel": { "type": "string" },
+          "sourceType": { "type": "string" },
+          "origin": {
+            "type": "string",
+            "enum": ["seeded", "user-doc", "agent-web"]
+          },
+          "sourceUrl": { "type": "string" },
+          "retrievedAt": { "type": "string", "format": "date-time" },
+          "captureMethod": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      }
+    },
+    "droppedSources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "reason"],
+        "properties": {
+          "label": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  }
+}

@@ -293,6 +293,33 @@ export function applyWorkflowEvent(workflowSpec, workflowRun, eventInput, eventI
       nextState = upcomingStage === 'review' ? 'review' : 'running';
       break;
     }
+    case 'ENTER_REVIEW': {
+      const currentStage = workflowRun.currentStage;
+
+      nextStages = updateStage(
+        nextStages,
+        currentStage,
+        {
+          endedAt: timestamp,
+          notes: eventInput.notes,
+          startedAt: workflowRun.stages.find((/** @type {any} */ stage) => stage.name === currentStage)?.startedAt,
+          status: 'passed',
+        },
+      );
+      nextStages = updateStage(
+        nextStages,
+        'review',
+        {
+          endedAt: undefined,
+          notes: undefined,
+          startedAt: timestamp,
+          status: 'running',
+        },
+      );
+      nextStage = 'review';
+      nextState = 'review';
+      break;
+    }
     case 'STAGE_FAILED': {
       nextStages = updateStage(
         nextStages,

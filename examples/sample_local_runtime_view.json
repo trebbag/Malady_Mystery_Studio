@@ -34,44 +34,48 @@
     "areas": [
       {
         "label": "Foundation and local runtime",
-        "percentComplete": 96
+        "percentComplete": 97
       },
       {
         "label": "Clinical truth layer",
-        "percentComplete": 91
+        "percentComplete": 94
       },
       {
         "label": "Workbook and guardrails",
-        "percentComplete": 75
+        "percentComplete": 76
       },
       {
-        "label": "Scene, panel, render-prep",
-        "percentComplete": 72
+        "label": "Scene, panel, and rendering-guide prep",
+        "percentComplete": 90
       },
       {
-        "label": "Local review, eval, and export workflow",
-        "percentComplete": 96
+        "label": "Review, eval, and export workflow",
+        "percentComplete": 98
       },
       {
         "label": "Frontend structure and UX implementation",
-        "percentComplete": 91
+        "percentComplete": 95
       },
       {
-        "label": "Operational pilot readiness",
-        "percentComplete": 38
+        "label": "Managed platform and pilot ops",
+        "percentComplete": 64
+      },
+      {
+        "label": "Optional external-art attachment and downstream publishing",
+        "percentComplete": 48
       }
     ],
     "overall": {
-      "localMvpReadiness": 91,
-      "pilotReadiness": 52
+      "localMvpReadiness": 96,
+      "pilotReadiness": 72
     },
     "remainingWork": [
-      "cross-run queueing, reviewer due-date escalation, and richer comment threading",
-      "live render integration and retry orchestration",
-      "managed database and object storage for pilot use",
-      "deployment, observability, retention execution, backup, and recovery drills",
-      "external auth when the app stops being local-open",
-      "further expansion of governed disease and source coverage"
+      "Broaden governed disease and source coverage beyond the current starter and primary-care tranches.",
+      "Deepen source refresh ownership automation, contradiction triage, and queue analytics for reviewer collaboration.",
+      "Finish the real managed runtime cutover from local SQLite/filesystem fallback to PostgreSQL plus Blob in the live execution path.",
+      "Run live Azure deployment, backup, restore, and observability drills with tenant credentials and production-grade secrets handling.",
+      "Integrate external auth at the frontend or gateway layer when the app moves beyond local-open mode.",
+      "Add optional downstream publishing/export integrations after the rendering-guide-first handoff path is stable."
     ]
   }
 }

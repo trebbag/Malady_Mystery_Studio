@@ -19,8 +19,9 @@ import { createTelemetry } from './telemetry.mjs';
  *   queueBackend?: string,
  *   serviceBusConnectionString?: string,
  *   telemetry?: any,
- *   telemetryBackend?: string,
+  *   telemetryBackend?: string,
  *   metadataStoreKind?: string,
+ *   runtimeMode?: string,
  * }} PlatformRuntimeOptions
  */
 
@@ -54,6 +55,11 @@ export function createObjectStorage(options = {}) {
  */
 export function createPlatformRuntime(options = {}) {
   const rootDir = options.rootDir ?? findRepoRoot(import.meta.url);
+  const runtimeMode = options.runtimeMode
+    ?? process.env.RUNTIME_MODE
+    ?? ((options.metadataStoreKind ?? process.env.METADATA_STORE_BACKEND ?? 'sqlite') !== 'sqlite'
+      ? 'managed'
+      : 'local');
   const objectStorage = options.objectStorage ?? createObjectStorage({
     objectStoreBackend: options.objectStoreBackend,
     objectStoreDir: options.objectStoreDir,
@@ -71,10 +77,11 @@ export function createPlatformRuntime(options = {}) {
 
   return {
     rootDir,
+    runtimeMode,
     metadataStoreKind: options.metadataStoreKind ?? process.env.METADATA_STORE_BACKEND ?? 'sqlite',
     objectStorageKind: objectStorage.kind,
     objectStorage: objectStorage.client,
-    queueBackend: queueAdapter instanceof Object ? (options.queueBackend ?? process.env.ASYNC_QUEUE_BACKEND ?? 'in-process') : 'in-process',
+    queueBackend: options.queueBackend ?? process.env.ASYNC_QUEUE_BACKEND ?? 'in-process',
     queueAdapter,
     telemetry,
   };

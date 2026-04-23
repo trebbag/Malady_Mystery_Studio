@@ -12,7 +12,7 @@ export function PanelsPage() {
   const artifactsState = useRemoteData(
     () => fetchWorkflowArtifacts(
       runId,
-      ['panel-plan', 'render-prompt', 'lettering-map', 'qa-report', 'render-job', 'render-attempt', 'rendered-asset', 'rendered-asset-manifest'],
+      ['panel-plan', 'render-prompt', 'rendering-guide', 'lettering-map', 'qa-report', 'render-job', 'render-attempt', 'rendered-asset', 'rendered-asset-manifest'],
       true,
     ),
     [runId, refreshSignal],
@@ -20,7 +20,7 @@ export function PanelsPage() {
 
   return (
     <SectionStack>
-      <PageHeader eyebrow="Panels" title="Panels Page" description="Panel plans, render prompts, lettering maps, and panel-stage QA." />
+      <PageHeader eyebrow="Panels" title="Panels Page" description="Panel plans, provider-fitted render prompts, the master rendering guide, and optional attached art artifacts." />
       {(artifactsState.data?.artifacts ?? []).map((artifact) => (
         <ArtifactJsonCard key={artifact.artifactId} title={`${artifact.artifactType} · ${artifact.artifactId}`} value={artifact.payload ?? {}} />
       ))}

@@ -13,7 +13,7 @@ The product creates many intermediate artifacts: disease packet, story workbook,
 
 Model the system as a durable workflow with explicit states, stage transitions, and append-only event logging. Every transition should create a typed event and update a typed workflow-run object.
 
-The workflow stage order now explicitly includes `render-execution` between `render-prep` and final human review/export. This allows prompt approval, async rendered-asset generation, render retry handling, and rendered-output approval to remain visible in the event log instead of being hidden behind prompt-only readiness.
+The workflow stage order still includes an optional `render-execution` branch for secondary art-attachment or legacy provider flows, but the default success path now hands off from `render-prep` directly into human review with a compiled `rendering-guide`. This keeps guide-first export visible in the event log without forcing in-app image generation to define “done.”
 
 ## Consequences
 
@@ -22,12 +22,13 @@ The workflow stage order now explicitly includes `render-execution` between `ren
 - better auditability
 - easier human-in-the-loop review
 - better traceability for eval failures
-- explicit rendered-output gating before pilot release assembly
+- explicit guide-first release gating before pilot release assembly
+- optional rendered-output handling can remain auditable without blocking the default handoff path
 
 ### Tradeoffs
 - more up-front engineering work than a simple queue chain
 - requires discipline around idempotency and status transitions
-- requires migration logic for older prompt-only runs that remain readable but are not pilot-release eligible
+- requires migration logic for older rendered-output runs so they remain readable beside the newer guide-first flow
 
 ## Alternatives considered
 - loosely coupled async jobs with implicit state in the database: rejected for low observability

@@ -44,6 +44,30 @@
         "tenant-pack"
       ]
     },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "seeded",
+        "user-doc",
+        "agent-web"
+      ]
+    },
+    "retrievedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "captureMethod": {
+      "type": "string"
+    },
+    "reviewState": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "provisional",
+        "promotion-required",
+        "suspended"
+      ]
+    },
     "defaultApprovalStatus": {
       "type": "string",
       "enum": [
@@ -91,6 +115,14 @@
     "supersededBy": {
       "type": "string",
       "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "impactedDiseaseCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "impactedRunCount": {
+      "type": "integer",
+      "minimum": 0
     }
   }
 }

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/knowledge-pack-build-report.schema.json",
+  "title": "KnowledgePackBuildReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "targetCanonicalDiseaseName",
+    "status",
+    "claimCount",
+    "sourceCount",
+    "blockingIssues",
+    "warnings",
+    "fitForStoryContinuation",
+    "generatedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "targetCanonicalDiseaseName": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["ready", "review-required", "blocked"]
+    },
+    "claimCount": { "type": "integer", "minimum": 0 },
+    "sourceCount": { "type": "integer", "minimum": 0 },
+    "blockingIssues": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "missingEvidenceAreas": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "fitForStoryContinuation": { "type": "boolean" },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  }
+}

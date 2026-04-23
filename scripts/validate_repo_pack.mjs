@@ -44,6 +44,7 @@ const JSONL_DATASETS = [
   'evals/datasets/educational_sequencing_cases.jsonl',
   'evals/datasets/panelization_cases.jsonl',
   'evals/datasets/render_readiness_cases.jsonl',
+  'evals/datasets/rendering_guide_quality_cases.jsonl',
   'evals/datasets/render_output_quality_cases.jsonl',
   'evals/datasets/governance_release_cases.jsonl',
 ];

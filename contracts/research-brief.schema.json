@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/research-brief.schema.json",
+  "title": "ResearchBrief",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "rawDiseaseInput",
+    "normalizedDiseaseInput",
+    "targetCanonicalDiseaseName",
+    "audienceTier",
+    "lengthProfile",
+    "qualityProfile",
+    "styleProfile",
+    "researchIntent",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "rawDiseaseInput": { "type": "string" },
+    "normalizedDiseaseInput": { "type": "string" },
+    "targetCanonicalDiseaseName": { "type": "string" },
+    "audienceTier": { "type": "string" },
+    "lengthProfile": { "type": "string" },
+    "qualityProfile": { "type": "string" },
+    "styleProfile": { "type": "string" },
+    "researchIntent": { "type": "string" },
+    "allowedDomains": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

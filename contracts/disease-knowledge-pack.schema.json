@@ -35,6 +35,50 @@
     "canonicalDiseaseName": {
       "type": "string"
     },
+    "packStatus": {
+      "type": "string",
+      "enum": [
+        "seeded",
+        "provisional",
+        "promoted"
+      ]
+    },
+    "packScope": {
+      "type": "string",
+      "enum": [
+        "library",
+        "run"
+      ]
+    },
+    "generationMode": {
+      "type": "string",
+      "enum": [
+        "seeded",
+        "agent-generated"
+      ]
+    },
+    "derivedFromRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "sourceOrigins": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seeded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "user-doc": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "agent-web": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "aliases": {
       "type": "array",
       "minItems": 1,
@@ -222,6 +266,13 @@
           }
         }
       }
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "generatedBy": {
+      "type": "string"
     }
   }
 }

@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "panelId": "pnl.hcc.004.03",
+      "location": "external-renders/hcc/panel-03.png",
+      "mimeType": "image/png",
+      "checksum": "demo-external-render-checksum-03",
+      "thumbnailLocation": "external-renders/hcc/panel-03-thumb.png",
+      "width": 2048,
+      "height": 1536
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/review-queue-analytics-view.schema.json",
+  "title": "ReviewQueueAnalyticsView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "summary",
+    "countsByWorkType",
+    "countsByStatus",
+    "countsByPriority",
+    "assigneeLoad",
+    "runBlockersByStage"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "totalItemCount",
+        "overdueItemCount",
+        "escalatedItemCount",
+        "overdueRate",
+        "escalationRate",
+        "medianAgeHours"
+      ],
+      "properties": {
+        "totalItemCount": { "type": "integer", "minimum": 0 },
+        "overdueItemCount": { "type": "integer", "minimum": 0 },
+        "escalatedItemCount": { "type": "integer", "minimum": 0 },
+        "overdueRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "escalationRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "medianAgeHours": { "type": "number", "minimum": 0 }
+      }
+    },
+    "countsByWorkType": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["workType", "count"],
+        "properties": {
+          "workType": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "countsByStatus": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "count"],
+        "properties": {
+          "status": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "countsByPriority": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["priority", "count"],
+        "properties": {
+          "priority": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "assigneeLoad": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["assignee", "count"],
+        "properties": {
+          "assignee": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "runBlockersByStage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stage", "count"],
+        "properties": {
+          "stage": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

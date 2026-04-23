@@ -75,6 +75,7 @@
       "enum": [
         "intake",
         "canonicalization",
+        "research-assembly",
         "disease-packet",
         "story-workbook",
         "scene-planning",
@@ -113,6 +114,7 @@
             "enum": [
               "intake",
               "canonicalization",
+              "research-assembly",
               "disease-packet",
               "story-workbook",
               "scene-planning",
@@ -164,6 +166,11 @@
               "project",
               "canonical-disease",
               "canonicalization-resolution",
+              "research-brief",
+              "source-harvest",
+              "knowledge-pack-build-report",
+              "disease-knowledge-pack",
+              "knowledge-pack-promotion-decision",
               "disease-packet",
               "fact-table",
               "evidence-graph",
@@ -175,6 +182,7 @@
               "scene-card",
               "panel-plan",
               "render-prompt",
+              "rendering-guide",
               "render-job",
               "render-attempt",
               "rendered-asset",
@@ -225,6 +233,7 @@
       "enum": [
         "clinical-governance-review-required",
         "clinical-governance-blocked",
+        "provisional-knowledge-pack-review-required",
         "source-refresh-required",
         "render-retry-required"
       ]

@@ -88,9 +88,20 @@ function createEvaluationSummary() {
     evalRunId: 'evr.demo.001',
     evaluatedAt: '2026-04-21T00:03:00Z',
     allThresholdsMet: true,
-    applicableFamilyCount: 6,
-    passedFamilyCount: 6,
+    applicableFamilyCount: 8,
+    passedFamilyCount: 8,
     failedFamilyCount: 0,
+    familyScores: {
+      medical_accuracy: 1,
+      evidence_traceability: 1,
+      mystery_integrity: 1,
+      educational_sequencing: 1,
+      panelization: 1,
+      render_readiness: 1,
+      rendering_guide_quality: 1,
+      render_output_quality: 1,
+      governance_release: 1,
+    },
   };
 }
 
@@ -102,8 +113,8 @@ test('exporter assembles a release bundle from an approved run', () => {
     'scene-card',
     'panel-plan',
     'render-prompt',
+    'rendering-guide',
     'lettering-map',
-    'rendered-asset-manifest',
     'qa-report',
   ].map((artifactType, index) => ({
     artifactType,
@@ -164,6 +175,53 @@ test('exporter blocks release when required artifacts are missing', () => {
       ],
     }),
     /artifact-completeness/,
+  );
+});
+
+test('exporter no longer requires rendered output when a rendering guide is present', () => {
+  const exporter = createExporterService();
+  const artifactManifest = [
+    'disease-packet',
+    'story-workbook',
+    'scene-card',
+    'panel-plan',
+    'render-prompt',
+    'rendering-guide',
+    'lettering-map',
+    'qa-report',
+  ].map((artifactType, index) => ({
+    artifactType,
+    artifactId: `${artifactType}.${index}`,
+    location: `tenant.demo/${artifactType}/${index}.json`,
+    checksum: `checksum-${index}`,
+    contentType: 'application/json',
+    retentionClass: 'approved-artifact',
+  }));
+
+  const assembled = exporter.assembleRelease({
+    workflowRun: createApprovedRun(),
+    project: {
+      title: 'Pulmonary embolism starter project',
+    },
+    actor: {
+      id: 'usr.owner.001',
+    },
+    diseasePacket: createDiseasePacket(),
+    qaReports: [createQaReport('workflow-run')],
+    artifactManifest,
+    evaluationSummary: createEvaluationSummary(),
+  });
+  /** @type {any[]} */
+  const releaseGateChecks = assembled.releaseBundle.releaseGateChecks;
+
+  assert.equal(assembled.releaseBundle.renderedAssetManifestId ?? null, null);
+  assert.equal(
+    releaseGateChecks.some((gateCheck) => gateCheck.name === 'rendered-output-manual'),
+    false,
+  );
+  assert.equal(
+    releaseGateChecks.some((gateCheck) => gateCheck.name === 'rendering-guide' && gateCheck.status === 'passed'),
+    true,
   );
 });
 

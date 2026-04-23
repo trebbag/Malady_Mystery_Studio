@@ -13,6 +13,7 @@ import { PipelinePage } from '@/pages/PipelinePage';
 import { ReviewDashboardPage } from '@/pages/ReviewDashboardPage';
 import { ReviewQueuePage } from '@/pages/ReviewQueuePage';
 import { ReviewPage } from '@/pages/ReviewPage';
+import { RenderingGuidePage } from '@/pages/RenderingGuidePage';
 import { ScenesPage } from '@/pages/ScenesPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { SourcesPage } from '@/pages/SourcesPage';
@@ -34,6 +35,7 @@ export function AppRoutes() {
           <Route path="workbooks" element={<WorkbooksPage />} />
           <Route path="scenes" element={<ScenesPage />} />
           <Route path="panels" element={<PanelsPage />} />
+          <Route path="rendering-guide" element={<RenderingGuidePage />} />
           <Route path="sources" element={<SourcesPage />} />
           <Route path="governance" element={<GovernancePage />} />
           <Route path="evals" element={<EvalsPage />} />

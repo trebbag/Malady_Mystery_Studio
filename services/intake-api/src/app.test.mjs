@@ -198,6 +198,7 @@ test('starting a workflow run renders local review actions and artifact groups',
     assert.equal(workflowRun.currentStage, 'review');
     assert.equal(workflowRun.tenantId, 'tenant.local');
     assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'render-prompt'), true);
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'rendering-guide'), true);
 
     const reviewResponse = await fetch(`${app.baseUrl}/debug/review/runs/${encodeURIComponent(workflowRun.id)}`);
     assert.equal(reviewResponse.status, 200);
@@ -460,6 +461,7 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
 
     assert.equal(evaluationPayload.workflowRun.latestEvalStatus, 'passed');
     assert.equal(evaluationPayload.evaluation.summary.allThresholdsMet, true);
+    assert.equal(evaluationPayload.evaluation.summary.familyScores.rendering_guide_quality, 1);
 
     const evaluationListResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/evaluations`);
     assert.equal(evaluationListResponse.status, 200);
@@ -483,6 +485,8 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
 
     assert.equal(exportPayload.releaseBundle.evaluationSummary.evalRunId, evaluationPayload.evaluation.id);
     assert.equal(exportPayload.exportHistoryEntry.evalRunId, evaluationPayload.evaluation.id);
+    assert.ok(exportPayload.releaseBundle.renderingGuideId);
+    assert.equal(exportPayload.releaseBundle.renderedAssetManifestId ?? null, null);
 
     const reviewRunViewResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/review-run-view`);
     assert.equal(reviewRunViewResponse.status, 200);
@@ -491,6 +495,56 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
     assert.equal(reviewRunView.evaluationSummary.latestEvalRunId, evaluationPayload.evaluation.id);
     assert.equal(reviewRunView.exportHistory.entries.length, 1);
     assert.equal(reviewRunView.exportHistory.entries[0].releaseId, exportPayload.releaseBundle.releaseId);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});
+
+test('rendering guide endpoints and manual rendered-asset attachment remain available as a secondary path', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer(sandbox);
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'community-acquired pneumonia',
+    });
+    const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+
+    const renderingGuideResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/rendering-guide`);
+    assert.equal(renderingGuideResponse.status, 200);
+    const renderingGuideView = await renderingGuideResponse.json();
+
+    assert.equal(renderingGuideView.runId, workflowRun.id);
+    assert.equal(renderingGuideView.attachmentSummary.attachmentMode, 'guide-only');
+
+    const attachmentResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/rendered-assets/attach`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        assets: [
+          {
+            panelId: renderingGuideView.renderingGuide.panels[0].panelId,
+            location: 'external-renders/cap/panel-01.png',
+            mimeType: 'image/png',
+            checksum: 'manual-rendered-checksum-01',
+            width: 2048,
+            height: 1536,
+          },
+        ],
+      }),
+    });
+    assert.equal(attachmentResponse.status, 201);
+    const attachedGuideView = await attachmentResponse.json();
+
+    assert.equal(attachedGuideView.attachmentSummary.attachmentMode, 'external-art-attached');
+    assert.equal(attachedGuideView.attachmentSummary.attachedRenderedAssetCount, 1);
+
+    const refreshedRunResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}`);
+    const refreshedRun = await refreshedRunResponse.json();
+    assert.equal(refreshedRun.artifacts.some((/** @type {any} */ artifact) => artifact.artifactType === 'rendered-asset-manifest'), true);
   } finally {
     await app.close();
     await sandbox.cleanup();

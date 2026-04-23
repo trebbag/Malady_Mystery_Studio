@@ -6,8 +6,8 @@ const REQUIRED_RELEASE_ARTIFACT_TYPES = [
   'scene-card',
   'panel-plan',
   'render-prompt',
-  'lettering-map',
   'rendered-asset-manifest',
+  'lettering-map',
   'qa-report',
 ];
 
@@ -37,15 +37,17 @@ function selectPrimaryQaReport(qaReports) {
  * @param {any[]} qaReports
  * @param {any} diseasePacket
  * @param {any | undefined} evaluationSummary
- * @returns {{ medicalAccuracy: number, evidenceTraceability: number, mysteryIntegrity: number, educationalSequencing: number, panelization: number, renderReadiness: number, renderOutputQuality: number, sourceFreshness: number, contradictionStatus: string, releaseVerdict: string }}
+ * @param {Array<{ artifactType: string }>} artifactManifest
+ * @returns {{ medicalAccuracy: number, evidenceTraceability: number, mysteryIntegrity: number, educationalSequencing: number, panelization: number, renderReadiness: number, renderingGuideQuality: number, renderOutputQuality: number, sourceFreshness: number, contradictionStatus: string, releaseVerdict: string }}
  */
-function buildQualitySummary(qaReports, diseasePacket, evaluationSummary) {
+function buildQualitySummary(qaReports, diseasePacket, evaluationSummary, artifactManifest) {
   const primaryQaReport = selectPrimaryQaReport(qaReports);
   const medicalAccuracyScores = qaReports.map((qaReport) => qaReport.scores.medicalAccuracy);
   const mysteryIntegrityScores = qaReports.map((qaReport) => qaReport.scores.mysteryIntegrity);
   const educationalSequencingScores = qaReports.map((qaReport) => qaReport.scores.educationalSequencing);
   const panelizationScores = qaReports.map((qaReport) => qaReport.scores.panelization);
   const renderReadinessScores = qaReports.map((qaReport) => qaReport.scores.renderReadiness);
+  const hasRenderedManifest = artifactManifest.some((artifact) => artifact.artifactType === 'rendered-asset-manifest');
   const evidenceTraceability = Number((evaluationSummary?.familyScores?.evidence_traceability ?? (
     diseasePacket.evidenceSummary.governanceVerdict === 'approved' ? 1 : 0
   )).toFixed(3));
@@ -60,7 +62,8 @@ function buildQualitySummary(qaReports, diseasePacket, evaluationSummary) {
     educationalSequencing: Number((primaryQaReport?.scores.educationalSequencing ?? average(educationalSequencingScores)).toFixed(3)),
     panelization: Number((primaryQaReport?.scores.panelization ?? average(panelizationScores)).toFixed(3)),
     renderReadiness: Number((primaryQaReport?.scores.renderReadiness ?? average(renderReadinessScores)).toFixed(3)),
-    renderOutputQuality: Number((evaluationSummary?.familyScores?.render_output_quality ?? 0).toFixed(3)),
+    renderingGuideQuality: Number((evaluationSummary?.familyScores?.rendering_guide_quality ?? 0).toFixed(3)),
+    renderOutputQuality: Number(((hasRenderedManifest ? evaluationSummary?.familyScores?.render_output_quality : 0) ?? 0).toFixed(3)),
     sourceFreshness: Number(diseasePacket.evidenceSummary.freshnessScore.toFixed(3)),
     contradictionStatus,
     releaseVerdict: contradictionStatus === 'blocking' || qaReports.some((qaReport) => qaReport.verdict === 'fail')
@@ -88,8 +91,10 @@ function buildReleaseGateChecks(workflowRun, artifactManifest, qaReports, diseas
   const noQaFailures = qaReports.every((qaReport) => qaReport.verdict !== 'fail');
   const noBlockingContradictions = diseasePacket.evidenceSummary.blockingContradictions === 0;
   const hasRenderedManifest = artifactManifest.some((artifact) => artifact.artifactType === 'rendered-asset-manifest');
+  const hasRenderingGuide = artifactManifest.some((artifact) => artifact.artifactType === 'rendering-guide');
+  const renderedManifestArtifact = artifactManifest.find((artifact) => artifact.artifactType === 'rendered-asset-manifest');
 
-  return [
+  const gateChecks = [
     {
       name: 'required-approvals',
       status: allRequiredApprovalsPresent ? 'passed' : 'failed',
@@ -115,8 +120,8 @@ function buildReleaseGateChecks(workflowRun, artifactManifest, qaReports, diseas
       name: 'rendered-output',
       status: hasRenderedManifest ? 'passed' : 'failed',
       details: hasRenderedManifest
-        ? 'A rendered asset manifest is present for pilot-ready export.'
-        : 'Pilot-ready export requires a rendered asset manifest.',
+        ? `A rendered asset manifest (${renderedManifestArtifact?.artifactId ?? 'manifest'}) is present for panel delivery.`
+        : 'Export requires a rendered asset manifest because panel images are now the default end product.',
     },
     {
       name: 'source-governance',
@@ -126,6 +131,16 @@ function buildReleaseGateChecks(workflowRun, artifactManifest, qaReports, diseas
         : 'Blocking evidence contradictions must be resolved before export.',
     },
   ];
+
+  if (hasRenderingGuide) {
+    gateChecks.push({
+      name: 'rendering-guide-secondary',
+      status: 'passed',
+      details: 'A rendering guide is attached as a secondary prompt/reference artifact.',
+    });
+  }
+
+  return gateChecks;
 }
 
 /**
@@ -143,6 +158,8 @@ export function renderReleaseBundleIndex(releaseBundle, workflowRun, projectTitl
 - Exported by: ${releaseBundle.exportedBy}
 - Exported at: ${releaseBundle.exportedAt}
 - Release verdict: ${releaseBundle.qualitySummary.releaseVerdict}
+- Rendering guide: ${releaseBundle.renderingGuideId ?? 'not-attached'}
+- Rendered asset manifest: ${releaseBundle.renderedAssetManifestId ?? 'not-attached'}
 ${releaseBundle.evaluationSummary ? `- Eval run: ${releaseBundle.evaluationSummary.evalRunId}
 - Eval status: ${releaseBundle.evaluationSummary.allThresholdsMet ? 'passed' : 'failed'}
 - Eval timestamp: ${releaseBundle.evaluationSummary.evaluatedAt}` : ''}
@@ -240,7 +257,7 @@ export class ExporterService {
         retentionClass: artifact.retentionClass,
         checksum: artifact.checksum,
       })),
-      qualitySummary: buildQualitySummary(options.qaReports, options.diseasePacket, options.evaluationSummary),
+      qualitySummary: buildQualitySummary(options.qaReports, options.diseasePacket, options.evaluationSummary, options.artifactManifest),
       releaseGateChecks: options.evaluationSummary
         ? [
           ...releaseGateChecks,
@@ -260,6 +277,10 @@ export class ExporterService {
       exportedBy: options.actor.id,
       bundleIndexLocation: '',
       sourceEvidencePackLocation: '',
+      renderingGuideId: options.artifactManifest.find((artifact) => artifact.artifactType === 'rendering-guide')?.artifactId,
+      renderingGuideLocation: options.artifactManifest.find((artifact) => artifact.artifactType === 'rendering-guide')?.location,
+      renderingGuideMarkdownDocumentId: undefined,
+      renderingGuideMarkdownLocation: undefined,
       renderedAssetManifestId: options.artifactManifest.find((artifact) => artifact.artifactType === 'rendered-asset-manifest')?.artifactId,
       renderedAssetManifestLocation: options.artifactManifest.find((artifact) => artifact.artifactType === 'rendered-asset-manifest')?.location,
       notes: [

@@ -315,8 +315,13 @@ function artifactIsAvailable(artifactType, context) {
  */
 export function isCaseApplicable(evaluationCase, context) {
   const caseDisease = normalizeName(evaluationCase.input?.disease);
+  const artifactType = evaluationCase.input?.artifact;
 
   if (caseDisease && caseDisease !== context.canonicalDiseaseName) {
+    return false;
+  }
+
+  if (evaluationCase.evalFamily === 'render_output_quality' && typeof artifactType === 'string' && !artifactIsAvailable(artifactType, context)) {
     return false;
   }
 
@@ -397,6 +402,60 @@ function scoreRenderedOutput(context) {
   }
 
   return score;
+}
+
+/**
+ * @param {any} context
+ * @returns {number}
+ */
+function scoreRenderingGuideQuality(context) {
+  const renderingGuide = context.renderingGuide;
+
+  if (!renderingGuide) {
+    return 0;
+  }
+
+  let score = 1;
+
+  if (!renderingGuide.slideStrategy?.onePanelPerSlide || !renderingGuide.slideStrategy?.sequentialGenerationRequired) {
+    score -= 0.2;
+  }
+
+  if (!renderingGuide.slideStrategy?.firstSlideStyleLockRequired || renderingGuide.slideStrategy?.forbidLiveResearch !== true) {
+    score -= 0.15;
+  }
+
+  if (!renderingGuide.gensparkDeckBootstrapPrompt) {
+    score -= 0.1;
+  }
+
+  for (const panel of renderingGuide.panels ?? []) {
+    if (!panel.nanoBananaPrompt?.prompt || !panel.gensparkSlide?.creationPrompt) {
+      score -= 0.2;
+    }
+
+    if ((panel.continuityAnchors ?? []).length < 2) {
+      score -= 0.08;
+    }
+
+    if ((panel.nanoBananaPrompt?.anatomyLocks ?? []).length < 2) {
+      score -= 0.08;
+    }
+
+    if ((panel.letteringEntries ?? []).length === 0) {
+      score -= 0.08;
+    }
+
+    if ((panel.claimReferences ?? []).length === 0) {
+      score -= 0.12;
+    }
+
+    if (!panel.gensparkSlide?.useOnlyProvidedContent || !panel.gensparkSlide?.forbidLiveResearch) {
+      score -= 0.15;
+    }
+  }
+
+  return roundScore(score);
 }
 
 /**
@@ -482,6 +541,9 @@ function scoreEvaluationCase(evaluationCase, context, threshold) {
       break;
     case 'render_readiness':
       score = context.renderReview.score;
+      break;
+    case 'rendering_guide_quality':
+      score = scoreRenderingGuideQuality(context);
       break;
     case 'render_output_quality':
       score = scoreRenderedOutput(context);
@@ -633,6 +695,7 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
   const sceneCards = loadArtifactsByType(store, workflowRun, 'scene-card');
   const panelPlans = loadArtifactsByType(store, workflowRun, 'panel-plan');
   const renderPrompts = loadArtifactsByType(store, workflowRun, 'render-prompt');
+  const renderingGuide = loadLatestArtifactByType(store, workflowRun, 'rendering-guide');
   const letteringMaps = loadArtifactsByType(store, workflowRun, 'lettering-map');
   const renderJobs = loadArtifactsByType(store, workflowRun, 'render-job');
   const renderedAssetManifest = loadLatestArtifactByType(store, workflowRun, 'rendered-asset-manifest');
@@ -670,6 +733,7 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
     sceneCards,
     panelPlans,
     renderPrompts,
+    renderingGuide,
     letteringMaps,
     renderJobs,
     renderedAssetManifest,

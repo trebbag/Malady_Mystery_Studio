@@ -89,6 +89,26 @@ export function createExportHistoryView(options) {
 }
 
 /**
+ * @param {{ runId: string, renderingGuide: any, markdown: string, attachmentSummary: any }} options
+ * @returns {any}
+ */
+export function createRenderingGuideView(options) {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    runId: options.runId,
+    renderingGuide: options.renderingGuide,
+    markdown: options.markdown,
+    attachmentSummary: options.attachmentSummary,
+    availableActions: [
+      'regenerate-rendering-guide',
+      'copy-rendering-guide-markdown',
+      'download-rendering-guide-markdown',
+      'attach-rendered-assets',
+    ],
+  };
+}
+
+/**
  * @param {{ runId: string, artifactTypeFilters?: string[], expand: boolean, artifacts: any[] }} options
  * @returns {any}
  */
@@ -185,7 +205,7 @@ export function createReviewDashboardView(options) {
 }
 
 /**
- * @param {{ project: any, workflowRun: any, clinicalPackage: any, reviewAssignments?: any[], reviewComments?: any[], workItems?: any[], reviewThreads?: any[], renderJobs?: any[], latestEvalRun?: any | null, latestEvalStatus: string, exportHistory: any[] }} options
+ * @param {{ project: any, workflowRun: any, clinicalPackage: any, reviewAssignments?: any[], reviewComments?: any[], workItems?: any[], reviewThreads?: any[], renderJobs?: any[], renderingGuide?: any | null, latestEvalRun?: any | null, latestEvalStatus: string, exportHistory: any[] }} options
  * @returns {any}
  */
 export function createReviewRunView(options) {
@@ -218,6 +238,7 @@ export function createReviewRunView(options) {
       runId: options.workflowRun.id,
       entries: options.exportHistory,
     }),
+    renderingGuide: options.renderingGuide ?? undefined,
     renderJobs: options.renderJobs ?? [],
     availableActions: [
       'resolve-canonicalization',
@@ -231,9 +252,9 @@ export function createReviewRunView(options) {
       'assign-source-owner',
       'create-source-refresh-task',
       'rebuild-clinical-package',
+      'regenerate-rendering-guide',
       'run-evaluations',
-      'enqueue-render-job',
-      'retry-render-job',
+      'attach-rendered-assets',
       'export-bundle',
     ],
   };

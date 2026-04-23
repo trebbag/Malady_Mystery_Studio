@@ -6,6 +6,7 @@ export const runPageDefinitions = [
   { label: 'Workbooks', path: 'workbooks', description: 'Story workbook, narrative review trace, and QA.' },
   { label: 'Scenes', path: 'scenes', description: 'Scene-card sequencing and narrative beats.' },
   { label: 'Panels', path: 'panels', description: 'Panel plans, render prompts, lettering maps, and panel QA.' },
+  { label: 'Rendering Guide', path: 'rendering-guide', description: 'Master handoff guide for Nano Banana Pro and Genspark AI Slides.' },
   { label: 'Sources', path: 'sources', description: 'Governed source records and source review actions.' },
   { label: 'Governance', path: 'governance', description: 'Approvals, audit log, and clinical blocker state.' },
   { label: 'Evals', path: 'evals', description: 'Eval families, gate state, and rerun action.' },

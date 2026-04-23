@@ -190,6 +190,40 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/review-run-view.schema.json'
+  /api/v1/workflow-runs/{runId}/rendering-guide:
+    get:
+      summary: Get the rendering-guide read model for a workflow run
+      operationId: getWorkflowRunRenderingGuide
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rendering guide view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/rendering-guide-view.schema.json'
+  /api/v1/workflow-runs/{runId}/rendering-guide/regenerate:
+    post:
+      summary: Regenerate the master rendering guide from the latest panel pipeline artifacts
+      operationId: regenerateWorkflowRunRenderingGuide
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rendering guide view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/rendering-guide-view.schema.json'
   /api/v1/workflow-runs/{runId}/comments:
     get:
       summary: List stored review comments for a workflow run
@@ -800,7 +834,7 @@ paths:
                 $ref: '../contracts/eval-run.schema.json'
   /api/v1/workflow-runs/{runId}/render-jobs:
     post:
-      summary: Queue a render job for a workflow run
+      summary: Queue a legacy optional render job for a workflow run
       operationId: createRenderJob
       parameters:
         - in: path
@@ -834,6 +868,29 @@ paths:
                     $ref: '../contracts/workflow-run.schema.json'
                   renderJob:
                     $ref: '../contracts/render-job.schema.json'
+  /api/v1/workflow-runs/{runId}/rendered-assets/attach:
+    post:
+      summary: Attach externally rendered panel art back to a workflow run by reference
+      operationId: attachRenderedAssets
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../contracts/rendered-asset-attachment-request.schema.json'
+      responses:
+        '201':
+          description: Updated rendering guide view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/rendering-guide-view.schema.json'
   /api/v1/render-jobs/{jobId}:
     get:
       summary: Get a render job with attempts and rendered assets
@@ -1180,6 +1237,23 @@ paths:
             application/json:
               schema:
                 type: object
+  /api/v1/release-bundles/{releaseId}/rendering-guide:
+    get:
+      summary: Get the human-readable rendering guide markdown for a release
+      operationId: getReleaseBundleRenderingGuide
+      parameters:
+        - in: path
+          name: releaseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rendering guide markdown
+          content:
+            text/markdown:
+              schema:
+                type: string
   /api/v1/workflow-runs/{runId}/exports:
     get:
       summary: List export history entries for a workflow run

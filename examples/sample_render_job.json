@@ -5,10 +5,10 @@
   "workflowRunId": "run.hcc.001",
   "status": "completed",
   "approvalStatus": "approved",
-  "queueName": "render-execution",
-  "provider": "gemini-image",
-  "model": "gemini-3.1-flash-image-preview",
-  "renderTargetProfileId": "rtp.gemini-image-default",
+  "queueName": "external-art-attachment",
+  "provider": "external-manual",
+  "model": "external-handoff",
+  "renderTargetProfileId": "rtp.external-manual",
   "renderPromptIds": [
     "rpr.hcc.004.03"
   ],

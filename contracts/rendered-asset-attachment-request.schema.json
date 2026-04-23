@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/rendered-asset-attachment-request.schema.json",
+  "title": "RenderedAssetAttachmentRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assets"
+  ],
+  "properties": {
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "panelId",
+          "location",
+          "mimeType",
+          "checksum"
+        ],
+        "properties": {
+          "panelId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "renderPromptId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "location": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "checksum": {
+            "type": "string"
+          },
+          "thumbnailLocation": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  }
+}
