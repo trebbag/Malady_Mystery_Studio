@@ -73,6 +73,17 @@ function buildQualitySummary(qaReports, diseasePacket, evaluationSummary, artifa
 }
 
 /**
+ * @param {any[]} artifactManifest
+ * @returns {boolean}
+ */
+function releaseUsesStubRenderedOutput(artifactManifest) {
+  return artifactManifest.some((artifact) => (
+    artifact.artifactType === 'rendered-asset-manifest'
+    && (artifact.payload?.renderMode === 'stub-placeholder' || artifact.payload?.nonFinalPlaceholder === true)
+  ));
+}
+
+/**
  * @param {any} workflowRun
  * @param {Array<{ artifactType: string, artifactId?: string }>} artifactManifest
  * @param {any[]} qaReports
@@ -285,6 +296,9 @@ export class ExporterService {
       renderedAssetManifestLocation: options.artifactManifest.find((artifact) => artifact.artifactType === 'rendered-asset-manifest')?.location,
       notes: [
         'Release assembled from an approved workflow run.',
+        ...(releaseUsesStubRenderedOutput(options.artifactManifest)
+          ? ['Rendered asset manifest was produced by the local stub provider. This validates local structure and gating only; final image quality still requires live OpenAI rendering.']
+          : []),
       ],
     };
     const bundleIndexMarkdown = renderReleaseBundleIndex(releaseBundle, options.workflowRun, options.project.title);

@@ -12,7 +12,10 @@
     "overdueItemCount": 1,
     "escalatedItemCount": 1,
     "renderRetryCount": 1,
-    "sourceRefreshCount": 1
+    "sourceRefreshCount": 1,
+    "dueSoonItemCount": 1,
+    "fallbackQueueItemCount": 1,
+    "unreadNotificationCount": 2
   },
   "items": [
     {
@@ -30,7 +33,12 @@
       "dueAt": "2026-04-23T16:00:00Z",
       "reminderAt": "2026-04-23T12:00:00Z",
       "isOverdue": true,
+      "reminderDue": true,
+      "escalationTargetQueue": "fallback-render-retry-queue",
       "threadCount": 1,
+      "latestThreadStatus": "open",
+      "notificationCount": 2,
+      "unreadNotificationCount": 1,
       "notes": [
         "Automatic retries exhausted for the rendered output."
       ]
@@ -50,7 +58,12 @@
       "dueAt": "2026-04-28T15:00:00Z",
       "reminderAt": "2026-04-26T03:00:00Z",
       "isOverdue": false,
+      "reminderDue": false,
+      "escalationTargetQueue": "source-refresh-queue",
       "threadCount": 0,
+      "latestThreadStatus": "",
+      "notificationCount": 1,
+      "unreadNotificationCount": 1,
       "notes": [
         "Refresh the source review date before the next migraine release."
       ]

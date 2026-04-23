@@ -23,6 +23,13 @@ test('stub render service creates queueable jobs and rendered asset manifests', 
     id: 'rnd.local.001',
     panelId: 'panel.local.001',
     positivePrompt: 'Render a medically grounded alveolar scene with no visible text.',
+    continuityAnchors: ['detective silhouettes', 'alveolar sacs'],
+    anatomyLocks: ['alveolar wall remains readable', 'inflammatory fluid stays localized'],
+    acceptanceChecks: ['No visible lettering appears in the generated art.'],
+    textLayerPolicy: {
+      letteringHandledSeparately: true,
+      renderVisibleText: false,
+    },
   }, 'baseline');
   const renderAttempt = renderService.buildRenderAttempt({
     workflowRun,
@@ -39,6 +46,13 @@ test('stub render service creates queueable jobs and rendered asset manifests', 
     renderPrompt: {
       id: 'rnd.local.001',
       panelId: 'panel.local.001',
+      continuityAnchors: ['detective silhouettes', 'alveolar sacs'],
+      anatomyLocks: ['alveolar wall remains readable', 'inflammatory fluid stays localized'],
+      acceptanceChecks: ['No visible lettering appears in the generated art.'],
+      textLayerPolicy: {
+        letteringHandledSeparately: true,
+        renderVisibleText: false,
+      },
     },
     renderedImage,
     location: 'tenant.local/rendered-assets/ras.local.001.png',
@@ -53,7 +67,17 @@ test('stub render service creates queueable jobs and rendered asset manifests', 
   assert.equal(renderService.providerName, 'stub-image');
   assert.equal(renderJob.queueName, 'render-execution');
   assert.equal(renderAttempt.status, 'succeeded');
+  assert.equal(renderedAsset.isPlaceholder, true);
+  assert.equal(renderedAsset.letteringSeparation.status, 'passed');
+  assert.match(renderedAsset.nonFinalReason, /Local stub render/u);
+  assert.equal(typeof renderedAsset.promptHash, 'string');
   assert.equal(renderedAssetManifest.allPanelsRendered, true);
+  assert.equal(renderedAssetManifest.renderMode, 'stub-placeholder');
+  assert.equal(renderedAssetManifest.nonFinalPlaceholder, true);
+  assert.equal(renderedAssetManifest.localValidation.structuralOnly, true);
+  assert.equal(renderedAssetManifest.localValidation.letteringSeparationPassed, true);
+  assert.equal(renderedAssetManifest.localValidation.continuityLocksPresent, true);
+  assert.equal(renderedAssetManifest.localValidation.anatomyLocksPresent, true);
   assert.equal(renderedAssetManifest.renderTargetProfileId, DEFAULT_RENDER_TARGET_PROFILE.id);
 });
 
@@ -98,7 +122,8 @@ test('openai image render service uses the image generations endpoint', async (t
   assert.equal(requests.length, 1);
   assert.match(requests[0].url, /images\/generations/);
   const body = JSON.parse(String(requests[0].init?.body));
-  assert.equal(body.model, 'gpt-image-1.5');
+  assert.equal(body.model, 'gpt-image-2');
   assert.equal(body.size, '1536x1024');
+  assert.match(body.prompt, /^Create a medically accurate, high-fidelity finished comic panel illustration\./);
   assert.match(body.prompt, /Simplify the composition/);
 });

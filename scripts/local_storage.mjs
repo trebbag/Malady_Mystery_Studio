@@ -1,11 +1,14 @@
 import path from 'node:path';
 
+import { loadDotEnv } from '../packages/shared-config/src/env.mjs';
 import { findRepoRoot } from '../packages/shared-config/src/repo-paths.mjs';
 import {
   backupLocalStorage,
   resetLocalStorage,
   restoreLocalStorage,
 } from './local_storage_tools.mjs';
+
+loadDotEnv({ moduleUrl: import.meta.url });
 
 const rootDir = findRepoRoot(import.meta.url);
 const command = process.argv[2];

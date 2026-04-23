@@ -43,6 +43,13 @@
       "type": "string",
       "format": "date-time"
     },
+    "validationMode": {
+      "type": "string",
+      "enum": [
+        "local-structural",
+        "provider-output"
+      ]
+    },
     "latestRelevantArtifactAt": {
       "type": "string",
       "format": "date-time"
@@ -205,6 +212,9 @@
           "minimum": 0
         },
         "allThresholdsMet": {
+          "type": "boolean"
+        },
+        "structuralRenderOutputOnly": {
           "type": "boolean"
         },
         "familyScores": {

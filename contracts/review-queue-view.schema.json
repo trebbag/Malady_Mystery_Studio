@@ -50,7 +50,10 @@
         "overdueItemCount",
         "escalatedItemCount",
         "renderRetryCount",
-        "sourceRefreshCount"
+        "sourceRefreshCount",
+        "dueSoonItemCount",
+        "fallbackQueueItemCount",
+        "unreadNotificationCount"
       ],
       "properties": {
         "visibleItemCount": {
@@ -70,6 +73,18 @@
           "minimum": 0
         },
         "sourceRefreshCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dueSoonItemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fallbackQueueItemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unreadNotificationCount": {
           "type": "integer",
           "minimum": 0
         }
@@ -139,7 +154,24 @@
           "isOverdue": {
             "type": "boolean"
           },
+          "reminderDue": {
+            "type": "boolean"
+          },
+          "escalationTargetQueue": {
+            "type": "string"
+          },
           "threadCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "latestThreadStatus": {
+            "type": "string"
+          },
+          "notificationCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unreadNotificationCount": {
             "type": "integer",
             "minimum": 0
           },

@@ -13,6 +13,9 @@ CI workflows and repository automation. Keep quality gates here so pull requests
 ### `docs/`
 Product, architecture, operational, and planning documents. The canonical long-form spec lives here.
 
+### `data/`
+Local non-secret canon and compatibility seed data. The default `data/canon` files mirror the previous ClinicalEducation character/style/deck profile surface without copying secrets or provider-specific legacy runtime labels.
+
 ### `docs/adr/`
 Architecture Decision Records. Use ADRs when making durable technical decisions or introducing breaking changes.
 

@@ -72,6 +72,24 @@ export function isWorkItemOverdue(workItem, referenceTimestamp = new Date().toIS
 }
 
 /**
+ * @param {any} workItem
+ * @param {string} [referenceTimestamp]
+ * @returns {boolean}
+ */
+export function isWorkItemReminderDue(workItem, referenceTimestamp = new Date().toISOString()) {
+  if (
+    !workItem?.reminderAt
+    || workItem.status === 'completed'
+    || workItem.status === 'cancelled'
+    || isWorkItemOverdue(workItem, referenceTimestamp)
+  ) {
+    return false;
+  }
+
+  return new Date(workItem.reminderAt).getTime() <= new Date(referenceTimestamp).getTime();
+}
+
+/**
  * @param {string} workType
  * @param {string} reason
  * @returns {number}
@@ -246,6 +264,7 @@ export function buildReviewQueueView(store, workflowRuns, projectsById, searchPa
   const runById = new Map(workflowRuns.map((workflowRun) => [workflowRun.id, workflowRun]));
   const allWorkItems = store.listArtifactsByType('work-item', { tenantId: workflowRuns[0]?.tenantId ?? 'tenant.local' });
   const threads = store.listArtifactsByType('review-thread', { tenantId: workflowRuns[0]?.tenantId ?? 'tenant.local' });
+  const notifications = store.listArtifactsByType('notification', { tenantId: workflowRuns[0]?.tenantId ?? 'tenant.local' });
   const items = allWorkItems
     .filter((workItem) => {
       if (filters.workType && workItem.workType !== filters.workType) {
@@ -278,6 +297,21 @@ export function buildReviewQueueView(store, workflowRuns, projectsById, searchPa
     .map((workItem) => {
       const workflowRun = workItem.workflowRunId ? runById.get(workItem.workflowRunId) : null;
       const project = workflowRun ? projectsById.get(workflowRun.projectId) : null;
+      const linkedThreads = threads.filter((thread) => (
+        thread.workflowRunId === workflowRun?.id
+        && (
+          thread.scopeType === 'run'
+          || thread.scopeId === workItem.subjectId
+          || thread.scopeId === `${workItem.subjectType}:${workItem.subjectId}`
+        )
+      ));
+      const linkedNotifications = notifications.filter((notification) => (
+        notification.workItemId === workItem.id
+        || (notification.workflowRunId && notification.workflowRunId === workflowRun?.id && notification.subjectId === workItem.subjectId)
+      ));
+      const latestThread = linkedThreads
+        .sort((left, right) => String(right.updatedAt).localeCompare(String(left.updatedAt)))
+        .at(0);
 
       return {
         workItemId: workItem.id,
@@ -294,7 +328,12 @@ export function buildReviewQueueView(store, workflowRuns, projectsById, searchPa
         dueAt: workItem.dueAt,
         reminderAt: workItem.reminderAt,
         isOverdue: isWorkItemOverdue(workItem),
-        threadCount: threads.filter((thread) => thread.workflowRunId === workflowRun?.id).length,
+        reminderDue: isWorkItemReminderDue(workItem),
+        escalationTargetQueue: workItem.fallbackQueueName,
+        threadCount: linkedThreads.length,
+        latestThreadStatus: latestThread?.status,
+        notificationCount: linkedNotifications.length,
+        unreadNotificationCount: linkedNotifications.filter((notification) => notification.status === 'unread').length,
         notes: workItem.notes ?? [],
       };
     });
@@ -308,6 +347,9 @@ export function buildReviewQueueView(store, workflowRuns, projectsById, searchPa
       escalatedItemCount: items.filter((item) => item.status === 'escalated').length,
       renderRetryCount: items.filter((item) => item.workType === 'render-retry').length,
       sourceRefreshCount: items.filter((item) => item.workType === 'source-refresh').length,
+      dueSoonItemCount: items.filter((item) => item.reminderDue).length,
+      fallbackQueueItemCount: items.filter((item) => item.status === 'escalated' && item.escalationTargetQueue).length,
+      unreadNotificationCount: items.reduce((total, item) => total + (item.unreadNotificationCount ?? 0), 0),
     },
     items,
   };
@@ -320,11 +362,16 @@ export function buildReviewQueueView(store, workflowRuns, projectsById, searchPa
  */
 export function buildReviewQueueAnalyticsView(store, workflowRuns) {
   const allWorkItems = store.listArtifactsByType('work-item', { tenantId: workflowRuns[0]?.tenantId ?? 'tenant.local' });
+  const notifications = store.listArtifactsByType('notification', { tenantId: workflowRuns[0]?.tenantId ?? 'tenant.local' });
   const ageHours = allWorkItems.map((workItem) => (
     Math.max(0, (Date.now() - new Date(workItem.createdAt).getTime()) / (1000 * 60 * 60))
   ));
   const overdueItemCount = allWorkItems.filter((workItem) => isWorkItemOverdue(workItem)).length;
   const escalatedItemCount = allWorkItems.filter((workItem) => workItem.status === 'escalated').length;
+  const dueSoonItemCount = allWorkItems.filter((workItem) => isWorkItemReminderDue(workItem)).length;
+  const completedItemCount = allWorkItems.filter((workItem) => workItem.status === 'completed').length;
+  const fallbackQueueItemCount = allWorkItems.filter((workItem) => workItem.status === 'escalated' && workItem.fallbackQueueName).length;
+  const unreadNotificationCount = notifications.filter((notification) => notification.status === 'unread').length;
   const countsByWorkType = Object.entries(allWorkItems.reduce((totals, workItem) => {
     totals[workItem.workType] = (totals[workItem.workType] ?? 0) + 1;
     return totals;
@@ -358,6 +405,10 @@ export function buildReviewQueueAnalyticsView(store, workflowRuns) {
       overdueRate: allWorkItems.length > 0 ? Number((overdueItemCount / allWorkItems.length).toFixed(3)) : 0,
       escalationRate: allWorkItems.length > 0 ? Number((escalatedItemCount / allWorkItems.length).toFixed(3)) : 0,
       medianAgeHours: median(ageHours),
+      dueSoonItemCount,
+      completedItemCount,
+      fallbackQueueItemCount,
+      unreadNotificationCount,
     },
     countsByWorkType,
     countsByStatus,

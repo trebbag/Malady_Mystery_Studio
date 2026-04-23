@@ -9,7 +9,7 @@
     "projectTitle": "Hepatocellular carcinoma starter project",
     "canonicalDiseaseName": "Hepatocellular carcinoma",
     "providerTargets": [
-      "openai-gpt-image"
+      "openai-gpt-image-2"
     ],
     "generatedAt": "2026-04-23T15:00:00Z",
     "markdownDocumentId": "rgd.hcc.001",
@@ -42,8 +42,8 @@
         "red-gold liver environment"
       ],
       "characterLocks": [
-        "Detective A is shorter and more impulsive",
-        "Detective B is taller and more analytical"
+        "Detective Cyto Kine is the felt lead investigator with HUD visor and evidence vial",
+        "Deputy Pip is the felt field deputy with micro-scanner and learner questions"
       ],
       "anatomyLocks": [
         "liver-inspired tissue geometry",
@@ -55,7 +55,7 @@
         "high clarity",
         "panel composition optimized for later lettering"
       ],
-      "letteringPolicy": "Never request visible dialogue, captions, labels, or teaching copy inside the generated art. Apply all text from the separate lettering layer after image generation or slide placement."
+      "letteringPolicy": "Never request visible dialogue, captions, labels, or teaching copy inside the generated art. Apply all text from the separate lettering layer after image generation."
     },
     "globalNegativeConstraints": [
       "no speech bubbles",
@@ -66,7 +66,7 @@
     ],
     "retryGuidance": [
       "If a panel loses anatomy clarity, simplify the composition before weakening the medical objective.",
-      "If character continuity drifts, explicitly restate the detective locks and reuse the first successful panel as the style reference.",
+      "If character continuity drifts, explicitly restate the detective locks and reuse the first approved successful panel as the style reference.",
       "If the model adds visible text, remove all requested text from the art prompt and keep overlays in the lettering instructions only.",
       "If a panel fails repeatedly, keep the clinical objective fixed and tighten only composition, continuity, and anatomy locks."
     ],
@@ -119,7 +119,7 @@
           {
             "entryId": "lte.hcc.004.03",
             "layerType": "dialogue",
-            "speaker": "Detective B",
+            "speaker": "Deputy Pip",
             "text": "That district is rewriting the neighborhood. Follow it, but do not name it yet.",
             "placement": "right-side stacked balloons",
             "purpose": "Land the first major clue while preserving reveal timing.",
@@ -132,7 +132,7 @@
         ],
         "openAiImagePrompt": {
           "aspectRatio": "4:3",
-          "prompt": "Create a detailed comic-book illustration. Subject and action: They hover near a district of cells whose architecture breaks the surrounding pattern.. Story purpose: first major clue. Medical purpose: Suggest autonomous abnormal growth without naming the diagnosis.. Environment and background: adjacent to suspicious liver region at tissue scale with ominous discovery lighting. Composition: medium shot with focal push-in, slightly canted, Contrast the suspicious region against more orderly surrounding tissue.. Continuity anchors: case tablet hologram; jet pack glow; distorted tissue geometry. Character locks: Detective A is shorter and more impulsive; Detective B is taller and more analytical. Anatomy and mechanism locks: liver-inspired tissue geometry; focal abnormal district contrasts with surrounding tissue; avoid generic intestine-like visuals. Style and quality locks: action-packed whimsical comic mystery; high clarity; panel composition optimized for later lettering. Leave clean space for later lettering and do not render any visible text in the image.",
+          "prompt": "Create a high-fidelity finished comic-book panel illustration. Scene and background: adjacent to suspicious liver region at tissue scale. Subject and action: They hover near a district of cells whose architecture breaks the surrounding pattern. Key medical details: Suggest autonomous abnormal growth without naming the diagnosis. Story purpose: first major clue. Camera and composition: medium shot with focal push-in, slightly canted, Contrast the suspicious region against more orderly surrounding tissue. Lighting and atmosphere: ominous discovery. Continuity anchors: case tablet hologram; jet pack glow; distorted tissue geometry. Character locks: Detective Cyto Kine is the felt lead investigator with HUD visor and evidence vial; Deputy Pip is the felt field deputy with micro-scanner and learner questions. Anatomy and mechanism locks: liver-inspired tissue geometry; focal abnormal district contrasts with surrounding tissue; avoid generic intestine-like visuals. Style and finish locks: action-packed whimsical comic mystery; high clarity; panel composition optimized for later lettering. Leave clean space for later lettering and do not render any visible text in the image.",
           "negativePrompt": "no speech bubbles, no captions, no labels, no medical chart overlays, no gore, no photoreal pathology slide, no extra detectives, no duplicate limbs, no illegible background text",
           "styleLocks": [
             "action-packed whimsical comic mystery",
@@ -140,8 +140,8 @@
             "panel composition optimized for later lettering"
           ],
           "characterLocks": [
-            "Detective A is shorter and more impulsive",
-            "Detective B is taller and more analytical"
+            "Detective Cyto Kine is the felt lead investigator with HUD visor and evidence vial",
+            "Deputy Pip is the felt field deputy with micro-scanner and learner questions"
           ],
           "anatomyLocks": [
             "liver-inspired tissue geometry",
@@ -149,7 +149,7 @@
             "avoid generic intestine-like visuals"
           ],
           "notes": [
-            "Start with an explicit creation verb and keep the visual instruction concrete and image-first.",
+            "Start with an explicit image-creation instruction and keep the request concrete, skimmable, and visual.",
             "If anatomy becomes ambiguous, restate the medical objective and anatomy locks before changing style.",
             "Do not include speech bubbles, captions, or labels inside the generated art."
           ]
@@ -162,9 +162,9 @@
       "separateLetteringRequired": true,
       "manualReviewRequired": true
     },
-    "openAiPanelExecutionPrompt": "Create the final panel set for workflow run \"run.hcc.001\" from rendering guide \"rgd.hcc.001\". Generate one final image per panel, keep panel order stable, use only supplied panel content for Hepatocellular carcinoma, and keep all visible text out of the art so lettering can be overlaid separately."
+    "openAiPanelExecutionPrompt": "Create the final panel image set for workflow run \"run.hcc.001\" from rendering guide \"rgd.hcc.001\". Generate exactly 1 finished panel image for this guide section, keep page and panel order stable, use only the supplied panel content for Hepatocellular carcinoma, follow scene and background first, then subject and action, then medical details, then framing, lighting, style, and constraints, and keep all visible text out of the art so lettering can be overlaid separately."
   },
-  "markdown": "# Rendering Guide rgd.hcc.001\n\n- Project: Hepatocellular carcinoma starter project\n- Workflow run: run.hcc.001\n- Disease: Hepatocellular carcinoma\n- Providers: openai-gpt-image\n\n## OpenAI Panel Execution Prompt\n```\nCreate the final panel set for workflow run \"run.hcc.001\" from rendering guide \"rgd.hcc.001\". Generate one final image per panel, keep panel order stable, use only supplied panel content for Hepatocellular carcinoma, and keep all visible text out of the art so lettering can be overlaid separately.\n```\n\n## Panel 9.3 - pnl.hcc.004.03\n\n### OpenAI Image Prompt\n```\nCreate a detailed comic-book illustration. Subject and action: They hover near a district of cells whose architecture breaks the surrounding pattern.. Story purpose: first major clue. Medical purpose: Suggest autonomous abnormal growth without naming the diagnosis.. Environment and background: adjacent to suspicious liver region at tissue scale with ominous discovery lighting. Composition: medium shot with focal push-in, slightly canted, Contrast the suspicious region against more orderly surrounding tissue.. Continuity anchors: case tablet hologram; jet pack glow; distorted tissue geometry. Character locks: Detective A is shorter and more impulsive; Detective B is taller and more analytical. Anatomy and mechanism locks: liver-inspired tissue geometry; focal abnormal district contrasts with surrounding tissue; avoid generic intestine-like visuals. Style and quality locks: action-packed whimsical comic mystery; high clarity; panel composition optimized for later lettering. Leave clean space for later lettering and do not render any visible text in the image.\n```",
+  "markdown": "# Rendering Guide rgd.hcc.001\n\n- Project: Hepatocellular carcinoma starter project\n- Workflow run: run.hcc.001\n- Disease: Hepatocellular carcinoma\n- Providers: openai-gpt-image-2\n\n## OpenAI Panel Execution Prompt\n```\nCreate the final panel image set for workflow run \"run.hcc.001\" from rendering guide \"rgd.hcc.001\". Generate exactly 1 finished panel image for this guide section, keep page and panel order stable, use only the supplied panel content for Hepatocellular carcinoma, follow scene and background first, then subject and action, then medical details, then framing, lighting, style, and constraints, and keep all visible text out of the art so lettering can be overlaid separately.\n```\n\n## Panel 9.3 - pnl.hcc.004.03\n\n### OpenAI Image Prompt\n```\nCreate a high-fidelity finished comic-book panel illustration. Scene and background: adjacent to suspicious liver region at tissue scale. Subject and action: They hover near a district of cells whose architecture breaks the surrounding pattern. Key medical details: Suggest autonomous abnormal growth without naming the diagnosis. Story purpose: first major clue. Camera and composition: medium shot with focal push-in, slightly canted, Contrast the suspicious region against more orderly surrounding tissue. Lighting and atmosphere: ominous discovery. Continuity anchors: case tablet hologram; jet pack glow; distorted tissue geometry. Character locks: Detective Cyto Kine is the felt lead investigator with HUD visor and evidence vial; Deputy Pip is the felt field deputy with micro-scanner and learner questions. Anatomy and mechanism locks: liver-inspired tissue geometry; focal abnormal district contrasts with surrounding tissue; avoid generic intestine-like visuals. Style and finish locks: action-packed whimsical comic mystery; high clarity; panel composition optimized for later lettering. Leave clean space for later lettering and do not render any visible text in the image.\n```",
   "attachmentSummary": {
     "attachedRenderedAssetCount": 0,
     "attachmentMode": "guide-only"

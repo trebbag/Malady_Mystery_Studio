@@ -1,17 +1,21 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { Client } from 'pg';
 
+import { loadDotEnv } from '../packages/shared-config/src/env.mjs';
 import { findRepoRoot } from '../packages/shared-config/src/repo-paths.mjs';
 import { AzureBlobObjectStorage } from '../services/intake-api/src/azure-object-storage.mjs';
 import { PlatformStore } from '../services/intake-api/src/store.mjs';
+
+loadDotEnv({ moduleUrl: import.meta.url });
 
 const rootDir = findRepoRoot(import.meta.url);
 const dbFilePath = process.env.PLATFORM_DB_FILE ?? path.join(rootDir, 'var', 'db', 'platform.sqlite');
 const objectStoreDir = process.env.OBJECT_STORE_DIR ?? path.join(rootDir, 'var', 'object-store');
 const migrationSqlPath = path.join(rootDir, 'infra', 'migrations', '0001_platform_store.sql');
 const reportPath = path.join(rootDir, 'var', 'ops', `managed-migration-${new Date().toISOString().replaceAll(':', '-')}.json`);
+const dryRun = process.argv.includes('--dry-run') || process.env.MANAGED_MIGRATION_DRY_RUN === '1';
 
 /** @typedef {Record<string, unknown>} SqlRow */
 
@@ -74,6 +78,76 @@ const localStore = new PlatformStore({
   dbFilePath,
   objectStoreDir,
 });
+await mkdir(path.dirname(reportPath), { recursive: true });
+
+if (dryRun) {
+  const tables = [
+    'retention_policies',
+    'tenants',
+    'users',
+    'memberships',
+    'sessions',
+    'projects',
+    'workflow_runs',
+    'workflow_events',
+    'artifacts',
+    'documents',
+    'audit_log_entries',
+    'export_history',
+  ];
+  const tableCounts = Object.fromEntries(tables.map((tableName) => [
+    tableName,
+    Number(localStore.db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get()?.count ?? 0),
+  ]));
+  const artifactRows = localStore.db.prepare(
+    'SELECT artifact_type, artifact_id FROM artifacts ORDER BY created_at ASC',
+  ).all();
+  const documentRows = localStore.db.prepare(
+    'SELECT document_type, document_id FROM documents ORDER BY created_at ASC',
+  ).all();
+  const missingArtifactObjects = artifactRows.filter((row) => (
+    !localStore.getArtifact(String(row.artifact_type), String(row.artifact_id))
+  ));
+  const missingDocumentObjects = documentRows.filter((row) => (
+    !localStore.getDocumentObject(String(row.document_type), String(row.document_id))
+  ));
+  const missingCredentials = [
+    'MANAGED_POSTGRES_URL',
+    'AZURE_BLOB_CONNECTION_STRING',
+  ].filter((name) => !process.env[name]);
+  const report = {
+    checkedAt: new Date().toISOString(),
+    mode: 'dry-run',
+    status: missingArtifactObjects.length === 0 && missingDocumentObjects.length === 0 ? 'ready-locally' : 'failed',
+    metadataStore: 'sqlite',
+    targetMetadataStore: 'postgres',
+    objectStore: 'filesystem',
+    targetObjectStore: 'azure-blob',
+    tableCounts,
+    artifactObjectCount: artifactRows.length,
+    documentObjectCount: documentRows.length,
+    missingArtifactObjects,
+    missingDocumentObjects,
+    credentialStatus: missingCredentials.length === 0 ? 'configured' : 'blocked-awaiting-credentials',
+    missingCredentials,
+    notes: [
+      'Dry run validates local data shape and object retrievability only.',
+      'No Postgres connection or Azure Blob write was attempted.',
+    ],
+  };
+
+  await writeFile(reportPath, JSON.stringify(report, null, 2));
+  localStore.close();
+  console.log(JSON.stringify({
+    checkedAt: report.checkedAt,
+    reportPath,
+    status: report.status,
+    credentialStatus: report.credentialStatus,
+    tableCounts,
+  }, null, 2));
+  process.exit(report.status === 'failed' ? 1 : 0);
+}
+
 const postgres = new Client({
   connectionString: requireEnv('MANAGED_POSTGRES_URL'),
 });

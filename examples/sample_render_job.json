@@ -7,8 +7,8 @@
   "approvalStatus": "approved",
   "queueName": "external-art-attachment",
   "provider": "openai-image",
-  "model": "gpt-image-1.5",
-  "renderTargetProfileId": "rtp.openai-image-default",
+  "model": "gpt-image-2",
+  "renderTargetProfileId": "rtp.openai-gpt-image-2-default",
   "renderPromptIds": [
     "rpr.hcc.004.03"
   ],

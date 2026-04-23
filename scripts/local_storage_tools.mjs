@@ -25,18 +25,35 @@ function toTimestampSlug(value) {
 }
 
 /**
+ * @param {string} rootDir
+ * @param {string | undefined} value
+ * @param {string} fallback
+ * @returns {string}
+ */
+function resolveConfiguredPath(rootDir, value, fallback) {
+  if (!value || !value.trim()) {
+    return fallback;
+  }
+
+  return path.isAbsolute(value) ? value : path.join(rootDir, value);
+}
+
+/**
  * @param {{ rootDir?: string }} [options]
  * @returns {{ rootDir: string, dbDir: string, dbFilePath: string, objectStoreDir: string, backupRootDir: string }}
  */
 export function getLocalStoragePaths(options = {}) {
   const rootDir = options.rootDir ?? findRepoRoot(import.meta.url);
+  const dbFilePath = resolveConfiguredPath(rootDir, process.env.PLATFORM_DB_FILE, path.join(rootDir, 'var', 'db', 'platform.sqlite'));
+  const objectStoreDir = resolveConfiguredPath(rootDir, process.env.OBJECT_STORE_DIR, path.join(rootDir, 'var', 'object-store'));
+  const backupRootDir = resolveConfiguredPath(rootDir, process.env.LOCAL_BACKUP_DIR, path.join(rootDir, 'var', 'backups'));
 
   return {
     rootDir,
-    dbDir: path.join(rootDir, 'var', 'db'),
-    dbFilePath: path.join(rootDir, 'var', 'db', 'platform.sqlite'),
-    objectStoreDir: path.join(rootDir, 'var', 'object-store'),
-    backupRootDir: path.join(rootDir, 'var', 'backups'),
+    dbDir: path.dirname(dbFilePath),
+    dbFilePath,
+    objectStoreDir,
+    backupRootDir,
   };
 }
 

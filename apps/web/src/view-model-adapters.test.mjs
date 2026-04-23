@@ -183,6 +183,21 @@ test('view-model adapters produce schema-valid placeholder payloads', async () =
       },
       remainingWork: ['live render integration'],
     },
+    localStoragePolicy: {
+      mode: 'local-only',
+      filesStayLocal: true,
+      filesPersistedInPostgres: false,
+      metadataStore: 'sqlite',
+      objectStore: 'filesystem',
+      dbFilePath: 'var/db/platform.sqlite',
+      objectStoreDir: 'var/object-store',
+      postgresUsage: 'disabled-for-active-runtime',
+      managedObjectStorageUsage: 'disabled-for-active-runtime',
+      backupCommand: 'pnpm local:backup',
+      restoreCommand: 'pnpm local:restore -- --path var/backups/<timestamp>',
+      resetCommand: 'pnpm local:reset',
+      notes: ['Files stay local.'],
+    },
   });
   const dashboard = createReviewDashboardView({
     workflowRuns: [

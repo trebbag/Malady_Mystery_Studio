@@ -64,6 +64,9 @@ const queueView = {
     escalatedItemCount: 0,
     renderRetryCount: 0,
     sourceRefreshCount: 0,
+    dueSoonItemCount: 0,
+    fallbackQueueItemCount: 0,
+    unreadNotificationCount: 1,
   },
   items: [
     {
@@ -81,7 +84,12 @@ const queueView = {
       dueAt: '2026-04-22T16:00:00Z',
       reminderAt: '2026-04-22T14:00:00Z',
       isOverdue: false,
+      reminderDue: false,
+      escalationTargetQueue: 'review-queue-fallback',
       threadCount: 1,
+      latestThreadStatus: 'open',
+      notificationCount: 1,
+      unreadNotificationCount: 1,
       notes: ['Clinical review is ready for follow-through.'],
     },
   ],
@@ -96,6 +104,10 @@ const queueAnalyticsView = {
     overdueRate: 0,
     escalationRate: 0,
     medianAgeHours: 2,
+    dueSoonItemCount: 0,
+    completedItemCount: 0,
+    fallbackQueueItemCount: 0,
+    unreadNotificationCount: 1,
   },
   countsByWorkType: [{ workType: 'run-review', count: 1 }],
   countsByStatus: [{ status: 'queued', count: 1 }],
@@ -368,7 +380,7 @@ const reviewRunView = {
     franchiseRules: ['Mystery first', 'Treatment is the climax'],
     continuityBible: {
       continuityAnchors: ['jet packs', 'alveoli', 'case tablet'],
-      characterLocks: ['Detective A short', 'Detective B tall'],
+      characterLocks: ['Detective Cyto Kine felt lead', 'Deputy Pip felt field deputy'],
       anatomyLocks: ['alveoli readable', 'no generic cave interiors'],
       styleLocks: ['comic mystery', 'clean staging'],
       letteringPolicy: 'Keep lettering separate from art.',
@@ -422,7 +434,7 @@ const reviewRunView = {
           prompt: 'Create a detailed comic-book illustration of detectives hovering beside crowded air sacs.',
           negativePrompt: 'no labels, no text in art',
           styleLocks: ['comic mystery'],
-          characterLocks: ['Detective A short', 'Detective B tall'],
+          characterLocks: ['Detective Cyto Kine felt lead', 'Deputy Pip felt field deputy'],
           anatomyLocks: ['alveoli readable', 'no generic cave interiors'],
           notes: ['Keep lettering separate.'],
         },
@@ -440,7 +452,7 @@ const reviewRunView = {
       queueName: 'render-execution',
       provider: 'stub-image',
       model: 'stub-image-v1',
-      renderTargetProfileId: 'rtp.openai-image-default',
+      renderTargetProfileId: 'rtp.openai-gpt-image-2-default',
       renderPromptIds: ['rnd.local.001'],
       attemptIds: ['ratm.local.001'],
       renderedAssetManifestId: 'rman.local.001',
@@ -549,6 +561,67 @@ const localRuntimeView = {
       pilotReadiness: 50,
     },
     remainingWork: [],
+  },
+  localStoragePolicy: {
+    mode: 'local-only',
+    filesStayLocal: true,
+    filesPersistedInPostgres: false,
+    metadataStore: 'sqlite',
+    objectStore: 'filesystem',
+    dbFilePath: 'var/db/platform.sqlite',
+    objectStoreDir: 'var/object-store',
+    postgresUsage: 'disabled-for-active-runtime',
+    managedObjectStorageUsage: 'disabled-for-active-runtime',
+    backupCommand: 'pnpm local:backup',
+    restoreCommand: 'pnpm local:restore -- --path var/backups/<timestamp>',
+    resetCommand: 'pnpm local:reset',
+    notes: ['Files stay local.'],
+  },
+  managedRuntimeReadiness: {
+    status: 'ready-locally',
+    dryRunAvailable: true,
+    checks: [
+      {
+        name: 'metadata-store',
+        status: 'blocked-awaiting-credentials',
+        current: 'sqlite',
+        target: 'postgres',
+        requiredEnv: ['MANAGED_POSTGRES_URL'],
+      },
+    ],
+    localOnlyCommands: ['pnpm migrate:managed -- --dry-run'],
+  },
+  externalElements: {
+    clinicalEducationCompatibility: {
+      enabled: true,
+      sourceProjectLabel: 'ClinicalEducation / Malady Mystery Studio legacy app',
+    },
+    openAi: {
+      apiKeyConfigured: false,
+      knowledgeBaseVectorStoreConfigured: false,
+      researchModel: 'gpt-5.2',
+      renderModel: 'gpt-image-2',
+      renderProvider: 'stub-image',
+    },
+    canon: {
+      autoDiscoveryEnabled: true,
+      root: 'data/canon',
+      characterBiblePath: 'data/canon/character_bible.md',
+      seriesStyleBiblePath: 'data/canon/series_style_bible.md',
+      deckSpecPath: 'data/canon/episode/deck_spec.md',
+      episodeMemoryPath: 'data/canon/episode/episode_memory.json',
+    },
+    pipeline: {
+      mode: 'real',
+      maxConcurrentRuns: 1,
+      retentionKeepLast: 50,
+      fakeStepDelayMs: 80,
+      kb0TimeoutMs: 120000,
+      stepAbAgentTimeoutMs: 120000,
+      stepCAgentTimeoutMs: 180000,
+      stepCDeckSpecTimeoutMs: 300000,
+      agentIsolationMode: '',
+    },
   },
 };
 
@@ -728,6 +801,17 @@ describe('web app routes', () => {
       expect(await screen.findByText('Bundles Page')).toBeInTheDocument();
     });
     expect(screen.queryByText(/Export is blocked until the latest eval run is fresh and passing/i)).not.toBeInTheDocument();
+  });
+
+  it('shows ClinicalEducation-compatible external runtime elements on settings', async () => {
+    renderRoute('/settings');
+    await waitFor(async () => {
+      expect(await screen.findByText('ClinicalEducation external elements')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Active local storage policy')).toBeInTheDocument();
+    expect(screen.getAllByText(/Files stay local/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Research model: gpt-5.2/i)).toBeInTheDocument();
+    expect(screen.getByText(/KB vector store: missing/i)).toBeInTheDocument();
   });
 
   it('shows live reviewer assignments and comments on the review page', async () => {

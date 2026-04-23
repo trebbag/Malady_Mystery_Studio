@@ -25,8 +25,8 @@
     "pnpm dev:web",
     "pnpm dev:worker",
     "pnpm eval:run -- --run-id <runId>",
-    "pnpm migrate:managed",
-    "pnpm ops:restore-smoke",
+    "pnpm migrate:managed -- --dry-run",
+    "pnpm ops:restore-smoke -- --dry-run",
     "pnpm local:backup",
     "pnpm local:reset",
     "pnpm local:restore -- --path var/backups/<timestamp>"
@@ -35,48 +35,150 @@
     "areas": [
       {
         "label": "Foundation and local runtime",
+        "percentComplete": 99
+      },
+      {
+        "label": "Local storage, backup, restore, and artifact retention",
         "percentComplete": 97
       },
       {
-        "label": "Clinical truth layer",
-        "percentComplete": 94
-      },
-      {
-        "label": "Workbook and guardrails",
-        "percentComplete": 76
-      },
-      {
-        "label": "Scene, panel, and rendering-guide prep",
+        "label": "Open disease intake and research assembly",
         "percentComplete": 90
       },
       {
-        "label": "Review, eval, and export workflow",
-        "percentComplete": 98
+        "label": "Clinical truth layer and governance",
+        "percentComplete": 96
       },
       {
-        "label": "Frontend structure and UX implementation",
-        "percentComplete": 95
+        "label": "Workbook and guardrails",
+        "percentComplete": 79
       },
       {
-        "label": "Managed platform and pilot ops",
-        "percentComplete": 64
+        "label": "Scene, panel, and rendered-output flow",
+        "percentComplete": 96
       },
       {
-        "label": "Optional external-art attachment and downstream publishing",
-        "percentComplete": 48
+        "label": "Review, eval, export, and queue operations",
+        "percentComplete": 99
+      },
+      {
+        "label": "Frontend UX",
+        "percentComplete": 97
+      },
+      {
+        "label": "Optional managed deployment",
+        "percentComplete": 20
       }
     ],
     "overall": {
-      "localMvpReadiness": 96,
-      "pilotReadiness": 72
+      "localMvpReadiness": 98,
+      "pilotReadiness": 76
     },
     "remainingWork": [
-      "Broaden governed disease and source coverage beyond the current starter and primary-care tranches.",
-      "Deepen source refresh ownership automation, contradiction triage, and queue analytics for reviewer collaboration.",
-      "Finish the real managed runtime cutover from local SQLite/filesystem fallback to PostgreSQL plus Blob in the live execution path.",
-      "Run live Azure deployment, backup, restore, and observability drills with tenant credentials and production-grade secrets handling.",
+      "Run a deliberate real ChatGPT Image 2.0 / gpt-image-2 smoke with the configured local .env key; stub assets validate structure only.",
+      "Keep active app persistence on local SQLite plus filesystem object storage; managed database/blob cutover is deferred and optional.",
+      "Exercise local backup, reset, restore, and retention drills against realistic run volume before pilot use.",
+      "Broaden promoted governed source coverage and owner workflows beyond fixture-backed provisional packs.",
       "Integrate external auth at the frontend or gateway layer when the app moves beyond local-open mode.",
       "Add optional downstream publishing and distribution integrations after the rendered-panel export path is stable."
     ]
+  },
+  "localStoragePolicy": {
+    "mode": "local-only",
+    "filesStayLocal": true,
+    "filesPersistedInPostgres": false,
+    "metadataStore": "sqlite",
+    "objectStore": "filesystem",
+    "dbFilePath": "var/db/platform.sqlite",
+    "objectStoreDir": "var/object-store",
+    "postgresUsage": "disabled-for-active-runtime",
+    "managedObjectStorageUsage": "disabled-for-active-runtime",
+    "backupCommand": "pnpm local:backup",
+    "restoreCommand": "pnpm local:restore -- --path var/backups/<timestamp>",
+    "resetCommand": "pnpm local:reset",
+    "notes": [
+      "SQLite stores local metadata only.",
+      "Generated artifacts, rendered panels, release bundles, evidence packs, and attachments stay in the filesystem object store.",
+      "Postgres is not required for the active local app path and must not store binary files or large artifact payloads."
+    ]
+  },
+  "managedRuntimeReadiness": {
+    "status": "ready-locally",
+    "dryRunAvailable": true,
+    "checks": [
+      {
+        "name": "metadata-store",
+        "status": "blocked-awaiting-credentials",
+        "current": "sqlite",
+        "target": "postgres",
+        "requiredEnv": [
+          "MANAGED_POSTGRES_URL"
+        ]
+      },
+      {
+        "name": "object-store",
+        "status": "blocked-awaiting-credentials",
+        "current": "filesystem",
+        "target": "azure-blob",
+        "requiredEnv": [
+          "AZURE_BLOB_CONNECTION_STRING"
+        ]
+      },
+      {
+        "name": "async-queue",
+        "status": "blocked-awaiting-credentials",
+        "current": "in-process",
+        "target": "azure-service-bus",
+        "requiredEnv": [
+          "AZURE_SERVICE_BUS_CONNECTION_STRING"
+        ]
+      },
+      {
+        "name": "restore-smoke",
+        "status": "blocked-awaiting-credentials",
+        "current": "dry-run",
+        "target": "managed-restore-drill",
+        "requiredEnv": [
+          "MANAGED_POSTGRES_URL",
+          "AZURE_BLOB_CONNECTION_STRING"
+        ]
+      }
+    ],
+    "localOnlyCommands": [
+      "pnpm migrate:managed -- --dry-run",
+      "pnpm ops:restore-smoke -- --dry-run"
+    ]
+  },
+  "externalElements": {
+    "clinicalEducationCompatibility": {
+      "enabled": true,
+      "sourceProjectLabel": "ClinicalEducation / Malady Mystery Studio legacy app"
+    },
+    "openAi": {
+      "apiKeyConfigured": false,
+      "knowledgeBaseVectorStoreConfigured": false,
+      "researchModel": "gpt-5.2",
+      "renderModel": "gpt-image-2",
+      "renderProvider": "stub-image"
+    },
+    "canon": {
+      "autoDiscoveryEnabled": true,
+      "root": "data/canon",
+      "characterBiblePath": "data/canon/character_bible.md",
+      "seriesStyleBiblePath": "data/canon/series_style_bible.md",
+      "deckSpecPath": "data/canon/episode/deck_spec.md",
+      "episodeMemoryPath": "data/canon/episode/episode_memory.json"
+    },
+    "pipeline": {
+      "mode": "real",
+      "maxConcurrentRuns": 1,
+      "retentionKeepLast": 50,
+      "fakeStepDelayMs": 80,
+      "kb0TimeoutMs": 120000,
+      "stepAbAgentTimeoutMs": 120000,
+      "stepCAgentTimeoutMs": 180000,
+      "stepCDeckSpecTimeoutMs": 300000,
+      "agentIsolationMode": ""
+    }
   }
 }

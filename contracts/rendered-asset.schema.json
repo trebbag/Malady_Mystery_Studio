@@ -73,6 +73,65 @@
       "type": "integer",
       "minimum": 1
     },
+    "isPlaceholder": {
+      "type": "boolean"
+    },
+    "nonFinalReason": {
+      "type": "string"
+    },
+    "promptHash": {
+      "type": "string"
+    },
+    "retryStrategy": {
+      "type": "string",
+      "enum": [
+        "baseline",
+        "simplified-composition",
+        "tight-anatomy"
+      ]
+    },
+    "continuityLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "anatomyLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "letteringSeparation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "letteringHandledSeparately",
+        "renderVisibleText",
+        "status"
+      ],
+      "properties": {
+        "letteringHandledSeparately": {
+          "type": "boolean"
+        },
+        "renderVisibleText": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed"
+          ]
+        }
+      }
+    },
+    "acceptanceChecks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "createdAt": {
       "type": "string",
       "format": "date-time"

@@ -6,7 +6,11 @@
     "escalatedItemCount": 1,
     "overdueRate": 0.167,
     "escalationRate": 0.167,
-    "medianAgeHours": 18
+    "medianAgeHours": 18,
+    "dueSoonItemCount": 2,
+    "completedItemCount": 1,
+    "fallbackQueueItemCount": 1,
+    "unreadNotificationCount": 3
   },
   "countsByWorkType": [
     {

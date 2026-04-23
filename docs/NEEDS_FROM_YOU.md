@@ -1,20 +1,31 @@
 # Needs From You
 
-The current repo still runs locally without any external credentials if you are comfortable using stub rendering. The items below are required to complete the real OpenAI rendered-panel path and the managed Azure pilot path.
+The current repo runs locally without external credentials by using fixture-backed provisional research assembly, SQLite metadata, filesystem object storage, in-process queueing, and the local `stub-image` renderer. Active persistence should stay local: `var/db/platform.sqlite` for metadata and `var/object-store/**` for generated files, rendered panels, release bundles, evidence packs, and attachments. Postgres is not required for the active product path and should not be used as a file/blob store.
+
+The items below are required only for live OpenAI rendering/research or optional future infrastructure work.
 
 ## OpenAI Render and Research Runtime
 
-- `OPENAI_API_KEY` for real disease research assembly and real panel rendering through the OpenAI APIs.
+- `OPENAI_API_KEY` and `KB_VECTOR_STORE_ID` may live in the repo-root `.env`; local Node entrypoints load that file automatically and never print the secret value.
 - Confirmation that your OpenAI org is verified for GPT Image usage if the image endpoint requires it.
-- Optional model override if you want something other than the default `OPENAI_RENDER_MODEL=gpt-image-1.5`.
+- Optional model override if you want something other than the default `OPENAI_RENDER_MODEL=gpt-image-2`.
+- Optional research-model override if you want something other than `OPENAI_RESEARCH_MODEL` / legacy `MMS_MODEL`.
+- Optional canon-file path overrides if the legacy ClinicalEducation character/style/deck files should be used from a location outside this repo.
+- Confirmation that stub rendered assets should remain non-final placeholders in any pilot bundle until replaced by live `gpt-image-2` outputs.
 - The approved public-source policy for agent web research on unseen diseases:
   - allowed public domains beyond the current medical allowlist
   - whether user-supplied documents should outrank public web evidence by default
   - whether provisional packs may continue into story and rendering automatically when they pass draft gates
 
-## Azure Pilot Foundations
+## Local Storage Pilot Confirmation
 
-- Azure subscription ID for the first internal pilot environment.
+- Confirm whether the local backup directory should remain `var/backups` or move to another local path.
+- Confirm any retention limits for local rendered panels and release bundles before pilot use.
+- Confirm whether pilot bundles should remain app-retrievable only or also mirror to another local folder.
+
+## Deferred Optional Azure Foundations
+
+- Azure subscription ID, only if the app later moves away from local storage.
 - Azure tenant ID used for Key Vault and managed infrastructure access.
 - Preferred Azure region and resource-group naming convention for:
   - Container Apps environment
@@ -30,10 +41,19 @@ The current repo still runs locally without any external credentials if you are 
 
 ## Managed Runtime Secrets
 
+These are not needed for local storage. Keep them unset unless you intentionally re-open the optional managed deployment path.
+
 - `MANAGED_POSTGRES_URL`
 - `AZURE_BLOB_CONNECTION_STRING`
 - `AZURE_SERVICE_BUS_CONNECTION_STRING`
 - Container image references for the API and worker when the Azure deployment tranche is actually cut over.
+
+Local dry-run commands are available before those credentials exist:
+
+```bash
+pnpm migrate:managed -- --dry-run
+pnpm ops:restore-smoke -- --dry-run
+```
 
 ## Optional External Art Attachments
 
@@ -63,5 +83,5 @@ The current repo still runs locally without any external credentials if you are 
 
 ## Release and Delivery
 
-- Confirm whether pilot bundles should remain app-retrievable only or also mirror to an external delivery location.
+- Confirm whether pilot bundles should remain app-retrievable only or also mirror to an external delivery location later.
 - Confirm the first non-local delivery target after the managed pilot bundle path is cut over.

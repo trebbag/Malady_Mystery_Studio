@@ -4,6 +4,9 @@ const SCHEMA_VERSION = '1.0.0';
 const RUBRIC_VERSION = 'story-engine.v1';
 const PANELIZATION_MINIMUM = 0.9;
 const RENDER_READINESS_MINIMUM = 0.92;
+const DETECTIVE_LEAD_NAME = process.env.MMS_DETECTIVE_LEAD_NAME ?? 'Detective Cyto Kine';
+const DETECTIVE_DEPUTY_NAME = process.env.MMS_DETECTIVE_DEPUTY_NAME ?? 'Deputy Pip';
+const DETECTIVE_PAIR = Object.freeze([DETECTIVE_LEAD_NAME, DETECTIVE_DEPUTY_NAME]);
 
 const STORY_PROFILES = [
   {
@@ -1182,17 +1185,15 @@ export function reviewSceneCards(sceneCards) {
  * @returns {string[]}
  */
 function getCharactersForAct(act, panelOrder) {
-  const detectivePair = ['Detective A', 'Detective B'];
-
   if (act === 'case-intake') {
-    return [...detectivePair, panelOrder === 1 ? 'doctor' : 'patient'];
+    return [...DETECTIVE_PAIR, panelOrder === 1 ? 'doctor' : 'patient'];
   }
 
   if (act === 'opener') {
-    return [...detectivePair, 'shopkeeper'];
+    return [...DETECTIVE_PAIR, 'shopkeeper'];
   }
 
-  return detectivePair;
+  return [...DETECTIVE_PAIR];
 }
 
 /**
@@ -1395,23 +1396,26 @@ function createRenderPrompt(panel, storyWorkbook, diseasePacket, options) {
   const styleLocks = takeDistinct([
     ...(storyWorkbook.toneProfile ?? []),
     options.styleProfile ?? '',
+    'felt detective characters in accurate 3D animated anatomy environments',
     'clear panel staging',
     'empty space reserved for lettering',
   ], 5);
+  const leadDetectivePresent = panel.charactersPresent.includes(DETECTIVE_LEAD_NAME);
+  const deputyDetectivePresent = panel.charactersPresent.includes(DETECTIVE_DEPUTY_NAME);
 
   return {
     schemaVersion: SCHEMA_VERSION,
     id: createId('rpr'),
     panelId: panel.panelId,
-    modelFamily: 'openai-gpt-image',
+    modelFamily: 'openai-gpt-image-2',
     aspectRatio: panel.storyFunction === 'diagnosis reveal' ? '16:9' : '4:3',
-    positivePrompt: `Comic-book panel art with readable ${panel.bodyScale} geography. ${panel.actionSummary} Location: ${panel.location}. Story purpose: ${panel.storyFunction}. Lighting: ${panel.lightingMood}. Keep ${panel.renderIntent.toLowerCase()} while preserving medical clarity and no visible text.`,
+    positivePrompt: `Create a high-fidelity comic-book panel illustration. Scene and background: ${panel.location} at ${panel.bodyScale} scale. Subject and action: ${panel.actionSummary}. Key medical details: ${panel.medicalObjective}. Story purpose: ${panel.storyFunction}. Camera and composition: ${panel.cameraFraming}, ${panel.cameraAngle}, ${panel.compositionNotes}. Lighting: ${panel.lightingMood}. Keep ${panel.renderIntent.toLowerCase()} while preserving medical clarity and no visible text.`,
     negativePrompt: 'no speech bubbles, no captions, no labels, no medical chart overlays, no large text blocks, no duplicate characters, no anatomy contradictions, no generic sci-fi background, no illegible signage',
     continuityAnchors: panel.continuityAnchors,
     linkedClaimIds: panel.linkedClaimIds ?? [],
     characterLocks: takeDistinct([
-      panel.charactersPresent.includes('Detective A') ? 'Detective A is shorter and more impulsive.' : '',
-      panel.charactersPresent.includes('Detective B') ? 'Detective B is taller and more analytical.' : '',
+      leadDetectivePresent ? `${DETECTIVE_LEAD_NAME} is the felt lead investigator with a HUD visor, evidence vial, calm noir reasoning, and precise clinical pattern recognition.` : '',
+      deputyDetectivePresent ? `${DETECTIVE_DEPUTY_NAME} is the felt field deputy with a micro-scanner, earnest curiosity, and action-forward learner questions.` : '',
       panel.charactersPresent.includes('doctor') ? 'Doctor remains human-scale and visually distinct from the detectives.' : '',
     ], 3),
     anatomyLocks: takeDistinct([
@@ -1480,8 +1484,8 @@ function createLetteringMap(sceneCard, panelPlan, storyWorkbook) {
       };
       const speaker = panel.storyFunction.includes('reveal')
         ? ''
-        : panel.charactersPresent.includes('Detective A')
-          ? panelIndex % 2 === 0 ? 'Detective A' : 'Detective B'
+        : panel.charactersPresent.includes(DETECTIVE_LEAD_NAME)
+          ? panelIndex % 2 === 0 ? DETECTIVE_LEAD_NAME : DETECTIVE_DEPUTY_NAME
           : panel.charactersPresent[0];
 
       if (speaker) {

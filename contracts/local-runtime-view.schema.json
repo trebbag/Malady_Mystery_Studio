@@ -12,7 +12,8 @@
     "storage",
     "platform",
     "availableCommands",
-    "readiness"
+    "readiness",
+    "localStoragePolicy"
   ],
   "properties": {
     "schemaVersion": {
@@ -132,6 +133,174 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        }
+      }
+    },
+    "localStoragePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "filesStayLocal",
+        "filesPersistedInPostgres",
+        "metadataStore",
+        "objectStore",
+        "dbFilePath",
+        "objectStoreDir",
+        "postgresUsage",
+        "managedObjectStorageUsage",
+        "backupCommand",
+        "restoreCommand",
+        "resetCommand",
+        "notes"
+      ],
+      "properties": {
+        "mode": { "type": "string", "enum": ["local-only"] },
+        "filesStayLocal": { "const": true },
+        "filesPersistedInPostgres": { "const": false },
+        "metadataStore": { "type": "string", "enum": ["sqlite"] },
+        "objectStore": { "type": "string", "enum": ["filesystem"] },
+        "dbFilePath": { "type": "string" },
+        "objectStoreDir": { "type": "string" },
+        "postgresUsage": { "type": "string" },
+        "managedObjectStorageUsage": { "type": "string" },
+        "backupCommand": { "type": "string" },
+        "restoreCommand": { "type": "string" },
+        "resetCommand": { "type": "string" },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "managedRuntimeReadiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "dryRunAvailable", "checks", "localOnlyCommands"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "ready-locally",
+            "configured",
+            "blocked-awaiting-credentials",
+            "failed"
+          ]
+        },
+        "dryRunAvailable": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "status", "current", "target", "requiredEnv"],
+            "properties": {
+              "name": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "ready-locally",
+                  "configured",
+                  "blocked-awaiting-credentials",
+                  "failed"
+                ]
+              },
+              "current": { "type": "string" },
+              "target": { "type": "string" },
+              "requiredEnv": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "localOnlyCommands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "externalElements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clinicalEducationCompatibility", "openAi", "canon", "pipeline"],
+      "properties": {
+        "clinicalEducationCompatibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "sourceProjectLabel"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "sourceProjectLabel": { "type": "string" }
+          }
+        },
+        "openAi": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "apiKeyConfigured",
+            "knowledgeBaseVectorStoreConfigured",
+            "researchModel",
+            "renderModel",
+            "renderProvider"
+          ],
+          "properties": {
+            "apiKeyConfigured": { "type": "boolean" },
+            "knowledgeBaseVectorStoreConfigured": { "type": "boolean" },
+            "researchModel": { "type": "string" },
+            "renderModel": { "type": "string" },
+            "renderProvider": { "type": "string" }
+          }
+        },
+        "canon": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "autoDiscoveryEnabled",
+            "root",
+            "characterBiblePath",
+            "seriesStyleBiblePath",
+            "deckSpecPath",
+            "episodeMemoryPath"
+          ],
+          "properties": {
+            "autoDiscoveryEnabled": { "type": "boolean" },
+            "root": { "type": "string" },
+            "characterBiblePath": { "type": "string" },
+            "seriesStyleBiblePath": { "type": "string" },
+            "deckSpecPath": { "type": "string" },
+            "episodeMemoryPath": { "type": "string" }
+          }
+        },
+        "pipeline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "maxConcurrentRuns",
+            "retentionKeepLast",
+            "fakeStepDelayMs",
+            "kb0TimeoutMs",
+            "stepAbAgentTimeoutMs",
+            "stepCAgentTimeoutMs",
+            "stepCDeckSpecTimeoutMs",
+            "agentIsolationMode"
+          ],
+          "properties": {
+            "mode": { "type": "string" },
+            "maxConcurrentRuns": { "type": "integer", "minimum": 1 },
+            "retentionKeepLast": { "type": "integer", "minimum": 1 },
+            "fakeStepDelayMs": { "type": "integer", "minimum": 0 },
+            "kb0TimeoutMs": { "type": "integer", "minimum": 1 },
+            "stepAbAgentTimeoutMs": { "type": "integer", "minimum": 1 },
+            "stepCAgentTimeoutMs": { "type": "integer", "minimum": 1 },
+            "stepCDeckSpecTimeoutMs": { "type": "integer", "minimum": 1 },
+            "agentIsolationMode": { "type": "string" }
           }
         }
       }

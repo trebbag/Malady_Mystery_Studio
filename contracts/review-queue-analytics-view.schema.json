@@ -24,7 +24,11 @@
         "escalatedItemCount",
         "overdueRate",
         "escalationRate",
-        "medianAgeHours"
+        "medianAgeHours",
+        "dueSoonItemCount",
+        "completedItemCount",
+        "fallbackQueueItemCount",
+        "unreadNotificationCount"
       ],
       "properties": {
         "totalItemCount": { "type": "integer", "minimum": 0 },
@@ -32,7 +36,11 @@
         "escalatedItemCount": { "type": "integer", "minimum": 0 },
         "overdueRate": { "type": "number", "minimum": 0, "maximum": 1 },
         "escalationRate": { "type": "number", "minimum": 0, "maximum": 1 },
-        "medianAgeHours": { "type": "number", "minimum": 0 }
+        "medianAgeHours": { "type": "number", "minimum": 0 },
+        "dueSoonItemCount": { "type": "integer", "minimum": 0 },
+        "completedItemCount": { "type": "integer", "minimum": 0 },
+        "fallbackQueueItemCount": { "type": "integer", "minimum": 0 },
+        "unreadNotificationCount": { "type": "integer", "minimum": 0 }
       }
     },
     "countsByWorkType": {

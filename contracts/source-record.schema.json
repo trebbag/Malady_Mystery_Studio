@@ -59,7 +59,8 @@
       "enum": [
         "seeded",
         "user-doc",
-        "agent-web"
+        "agent-web",
+        "local-fixture"
       ]
     },
     "retrievedAt": {

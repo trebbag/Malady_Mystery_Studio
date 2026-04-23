@@ -42,6 +42,20 @@
     "allPanelsRendered": {
       "type": "boolean"
     },
+    "renderMode": {
+      "type": "string",
+      "enum": [
+        "live-provider",
+        "stub-placeholder",
+        "external-manual"
+      ]
+    },
+    "nonFinalPlaceholder": {
+      "type": "boolean"
+    },
+    "providerNotice": {
+      "type": "string"
+    },
     "renderedAssets": {
       "type": "array",
       "items": {
@@ -76,7 +90,81 @@
           },
           "mimeType": {
             "type": "string"
+          },
+          "isPlaceholder": {
+            "type": "boolean"
+          },
+          "promptHash": {
+            "type": "string"
+          },
+          "retryStrategy": {
+            "type": "string",
+            "enum": [
+              "baseline",
+              "simplified-composition",
+              "tight-anatomy"
+            ]
+          },
+          "letteringSeparationStatus": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ]
+          },
+          "continuityLockCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "anatomyLockCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "acceptanceCheckCount": {
+            "type": "integer",
+            "minimum": 0
           }
+        }
+      }
+    },
+    "localValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "structuralOnly",
+        "requiredPanelCount",
+        "renderedPanelCount",
+        "panelPromptHashes",
+        "letteringSeparationPassed",
+        "continuityLocksPresent",
+        "anatomyLocksPresent"
+      ],
+      "properties": {
+        "structuralOnly": {
+          "type": "boolean"
+        },
+        "requiredPanelCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "renderedPanelCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "panelPromptHashes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "letteringSeparationPassed": {
+          "type": "boolean"
+        },
+        "continuityLocksPresent": {
+          "type": "boolean"
+        },
+        "anatomyLocksPresent": {
+          "type": "boolean"
         }
       }
     },

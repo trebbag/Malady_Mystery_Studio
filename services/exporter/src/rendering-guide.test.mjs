@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildRenderingGuide, renderRenderingGuideMarkdown } from './rendering-guide.mjs';
+import { buildRenderingGuide, normalizeRenderingGuide, renderRenderingGuideMarkdown } from './rendering-guide.mjs';
 
 test('rendering guide compiler preserves panel order and emits OpenAI panel prompt blocks', () => {
   const guide = buildRenderingGuide({
@@ -88,7 +88,7 @@ test('rendering guide compiler preserves panel order and emits OpenAI panel prom
         aspectRatio: '4:3',
         negativePrompt: 'no text, no labels',
         continuityAnchors: ['portal', 'jet packs', 'case tablet'],
-        characterLocks: ['Detective A short', 'Detective B tall'],
+        characterLocks: ['Detective Cyto Kine felt lead', 'Deputy Pip felt field deputy'],
         anatomyLocks: ['keep anatomy readable', 'avoid generic spaceships'],
         styleLocks: ['comic mystery', 'clean staging'],
       },
@@ -98,7 +98,7 @@ test('rendering guide compiler preserves panel order and emits OpenAI panel prom
         aspectRatio: '4:3',
         negativePrompt: 'no text, no labels',
         continuityAnchors: ['jet packs', 'alveolar walls', 'case tablet'],
-        characterLocks: ['Detective A short', 'Detective B tall'],
+        characterLocks: ['Detective Cyto Kine felt lead', 'Deputy Pip felt field deputy'],
         anatomyLocks: ['alveoli should be readable', 'avoid generic cave interiors'],
         styleLocks: ['comic mystery', 'clean staging'],
       },
@@ -111,7 +111,7 @@ test('rendering guide compiler preserves panel order and emits OpenAI panel prom
             entryId: 'lte.demo.001',
             panelId: 'pnl.demo.001',
             layerType: 'dialogue',
-            speaker: 'Detective A',
+            speaker: 'Detective Cyto Kine',
             text: 'This portal better know where it is going.',
             placement: 'upper-left',
             purpose: 'Character voice',
@@ -139,7 +139,8 @@ test('rendering guide compiler preserves panel order and emits OpenAI panel prom
     ['pnl.demo.001', 'pnl.demo.002'],
   );
   assert.match(guide.panels[0].openAiImagePrompt.prompt, /^Create /);
-  assert.equal(guide.providerTargets.includes('openai-gpt-image'), true);
+  assert.match(guide.panels[0].openAiImagePrompt.prompt, /Scene and background:/);
+  assert.equal(guide.providerTargets.includes('openai-gpt-image-2'), true);
   assert.equal(guide.panelExecutionStrategy.separateLetteringRequired, true);
   assert.equal(guide.panels[1].claimReferences.length, 1);
 
@@ -147,4 +148,71 @@ test('rendering guide compiler preserves panel order and emits OpenAI panel prom
   assert.match(markdown, /## Panel 1\.1/);
   assert.match(markdown, /### OpenAI Image Prompt/);
   assert.match(markdown, /## OpenAI Panel Execution Prompt/);
+});
+
+test('rendering guide normalization removes unsupported legacy provider fields', () => {
+  const normalizedGuide = normalizeRenderingGuide({
+    id: 'rgd.legacy.001',
+    workflowRunId: 'run.legacy.001',
+    tenantId: 'tenant.local',
+    projectTitle: 'Legacy project',
+    canonicalDiseaseName: 'Legacy disease',
+    providerTargets: ['unsupported-legacy-provider'],
+    generatedAt: '2026-04-23T15:00:00Z',
+    markdownDocumentId: 'rgd.legacy.001',
+    markdownLocation: 'tenant.local/rendering-guide-markdown/rgd.legacy.001.md',
+    runSummary: {
+      oneSentence: 'Legacy one sentence.',
+      patientExperienceSummary: 'Legacy patient experience.',
+      keyMechanism: 'Legacy mechanism.',
+      timeScale: 'hours',
+      educationalFocus: ['legacy focus'],
+      audienceTier: 'general-clinical',
+      styleProfile: 'legacy',
+    },
+    franchiseRules: ['Mystery first.'],
+    continuityBible: {
+      continuityAnchors: ['tablet'],
+      characterLocks: ['Detective Cyto Kine'],
+      anatomyLocks: ['Readable anatomy'],
+      styleLocks: ['clean staging'],
+      letteringPolicy: 'Separate lettering.',
+    },
+    globalNegativeConstraints: ['no text'],
+    openAiPanelExecutionPrompt: 'Current OpenAI execution prompt.',
+    retryGuidance: ['Retry carefully.'],
+    panels: [{
+      panelId: 'pnl.legacy.001',
+      sceneId: 'scn.legacy.001',
+      pageNumber: 1,
+      order: 1,
+      storyFunction: 'opener',
+      beatGoal: 'Introduce the case.',
+      medicalObjective: 'Keep the clue medically grounded.',
+      location: 'legacy setting',
+      bodyScale: 'tissue',
+      actionSummary: 'The detectives inspect a clue.',
+      cameraFraming: 'medium shot',
+      cameraAngle: 'frontal',
+      compositionNotes: 'Keep the clue centered.',
+      lightingMood: 'tense',
+      continuityAnchors: ['tablet', 'jet packs'],
+      acceptanceChecks: ['No visible text'],
+      claimReferences: [],
+      letteringEntries: [],
+      openAiImagePrompt: {
+        aspectRatio: '4:3',
+        prompt: 'Current OpenAI image prompt.',
+        negativePrompt: 'No visible text.',
+        styleLocks: ['Legacy style'],
+        characterLocks: ['Legacy character'],
+        anatomyLocks: ['Legacy anatomy'],
+        notes: ['Legacy note'],
+      },
+    }],
+  });
+
+  assert.deepEqual(normalizedGuide.providerTargets, ['openai-gpt-image-2']);
+  assert.equal(normalizedGuide.openAiPanelExecutionPrompt, 'Current OpenAI execution prompt.');
+  assert.equal(normalizedGuide.panels[0].openAiImagePrompt.prompt, 'Current OpenAI image prompt.');
 });

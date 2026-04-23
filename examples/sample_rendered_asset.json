@@ -7,12 +7,37 @@
   "renderPromptId": "rpr.hcc.004.03",
   "panelId": "pnl.hcc.004.03",
   "provider": "openai-image",
-  "model": "gpt-image-1.5",
+  "model": "gpt-image-2",
   "mimeType": "image/png",
   "checksum": "demo-rendered-asset-checksum",
   "location": "artifacts/tenant.local/render-output/ras.hcc.001.png",
   "thumbnailLocation": "artifacts/tenant.local/render-output/ras.hcc.001.png",
   "width": 1024,
   "height": 768,
+  "isPlaceholder": true,
+  "nonFinalReason": "Local stub render used because no OpenAI image API key is configured. This validates structure only, not final art quality.",
+  "promptHash": "a0a7c8f44cf9b88816a01f78635d6258fb5e8fe58d6d90c7f68a4f42fd9cf2a6",
+  "retryStrategy": "baseline",
+  "continuityLocks": [
+    "case tablet hologram",
+    "jet pack glow",
+    "distorted tissue geometry"
+  ],
+  "anatomyLocks": [
+    "liver-inspired tissue geometry",
+    "focal abnormal district contrasts with surrounding tissue",
+    "avoid generic intestine-like visuals"
+  ],
+  "letteringSeparation": {
+    "letteringHandledSeparately": true,
+    "renderVisibleText": false,
+    "status": "passed"
+  },
+  "acceptanceChecks": [
+    "focal lesion implied",
+    "no explicit diagnosis label in art",
+    "clear contrast between normal and abnormal tissue",
+    "placeholder output must be replaced by live OpenAI rendering before final art quality is certified"
+  ],
   "createdAt": "2026-04-22T14:17:00Z"
 }

@@ -83,7 +83,7 @@ function buildContinuityBible(renderPrompts) {
     characterLocks: uniqueStrings((renderPrompts ?? []).flatMap((/** @type {any} */ renderPrompt) => renderPrompt.characterLocks ?? [])),
     anatomyLocks: uniqueStrings((renderPrompts ?? []).flatMap((/** @type {any} */ renderPrompt) => renderPrompt.anatomyLocks ?? [])),
     styleLocks: uniqueStrings((renderPrompts ?? []).flatMap((/** @type {any} */ renderPrompt) => renderPrompt.styleLocks ?? [])),
-    letteringPolicy: 'Never request visible dialogue, captions, labels, or teaching copy inside the generated art. Apply all text from the separate lettering layer after image generation or slide placement.',
+    letteringPolicy: 'Never request visible dialogue, captions, labels, or teaching copy inside the generated art. Apply all text from the separate lettering layer after image generation.',
   };
 }
 
@@ -117,7 +117,7 @@ function buildRunSummary(workflowRun, diseasePacket) {
 function buildGlobalRetryGuidance() {
   return [
     'If a panel loses anatomy clarity, simplify the composition before weakening the medical objective.',
-    'If character continuity drifts, explicitly restate the detective locks and reuse the first successful panel as the style reference.',
+    'If character continuity drifts, explicitly restate the detective locks and reuse the first approved successful panel as the style reference.',
     'If the model adds visible text, remove all requested text from the art prompt and keep overlays in the lettering instructions only.',
     'If a panel fails repeatedly, keep the clinical objective fixed and tighten only composition, continuity, and anatomy locks.',
   ];
@@ -133,12 +133,13 @@ function buildGlobalRetryGuidance() {
  */
 function buildOpenAiPanelExecutionPrompt(project, workflowRun, diseasePacket, renderingGuideId, panelCount) {
   return [
-    `Create a medically grounded comic-panel set for workflow run "${workflowRun.id}" from rendering guide "${renderingGuideId}".`,
-    `Generate exactly ${panelCount} final panel images, one image per panel, and keep panel order stable throughout the run.`,
-    'Treat the first approved successful panel as the visual continuity reference for later panels unless the guide explicitly says otherwise.',
+    `Create the final panel image set for workflow run "${workflowRun.id}" from rendering guide "${renderingGuideId}".`,
+    `Generate exactly ${panelCount} finished panel images, one panel at a time, and keep page and panel order stable throughout the run.`,
+    'Treat the first approved successful panel as the visual continuity reference for every later panel unless the guide explicitly overrides it.',
     `Use only the supplied panel content for ${diseasePacket.canonicalDiseaseName}. Do not add new medical facts, and do not replace the supplied content with live web research.`,
+    'For each panel, follow this order: scene and background first, then subject and action, then key medical details, then framing, lighting, style, and constraints.',
     'Keep all visible dialogue, captions, labels, and teaching text out of the generated image. Those belong in the separate lettering overlay.',
-    `Preserve the project title "${project.title}" and keep every panel clinically traceable to the supplied claim references.`,
+    `Preserve the project title "${project.title}" and keep every clinically meaningful visual choice traceable to the supplied claim references.`,
   ].join(' ');
 }
 
@@ -156,15 +157,16 @@ function buildOpenAiImagePrompt(panel, renderPrompt) {
   return {
     aspectRatio: renderPrompt.aspectRatio,
     prompt: [
-      'Create a polished comic-book panel illustration.',
+      'Create a high-fidelity finished comic-book panel illustration.',
+      `Scene and background: ${panel.location} at ${panel.bodyScale} scale.`,
       `Subject and action: ${panel.actionSummary}.`,
-      `Story purpose: ${panel.storyFunction}. Medical purpose: ${panel.medicalObjective}.`,
-      `Environment and background: ${panel.location} at ${panel.bodyScale} scale with ${panel.lightingMood} lighting.`,
-      `Composition: ${panel.cameraFraming}, ${panel.cameraAngle}, ${panel.compositionNotes}.`,
+      `Key medical details: ${panel.medicalObjective}. Story purpose: ${panel.storyFunction}.`,
+      `Camera and composition: ${panel.cameraFraming}, ${panel.cameraAngle}, ${panel.compositionNotes}.`,
+      `Lighting and atmosphere: ${panel.lightingMood}.`,
       continuityStatement ? `Continuity anchors: ${continuityStatement}.` : '',
       characterStatement ? `Character locks: ${characterStatement}.` : '',
       anatomyStatement ? `Anatomy and mechanism locks: ${anatomyStatement}.` : '',
-      styleStatement ? `Style and quality locks: ${styleStatement}.` : '',
+      styleStatement ? `Style and finish locks: ${styleStatement}.` : '',
       'Leave clean space for later lettering and do not render any visible text in the image.',
     ].filter(Boolean).join(' '),
     negativePrompt: renderPrompt.negativePrompt,
@@ -172,10 +174,99 @@ function buildOpenAiImagePrompt(panel, renderPrompt) {
     characterLocks: renderPrompt.characterLocks ?? [],
     anatomyLocks: renderPrompt.anatomyLocks ?? [],
     notes: [
-      'Start with an explicit image-creation instruction and keep the request concrete and visual.',
+      'Start with an explicit image-creation instruction and keep the request concrete, skimmable, and visual.',
+      'State scene/background before subject/action so the model anchors the environment before the characters move.',
+      'Call out camera, lighting, and medical mechanism locks explicitly when fidelity is more important than stylistic variation.',
       'If anatomy becomes ambiguous, restate the medical objective and anatomy locks before changing style.',
       'Do not include speech bubbles, captions, labels, or teaching copy inside the generated art.',
     ],
+  };
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+function normalizeStringArray(value) {
+  return Array.isArray(value)
+    ? uniqueStrings(value)
+    : [];
+}
+
+/**
+ * @param {any} prompt
+ * @returns {any}
+ */
+function normalizeOpenAiPrompt(prompt) {
+  return {
+    aspectRatio: String(prompt?.aspectRatio ?? '4:3'),
+    prompt: String(prompt?.prompt ?? ''),
+    negativePrompt: String(prompt?.negativePrompt ?? ''),
+    styleLocks: normalizeStringArray(prompt?.styleLocks),
+    characterLocks: normalizeStringArray(prompt?.characterLocks),
+    anatomyLocks: normalizeStringArray(prompt?.anatomyLocks),
+    notes: normalizeStringArray(prompt?.notes),
+  };
+}
+
+/**
+ * @param {any} panel
+ * @returns {any}
+ */
+function normalizeRenderingGuidePanel(panel) {
+  const rest = panel ?? {};
+
+  return {
+    ...rest,
+    continuityAnchors: normalizeStringArray(rest.continuityAnchors),
+    linkedClaimIds: normalizeStringArray(rest.linkedClaimIds),
+    acceptanceChecks: normalizeStringArray(rest.acceptanceChecks),
+    claimReferences: Array.isArray(rest.claimReferences) ? rest.claimReferences : [],
+    letteringEntries: Array.isArray(rest.letteringEntries) ? rest.letteringEntries : [],
+    openAiImagePrompt: normalizeOpenAiPrompt(rest.openAiImagePrompt),
+  };
+}
+
+/**
+ * @param {any} renderingGuide
+ * @returns {any}
+ */
+export function normalizeRenderingGuide(renderingGuide) {
+  if (!renderingGuide || typeof renderingGuide !== 'object') {
+    return renderingGuide;
+  }
+
+  const {
+    panels,
+    panelExecutionStrategy,
+    continuityBible,
+    franchiseRules,
+    retryGuidance,
+    globalNegativeConstraints,
+    ...rest
+  } = renderingGuide;
+
+  return {
+    ...rest,
+    providerTargets: ['openai-gpt-image-2'],
+    franchiseRules: normalizeStringArray(franchiseRules),
+    continuityBible: {
+      continuityAnchors: normalizeStringArray(continuityBible?.continuityAnchors),
+      characterLocks: normalizeStringArray(continuityBible?.characterLocks),
+      anatomyLocks: normalizeStringArray(continuityBible?.anatomyLocks),
+      styleLocks: normalizeStringArray(continuityBible?.styleLocks),
+      letteringPolicy: String(continuityBible?.letteringPolicy ?? 'Never request visible lettering in generated art; preserve lettering as a separate overlay.'),
+    },
+    panelExecutionStrategy: {
+      sequentialPanelExecutionRecommended: panelExecutionStrategy?.sequentialPanelExecutionRecommended ?? true,
+      continuityReferenceRequired: panelExecutionStrategy?.continuityReferenceRequired ?? true,
+      separateLetteringRequired: panelExecutionStrategy?.separateLetteringRequired ?? true,
+      manualReviewRequired: panelExecutionStrategy?.manualReviewRequired ?? true,
+    },
+    globalNegativeConstraints: normalizeStringArray(globalNegativeConstraints),
+    openAiPanelExecutionPrompt: String(rest.openAiPanelExecutionPrompt ?? ''),
+    retryGuidance: normalizeStringArray(retryGuidance),
+    panels: Array.isArray(panels) ? panels.map((panel) => normalizeRenderingGuidePanel(panel)) : [],
   };
 }
 
@@ -249,7 +340,7 @@ export function buildRenderingGuide(options) {
     tenantId: options.workflowRun.tenantId,
     projectTitle: options.project.title,
     canonicalDiseaseName: options.diseasePacket.canonicalDiseaseName,
-    providerTargets: ['openai-gpt-image'],
+    providerTargets: ['openai-gpt-image-2'],
     generatedAt: options.generatedAt,
     markdownDocumentId: '',
     markdownLocation: '',
@@ -282,7 +373,7 @@ export function buildRenderingGuide(options) {
     panels.length,
   );
 
-  return guide;
+  return normalizeRenderingGuide(guide);
 }
 
 /**
@@ -290,7 +381,8 @@ export function buildRenderingGuide(options) {
  * @returns {string}
  */
 export function renderRenderingGuideMarkdown(renderingGuide) {
-  const panelSections = renderingGuide.panels.map((/** @type {any} */ panel) => {
+  const normalizedGuide = normalizeRenderingGuide(renderingGuide);
+  const panelSections = normalizedGuide.panels.map((/** @type {any} */ panel) => {
     const claimLines = panel.claimReferences.length > 0
       ? panel.claimReferences.map((/** @type {any} */ claimReference) => (
         `- ${claimReference.claimId}: ${claimReference.claimText} (${claimReference.sourceLabel})`
@@ -325,62 +417,62 @@ ${claimLines}
 ${letteringLines}
 
 ### OpenAI Image Prompt
-Aspect ratio: ${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).aspectRatio}
+Aspect ratio: ${panel.openAiImagePrompt.aspectRatio}
 
 \`\`\`
-${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).prompt}
+${panel.openAiImagePrompt.prompt}
 \`\`\`
 
 Negative prompt:
 
 \`\`\`
-${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).negativePrompt}
+${panel.openAiImagePrompt.negativePrompt}
 \`\`\`
 
 Locks:
-- Style: ${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).styleLocks.join('; ')}
-- Character: ${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).characterLocks.join('; ')}
-- Anatomy: ${(panel.openAiImagePrompt ?? panel.nanoBananaPrompt).anatomyLocks.join('; ')}
+- Style: ${panel.openAiImagePrompt.styleLocks.join('; ')}
+- Character: ${panel.openAiImagePrompt.characterLocks.join('; ')}
+- Anatomy: ${panel.openAiImagePrompt.anatomyLocks.join('; ')}
 `;
   }).join('\n\n');
 
-  return `# Rendering Guide ${renderingGuide.id}
+  return `# Rendering Guide ${normalizedGuide.id}
 
-- Project: ${renderingGuide.projectTitle}
-- Workflow run: ${renderingGuide.workflowRunId}
-- Disease: ${renderingGuide.canonicalDiseaseName}
-- Generated at: ${renderingGuide.generatedAt}
-- Providers: ${renderingGuide.providerTargets.join(', ')}
+- Project: ${normalizedGuide.projectTitle}
+- Workflow run: ${normalizedGuide.workflowRunId}
+- Disease: ${normalizedGuide.canonicalDiseaseName}
+- Generated at: ${normalizedGuide.generatedAt}
+- Providers: ${normalizedGuide.providerTargets.join(', ')}
 
 ## Run Summary
-- One sentence: ${renderingGuide.runSummary.oneSentence}
-- Patient experience summary: ${renderingGuide.runSummary.patientExperienceSummary}
-- Key mechanism: ${renderingGuide.runSummary.keyMechanism}
-- Time scale: ${renderingGuide.runSummary.timeScale}
-- Audience tier: ${renderingGuide.runSummary.audienceTier}
-- Style profile: ${renderingGuide.runSummary.styleProfile}
-- Educational focus: ${renderingGuide.runSummary.educationalFocus.join('; ')}
+- One sentence: ${normalizedGuide.runSummary.oneSentence}
+- Patient experience summary: ${normalizedGuide.runSummary.patientExperienceSummary}
+- Key mechanism: ${normalizedGuide.runSummary.keyMechanism}
+- Time scale: ${normalizedGuide.runSummary.timeScale}
+- Audience tier: ${normalizedGuide.runSummary.audienceTier}
+- Style profile: ${normalizedGuide.runSummary.styleProfile}
+- Educational focus: ${normalizedGuide.runSummary.educationalFocus.join('; ')}
 
 ## Franchise Rules
-${renderingGuide.franchiseRules.map((/** @type {string} */ rule) => `- ${rule}`).join('\n')}
+${normalizedGuide.franchiseRules.map((/** @type {string} */ rule) => `- ${rule}`).join('\n')}
 
 ## Continuity Bible
-- Continuity anchors: ${renderingGuide.continuityBible.continuityAnchors.join('; ')}
-- Character locks: ${renderingGuide.continuityBible.characterLocks.join('; ')}
-- Anatomy locks: ${renderingGuide.continuityBible.anatomyLocks.join('; ')}
-- Style locks: ${renderingGuide.continuityBible.styleLocks.join('; ')}
-- Lettering policy: ${renderingGuide.continuityBible.letteringPolicy}
+- Continuity anchors: ${normalizedGuide.continuityBible.continuityAnchors.join('; ')}
+- Character locks: ${normalizedGuide.continuityBible.characterLocks.join('; ')}
+- Anatomy locks: ${normalizedGuide.continuityBible.anatomyLocks.join('; ')}
+- Style locks: ${normalizedGuide.continuityBible.styleLocks.join('; ')}
+- Lettering policy: ${normalizedGuide.continuityBible.letteringPolicy}
 
 ## Global Negative Constraints
-${renderingGuide.globalNegativeConstraints.map((/** @type {string} */ constraint) => `- ${constraint}`).join('\n')}
+${normalizedGuide.globalNegativeConstraints.map((/** @type {string} */ constraint) => `- ${constraint}`).join('\n')}
 
 ## OpenAI Panel Execution Prompt
 \`\`\`
-${renderingGuide.openAiPanelExecutionPrompt ?? renderingGuide.gensparkDeckBootstrapPrompt}
+${normalizedGuide.openAiPanelExecutionPrompt}
 \`\`\`
 
 ## Retry Guidance
-${renderingGuide.retryGuidance.map((/** @type {string} */ rule) => `- ${rule}`).join('\n')}
+${normalizedGuide.retryGuidance.map((/** @type {string} */ rule) => `- ${rule}`).join('\n')}
 
 ${panelSections}
 `;

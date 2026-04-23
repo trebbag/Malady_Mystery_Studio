@@ -11,6 +11,11 @@
   "qualityProfile": "commercial-grade",
   "styleProfile": "alien-detective-clinical-mystery",
   "researchIntent": "Compile a medically traceable provisional disease knowledge pack that can support downstream comic production artifacts.",
+  "knowledgeBaseVectorStoreConfigured": true,
+  "researchTooling": [
+    "openai-file-search",
+    "openai-web-search"
+  ],
   "allowedDomains": [
     "pubmed.ncbi.nlm.nih.gov",
     "www.cdc.gov"

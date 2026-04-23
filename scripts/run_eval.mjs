@@ -1,11 +1,14 @@
 import path from 'node:path';
 
+import { loadDotEnv } from '../packages/shared-config/src/env.mjs';
 import { createSchemaRegistry } from '../packages/shared-config/src/schema-registry.mjs';
 import { findRepoRoot } from '../packages/shared-config/src/repo-paths.mjs';
 import { getActorFromRequest } from '../services/intake-api/src/auth.mjs';
 import { createEvalService, deriveEvalStatus } from '../services/intake-api/src/eval-service.mjs';
 import { PlatformStore } from '../services/intake-api/src/store.mjs';
 import { createExporterService } from '../services/exporter/src/service.mjs';
+
+loadDotEnv({ moduleUrl: import.meta.url });
 
 const rootDir = findRepoRoot(import.meta.url);
 const runIdIndex = process.argv.indexOf('--run-id');

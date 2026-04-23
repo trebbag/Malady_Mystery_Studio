@@ -842,13 +842,13 @@ The product should treat image generation as a **downstream production stage** r
 
 ### 17.2 Current model assumptions (as of April 2026)
 
-The default product path now ends in rendered panels generated through OpenAI’s image API path, with the compiled `rendering-guide` retained as a secondary QA and retry artifact. OpenAI’s current image-generation guidance and model docs position GPT Image as the primary image family for the Images API, with `gpt-image-1.5` documented as the latest flagship model and `gpt-image-1` / `gpt-image-1-mini` as related options. [R1][R2][R3]
+The default product path now ends in rendered panels generated through OpenAI’s image API path, with the compiled `rendering-guide` retained as a secondary QA and retry artifact. OpenAI’s current image-generation guidance and model docs position GPT Image as the primary image family for the Images API, with `gpt-image-2` documented as the state-of-the-art image-generation model and older GPT Image variants retained only as migration options. [R1][R2][R3]
 
 These facts mean the system should preserve a separate lettering and continuity layer, avoid depending on the image model to invent or remember medical truth, and keep clinically meaningful facts inside governed upstream artifacts even when the rendered panels are the final end product. [R1][R3]
 
 ### 17.3 Practical render requirements derived from model behavior
 
-Because current official guidance emphasizes strong instruction following and text-rendering capability, the platform shall still:
+Because current official guidance emphasizes strong instruction following and structured image prompting, the platform shall still:
 - treat speech balloons and teaching captions as separate overlay assets by default,
 - avoid asking the image model to embed dense educational text,
 - generate panel art with either no text or only minimal nonessential diegetic text,
@@ -864,7 +864,7 @@ Because panel continuity and medical consistency remain product responsibilities
 
 The render subsystem shall:
 - use concise but specific prompt templates,
-- preserve hierarchy of content: subject -> action -> setting -> composition -> style -> exclusions,
+- preserve hierarchy of content: scene/background -> subject/action -> medical details -> composition/lighting -> style -> exclusions,
 - avoid ambiguous directional language unless anchored by composition,
 - support alternate prompt strategies for failed renders,
 - store prompt template versions and output quality metrics. [R1]
@@ -1256,8 +1256,10 @@ This section describes a pragmatic reference stack, not a mandatory single-vendo
 
 ### 23.3 Datastores
 
-- PostgreSQL for transactional core data
-- Object storage (S3/GCS/Azure Blob) for artifacts and exports
+- Current active runtime: SQLite for local transactional metadata at `var/db/platform.sqlite`
+- Current active runtime: filesystem object storage for artifacts, rendered panels, release bundles, evidence packs, and attachments at `var/object-store/**`
+- Optional future managed runtime: PostgreSQL for transactional metadata only
+- Optional future managed runtime: object storage such as S3/GCS/Azure Blob for artifacts and exports
 - Vector database for retrieval, novelty memory, and semantic search
 - Redis for caching / ephemeral coordination
 - Optional graph DB if evidence relationships become complex enough to justify it
@@ -1437,7 +1439,7 @@ Recommended core entities:
 
 ### 24.4 Artifact storage policy
 
-All major generated artifacts shall be stored as immutable versioned blobs with metadata:
+All major generated artifacts shall be stored as immutable versioned objects with metadata. In the active local runtime, the object store is the local filesystem. Postgres is not part of the active runtime and must not be used as a file/blob store. Metadata includes:
 - prompt template version
 - model version
 - source hash
@@ -2360,8 +2362,8 @@ If those layers are built well, the platform can become more than a single app. 
 ## 44. External References Informing Architecture Assumptions
 
 **[R1]** OpenAI. *Image generation guide.*  
-**[R2]** OpenAI. *GPT Image 1.5 model page.*  
-**[R3]** OpenAI. *Images API reference.*  
+**[R2]** OpenAI. *GPT Image 2 model page.*
+**[R3]** OpenAI. *GPT Image models prompting guide.*
 **[R4]** OpenAI. *Structured outputs guide.*  
 **[R5]** HHS. *Summary of the HIPAA Security Rule.*  
 **[R6]** HHS. *Summary of the HIPAA Privacy Rule.*  
@@ -2904,13 +2906,13 @@ If the platform gets the schemas, workflow, quality gates, and governance right,
 ## 61. Reference URLs
 
 - **[R1]** OpenAI. *Image generation guide.*  
-  https://platform.openai.com/docs/guides/image-generation
+  https://developers.openai.com/api/docs/guides/image-generation
 
-- **[R2]** OpenAI. *GPT Image 1.5 model page.*  
-  https://platform.openai.com/docs/models/gpt-image-1.5
+- **[R2]** OpenAI. *GPT Image 2 model page.*
+  https://developers.openai.com/api/docs/models/gpt-image-2
 
-- **[R3]** OpenAI. *Images API reference.*  
-  https://platform.openai.com/docs/api-reference/images/generate
+- **[R3]** OpenAI. *GPT Image models prompting guide.*
+  https://developers.openai.com/cookbook/examples/multimodal/image-gen-models-prompting-guide
 
 - **[R4]** OpenAI. *Structured outputs guide.*  
   https://platform.openai.com/docs/guides/structured-outputs

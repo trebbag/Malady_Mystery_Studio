@@ -1,12 +1,15 @@
 import path from 'node:path';
 
+import { loadDotEnv } from '../../../packages/shared-config/src/env.mjs';
 import { createSchemaRegistry } from '../../../packages/shared-config/src/schema-registry.mjs';
 import { findRepoRoot } from '../../../packages/shared-config/src/repo-paths.mjs';
 import { loadWorkflowSpec } from '../../orchestrator/src/workflow-machine.mjs';
 import { createRenderExecutionService } from '../../render-execution/src/service.mjs';
 import { processRenderJob } from './app.mjs';
+import { createMetadataStore } from './metadata-store.mjs';
 import { createPlatformRuntime } from './platform-runtime.mjs';
-import { PlatformStore } from './store.mjs';
+
+loadDotEnv({ moduleUrl: import.meta.url });
 
 const rootDir = findRepoRoot(import.meta.url);
 const dbFilePath = process.env.PLATFORM_DB_FILE ?? path.join(rootDir, 'var', 'db', 'platform.sqlite');
@@ -15,10 +18,6 @@ const platformRuntime = createPlatformRuntime({
   rootDir,
   objectStoreDir,
 });
-
-if (platformRuntime.metadataStoreKind !== 'sqlite') {
-  throw new Error(`METADATA_STORE_BACKEND=${platformRuntime.metadataStoreKind} is not yet supported by the live worker. Keep metadata on sqlite for now or add a managed metadata adapter.`);
-}
 
 if (
   platformRuntime.objectStorageKind !== 'filesystem'
@@ -33,11 +32,13 @@ if (typeof platformRuntime.queueAdapter?.createReceiver !== 'function') {
   process.exit(0);
 }
 
-const store = new PlatformStore({
+const store = await createMetadataStore({
   rootDir,
   dbFilePath,
   objectStoreDir,
   objectStorage: platformRuntime.objectStorage,
+  metadataStoreKind: platformRuntime.metadataStoreKind,
+  telemetry: platformRuntime.telemetry,
 });
 const schemaRegistry = await createSchemaRegistry(rootDir);
 const workflowSpec = await loadWorkflowSpec(rootDir);
@@ -77,7 +78,13 @@ console.log('Render worker listening on queue render-execution.');
 async function shutdown() {
   await shutdownReceiver();
   await platformRuntime.queueAdapter.close();
-  store.close();
+  const closeAsync = /** @type {any} */ (store).closeAsync;
+
+  if (typeof closeAsync === 'function') {
+    await closeAsync.call(store);
+  } else {
+    store.close();
+  }
 }
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

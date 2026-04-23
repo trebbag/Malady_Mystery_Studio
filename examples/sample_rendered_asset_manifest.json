@@ -4,8 +4,11 @@
   "tenantId": "tenant.local",
   "workflowRunId": "run.hcc.001",
   "renderJobId": "rjob.hcc.001",
-  "renderTargetProfileId": "rtp.openai-image-default",
+  "renderTargetProfileId": "rtp.openai-gpt-image-2-default",
   "allPanelsRendered": true,
+  "renderMode": "stub-placeholder",
+  "nonFinalPlaceholder": true,
+  "providerNotice": "Local stub images validate panel coverage, prompt traceability, and release wiring only. They do not certify final image quality.",
   "renderedAssets": [
     {
       "renderedAssetId": "ras.hcc.001",
@@ -13,8 +16,26 @@
       "panelId": "pnl.hcc.004.03",
       "location": "artifacts/tenant.local/render-output/ras.hcc.001.png",
       "checksum": "demo-rendered-asset-checksum",
-      "mimeType": "image/png"
+      "mimeType": "image/png",
+      "isPlaceholder": true,
+      "promptHash": "a0a7c8f44cf9b88816a01f78635d6258fb5e8fe58d6d90c7f68a4f42fd9cf2a6",
+      "retryStrategy": "baseline",
+      "letteringSeparationStatus": "passed",
+      "continuityLockCount": 3,
+      "anatomyLockCount": 3,
+      "acceptanceCheckCount": 4
     }
   ],
+  "localValidation": {
+    "structuralOnly": true,
+    "requiredPanelCount": 1,
+    "renderedPanelCount": 1,
+    "panelPromptHashes": {
+      "rpr.hcc.004.03": "a0a7c8f44cf9b88816a01f78635d6258fb5e8fe58d6d90c7f68a4f42fd9cf2a6"
+    },
+    "letteringSeparationPassed": true,
+    "continuityLocksPresent": true,
+    "anatomyLocksPresent": true
+  },
   "generatedAt": "2026-04-22T14:17:00Z"
 }

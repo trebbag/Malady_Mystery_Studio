@@ -22,14 +22,24 @@ import { createTelemetry } from './telemetry.mjs';
   *   telemetryBackend?: string,
  *   metadataStoreKind?: string,
  *   runtimeMode?: string,
+ *   localStorageOnly?: boolean,
  * }} PlatformRuntimeOptions
  */
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+function isDisabled(value) {
+  return ['0', 'false', 'no', 'off'].includes(String(value ?? '').toLowerCase());
+}
 
 /**
  * @param {PlatformRuntimeOptions} [options]
  */
 export function createObjectStorage(options = {}) {
-  const objectStoreBackend = options.objectStoreBackend ?? process.env.OBJECT_STORE_BACKEND ?? 'filesystem';
+  const localStorageOnly = options.localStorageOnly ?? !isDisabled(process.env.LOCAL_STORAGE_ONLY);
+  const objectStoreBackend = localStorageOnly ? 'filesystem' : (options.objectStoreBackend ?? process.env.OBJECT_STORE_BACKEND ?? 'filesystem');
 
   if (objectStoreBackend === 'azure-blob') {
     return {
@@ -55,8 +65,9 @@ export function createObjectStorage(options = {}) {
  */
 export function createPlatformRuntime(options = {}) {
   const rootDir = options.rootDir ?? findRepoRoot(import.meta.url);
-  const metadataStoreKind = options.metadataStoreKind ?? process.env.METADATA_STORE_BACKEND ?? 'sqlite';
-  const queueBackend = options.queueBackend ?? process.env.ASYNC_QUEUE_BACKEND ?? 'in-process';
+  const localStorageOnly = options.localStorageOnly ?? !isDisabled(process.env.LOCAL_STORAGE_ONLY);
+  const metadataStoreKind = localStorageOnly ? 'sqlite' : (options.metadataStoreKind ?? process.env.METADATA_STORE_BACKEND ?? 'sqlite');
+  const queueBackend = localStorageOnly ? 'in-process' : (options.queueBackend ?? process.env.ASYNC_QUEUE_BACKEND ?? 'in-process');
   const telemetryBackend = options.telemetryBackend ?? process.env.TELEMETRY_BACKEND ?? 'stdout';
   const objectStorage = options.objectStorage ?? createObjectStorage({
     objectStoreBackend: options.objectStoreBackend,
@@ -64,6 +75,7 @@ export function createPlatformRuntime(options = {}) {
     blobConnectionString: options.blobConnectionString,
     blobContainerName: options.blobContainerName,
     blobPrefix: options.blobPrefix,
+    localStorageOnly,
   });
   const runtimeMode = options.runtimeMode
     ?? process.env.RUNTIME_MODE
@@ -76,7 +88,7 @@ export function createPlatformRuntime(options = {}) {
         : 'local'
     );
   const queueAdapter = options.queueAdapter ?? createQueueAdapter({
-    backend: options.queueBackend,
+    backend: queueBackend,
     connectionString: options.serviceBusConnectionString,
   });
   const telemetry = options.telemetry ?? createTelemetry({

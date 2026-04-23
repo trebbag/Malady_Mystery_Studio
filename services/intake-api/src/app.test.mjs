@@ -22,7 +22,7 @@ async function createSandbox() {
 }
 
 /**
- * @param {{ dbFilePath: string, objectStoreDir: string, webDistDir?: string, researchAssemblyService?: any, openaiApiKey?: string, renderProviderApiKey?: string }} options
+ * @param {{ dbFilePath: string, objectStoreDir: string, webDistDir?: string, researchAssemblyService?: any, openaiApiKey?: string, renderProvider?: string, renderProviderApiKey?: string }} options
  * @returns {Promise<{ baseUrl: string, close: () => Promise<void>, store: any }>}
  */
 async function startServer(options) {
@@ -32,6 +32,7 @@ async function startServer(options) {
     webDistDir: options.webDistDir,
     researchAssemblyService: options.researchAssemblyService,
     openaiApiKey: options.openaiApiKey,
+    renderProvider: options.renderProvider,
     renderProviderApiKey: options.renderProviderApiKey,
   });
 
@@ -59,30 +60,82 @@ async function startServer(options) {
           resolve(undefined);
         });
       });
-      app.store.close();
+
+      const closeAsync = /** @type {any} */ (app.store).closeAsync;
+
+      if (typeof closeAsync === 'function') {
+        await closeAsync.call(app.store);
+      } else {
+        app.store.close();
+      }
     },
   };
 }
 
-test('createApp fails fast when a managed metadata backend is requested without a live adapter', async () => {
+test('createApp boots with a managed metadata backend when a postgres adapter is available', async () => {
   const sandbox = await createSandbox();
   const previousMetadataStoreBackend = process.env.METADATA_STORE_BACKEND;
+  const previousLocalStorageOnly = process.env.LOCAL_STORAGE_ONLY;
+  const fakePostgresPool = {
+    schemaMigrationIds: new Set(),
+    /**
+     * @param {string} sql
+     * @param {unknown[]} [values]
+     * @returns {Promise<{ rows: any[] }>}
+     */
+    async query(sql, values = []) {
+      const normalizedSql = sql.trim().replace(/\s+/g, ' ');
+
+      if (normalizedSql.startsWith('CREATE TABLE IF NOT EXISTS schema_migrations')) {
+        return { rows: [] };
+      }
+
+      if (normalizedSql.startsWith('SELECT id FROM schema_migrations')) {
+        return {
+          rows: [...this.schemaMigrationIds].map((id) => ({ id })),
+        };
+      }
+
+      if (normalizedSql.startsWith('INSERT INTO schema_migrations')) {
+        this.schemaMigrationIds.add(String(values[0] ?? ''));
+        return { rows: [] };
+      }
+
+      if (normalizedSql.startsWith('SELECT COUNT(*)::int AS count FROM workflow_runs')) {
+        return { rows: [{ count: 0 }] };
+      }
+
+      if (normalizedSql.startsWith('CREATE TABLE IF NOT EXISTS') || normalizedSql.startsWith('INSERT INTO "retention_policies"')) {
+        return { rows: [] };
+      }
+
+      throw new Error(`Unexpected postgres query in createApp test: ${normalizedSql}`);
+    },
+  };
 
   process.env.METADATA_STORE_BACKEND = 'postgres';
+  delete process.env.LOCAL_STORAGE_ONLY;
 
   try {
-    await assert.rejects(
-      () => createApp({
+    const app = await createApp({
         dbFilePath: sandbox.dbFilePath,
         objectStoreDir: sandbox.objectStoreDir,
-      }),
-      /not yet supported by the live app/,
-    );
+        metadataStorePool: fakePostgresPool,
+        localStorageOnly: false,
+      });
+
+    app.store.close();
   } finally {
     if (previousMetadataStoreBackend === undefined) {
       delete process.env.METADATA_STORE_BACKEND;
     } else {
       process.env.METADATA_STORE_BACKEND = previousMetadataStoreBackend;
+    }
+
+    if (previousLocalStorageOnly === undefined) {
+      delete process.env.LOCAL_STORAGE_ONLY;
+    } else {
+      process.env.LOCAL_STORAGE_ONLY = previousLocalStorageOnly;
     }
 
     await sandbox.cleanup();
@@ -135,7 +188,7 @@ async function startWorkflowRun(baseUrl, projectId, overrides = {}) {
     }),
   });
 
-  assert.equal(response.status, 202);
+  assert.equal(response.status, 202, await response.clone().text());
   return response.json();
 }
 
@@ -488,8 +541,13 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
     const evaluationPayload = await evaluationResponse.json();
 
     assert.equal(evaluationPayload.workflowRun.latestEvalStatus, 'passed');
+    assert.equal(evaluationPayload.evaluation.validationMode, 'local-structural');
     assert.equal(evaluationPayload.evaluation.summary.allThresholdsMet, true);
+    assert.equal(evaluationPayload.evaluation.summary.structuralRenderOutputOnly, true);
     assert.equal(evaluationPayload.evaluation.summary.familyScores.render_output_quality, 1);
+    const renderOutputFamily = evaluationPayload.evaluation.familyResults.find((/** @type {any} */ family) => family.family === 'render_output_quality');
+    assert.equal(renderOutputFamily.status, 'passed');
+    assert.match(renderOutputFamily.cases[0].message, /does not certify final image quality/u);
 
     const evaluationListResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/evaluations`);
     assert.equal(evaluationListResponse.status, 200);
@@ -790,6 +848,57 @@ test('free-text disease input can compile through agent research into a provisio
   }
 });
 
+test('free-text disease input falls back to local fixture research without an API key', async () => {
+  const sandbox = await createSandbox();
+  const app = await startServer({
+    ...sandbox,
+    openaiApiKey: '',
+    renderProvider: 'stub-image',
+    renderProviderApiKey: '',
+  });
+
+  try {
+    const project = await createProject(app.baseUrl, {
+      diseaseName: 'Unmapped local syndrome',
+      audienceTier: 'provider-education',
+    });
+    const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+
+    assert.equal(workflowRun.state, 'review');
+    assert.equal(workflowRun.currentStage, 'review');
+    assert.equal(workflowRun.pauseReason, 'provisional-knowledge-pack-review-required');
+
+    const artifactListResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/artifacts?artifactType=disease-knowledge-pack,source-harvest&expand=true`);
+    assert.equal(artifactListResponse.status, 200);
+    const artifactList = await artifactListResponse.json();
+    const knowledgePack = artifactList.artifacts.find((/** @type {any} */ artifact) => artifact.artifactType === 'disease-knowledge-pack')?.payload;
+    const sourceHarvest = artifactList.artifacts.find((/** @type {any} */ artifact) => artifact.artifactType === 'source-harvest')?.payload;
+
+    assert.equal(knowledgePack.generationMode, 'local-fixture');
+    assert.equal(knowledgePack.packStatus, 'provisional');
+    assert.equal(knowledgePack.sourceOrigins['local-fixture'], 1);
+    assert.equal(sourceHarvest.sources[0].origin, 'local-fixture');
+
+    const buildReportResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/knowledge-pack-build-report`);
+    assert.equal(buildReportResponse.status, 200);
+    const buildReport = await buildReportResponse.json();
+    assert.equal(buildReport.status, 'review-required');
+    assert.match(buildReport.warnings.join(' '), /No OpenAI API key/u);
+
+    const blockedExportResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/exports`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ version: 'unmapped-local-fixture-1' }),
+    });
+    assert.equal(blockedExportResponse.status, 409);
+  } finally {
+    await app.close();
+    await sandbox.cleanup();
+  }
+});
+
 test('mentions and assignments create notifications, and queue analytics summarize work', async () => {
   const sandbox = await createSandbox();
   const app = await startServer(sandbox);
@@ -836,9 +945,12 @@ test('mentions and assignments create notifications, and queue analytics summari
       body: JSON.stringify({
         body: 'Please review this run next. @local-operator',
         mentions: ['local-operator'],
+        resolutionNote: 'Thread resolved after local operator acknowledgement.',
       }),
     });
     assert.equal(messageResponse.status, 201);
+    const message = await messageResponse.json();
+    assert.equal(message.status, 'resolved');
 
     const notificationsResponse = await fetch(`${app.baseUrl}/api/v1/notifications`);
     assert.equal(notificationsResponse.status, 200);
@@ -852,7 +964,13 @@ test('mentions and assignments create notifications, and queue analytics summari
     const analytics = await analyticsResponse.json();
 
     assert.equal(analytics.summary.totalItemCount >= 1, true);
+    assert.equal(analytics.summary.unreadNotificationCount >= 2, true);
     assert.equal(analytics.countsByWorkType.some((/** @type {{ workType: string }} */ row) => row.workType === 'run-review'), true);
+
+    const threadsResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/threads`);
+    assert.equal(threadsResponse.status, 200);
+    const threads = await threadsResponse.json();
+    assert.equal(threads.find((/** @type {any} */ item) => item.id === thread.id)?.status, 'resolved');
   } finally {
     await app.close();
     await sandbox.cleanup();
@@ -984,6 +1102,14 @@ test('dashboard, review run, artifact list, and local runtime API views return t
     assert.equal(localRuntimeView.actor.id, 'local-operator');
     assert.equal(localRuntimeView.tenantId, 'tenant.local');
     assert.equal(localRuntimeView.availableCommands.includes('pnpm dev:web'), true);
+    assert.equal(localRuntimeView.localStoragePolicy.filesStayLocal, true);
+    assert.equal(localRuntimeView.localStoragePolicy.filesPersistedInPostgres, false);
+    assert.equal(localRuntimeView.localStoragePolicy.objectStore, 'filesystem');
+    assert.equal(localRuntimeView.managedRuntimeReadiness.dryRunAvailable, true);
+    assert.equal(localRuntimeView.managedRuntimeReadiness.localOnlyCommands.includes('pnpm migrate:managed -- --dry-run'), true);
+    assert.equal(localRuntimeView.externalElements.clinicalEducationCompatibility.enabled, true);
+    assert.equal(localRuntimeView.externalElements.openAi.renderModel, 'gpt-image-2');
+    assert.equal(localRuntimeView.externalElements.pipeline.maxConcurrentRuns, 1);
   } finally {
     await app.close();
     await sandbox.cleanup();
@@ -1148,6 +1274,9 @@ test('review queue, threaded review, source ownership, refresh tasks, and render
     const renderJobDetail = await renderJobDetailResponse.json();
     assert.equal(Array.isArray(renderJobDetail.attempts), true);
     assert.equal(Array.isArray(renderJobDetail.renderedAssets), true);
+    assert.equal(renderJobDetail.renderedAssetManifest.renderMode, 'stub-placeholder');
+    assert.equal(renderJobDetail.renderedAssetManifest.localValidation.structuralOnly, true);
+    assert.equal(renderJobDetail.renderedAssetManifest.renderedAssets.every((/** @type {any} */ asset) => asset.letteringSeparationStatus === 'passed'), true);
   } finally {
     await app.close();
     await sandbox.cleanup();

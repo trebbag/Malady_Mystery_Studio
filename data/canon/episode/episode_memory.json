@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "seriesTitle": "Detective Cyto Kine and Deputy Pip: Micro-Mysteries of the Human Body",
+  "purpose": "Default local episode-memory seed for the rebuilt app. Runtime story-memory artifacts remain the authoritative per-run continuity record.",
+  "recurringCharacters": [
+    "Detective Cyto Kine",
+    "Deputy Pip"
+  ],
+  "continuityNotes": [
+    "Keep the detectives as felt characters in cinematic 3D anatomy spaces.",
+    "Do not front-load the diagnosis before the fair-play reveal.",
+    "Keep all lettering and teaching text out of generated panel art."
+  ],
+  "lastUpdatedAt": "2026-04-23T00:00:00Z"
+}

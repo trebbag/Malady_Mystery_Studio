@@ -17,8 +17,8 @@
       "location": "portal bay",
       "bodyScale": "external-world",
       "charactersPresent": [
-        "Detective A",
-        "Detective B",
+        "Detective Cyto Kine",
+        "Deputy Pip",
         "doctor"
       ],
       "actionSummary": "The doctor activates the shrinking portal while the detectives leap toward the luminous gateway.",
@@ -50,8 +50,8 @@
       "location": "hepatic circulation",
       "bodyScale": "organ",
       "charactersPresent": [
-        "Detective A",
-        "Detective B"
+        "Detective Cyto Kine",
+        "Deputy Pip"
       ],
       "actionSummary": "The detectives ride a current past weathered liver terrain and stare at an uneven horizon of tissue.",
       "clueRevealed": "The tissue environment looks chronically abnormal before the main lesion is identified.",
@@ -82,8 +82,8 @@
       "location": "adjacent to suspicious liver region",
       "bodyScale": "tissue",
       "charactersPresent": [
-        "Detective A",
-        "Detective B"
+        "Detective Cyto Kine",
+        "Deputy Pip"
       ],
       "actionSummary": "They hover near a district of cells whose architecture breaks the surrounding pattern.",
       "clueRevealed": "A focal abnormal region behaves like a hidden stronghold within the liver.",

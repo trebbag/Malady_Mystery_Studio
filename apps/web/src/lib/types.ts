@@ -230,6 +230,10 @@ export interface ReviewQueueAnalyticsView {
     overdueRate: number;
     escalationRate: number;
     medianAgeHours: number;
+    dueSoonItemCount: number;
+    completedItemCount: number;
+    fallbackQueueItemCount: number;
+    unreadNotificationCount: number;
   };
   countsByWorkType: Array<{ workType: string; count: number }>;
   countsByStatus: Array<{ status: string; count: number }>;
@@ -338,15 +342,8 @@ export interface RenderingGuide {
     separateLetteringRequired: boolean;
     manualReviewRequired: boolean;
   };
-  slideStrategy?: {
-    onePanelPerSlide: boolean;
-    sequentialGenerationRequired: boolean;
-    firstSlideStyleLockRequired: boolean;
-    forbidLiveResearch: boolean;
-  };
   globalNegativeConstraints: string[];
   openAiPanelExecutionPrompt?: string;
-  gensparkDeckBootstrapPrompt?: string;
   retryGuidance: string[];
   panels: Array<Record<string, unknown>>;
 }
@@ -471,6 +468,9 @@ export interface ReviewQueueView {
     escalatedItemCount: number;
     renderRetryCount: number;
     sourceRefreshCount: number;
+    dueSoonItemCount: number;
+    fallbackQueueItemCount: number;
+    unreadNotificationCount: number;
   };
   items: Array<{
     workItemId: string;
@@ -487,7 +487,12 @@ export interface ReviewQueueView {
     dueAt: string;
     reminderAt?: string;
     isOverdue: boolean;
+    reminderDue?: boolean;
+    escalationTargetQueue?: string;
     threadCount?: number;
+    latestThreadStatus?: string;
+    notificationCount?: number;
+    unreadNotificationCount?: number;
     notes?: string[];
   }>;
 }
@@ -523,6 +528,65 @@ export interface LocalRuntimeView {
       pilotReadiness: number;
     };
     remainingWork: string[];
+  };
+  localStoragePolicy: {
+    mode: 'local-only';
+    filesStayLocal: true;
+    filesPersistedInPostgres: false;
+    metadataStore: 'sqlite';
+    objectStore: 'filesystem';
+    dbFilePath: string;
+    objectStoreDir: string;
+    postgresUsage: string;
+    managedObjectStorageUsage: string;
+    backupCommand: string;
+    restoreCommand: string;
+    resetCommand: string;
+    notes: string[];
+  };
+  managedRuntimeReadiness?: {
+    status: 'ready-locally' | 'configured' | 'blocked-awaiting-credentials' | 'failed';
+    dryRunAvailable: boolean;
+    checks: Array<{
+      name: string;
+      status: 'ready-locally' | 'configured' | 'blocked-awaiting-credentials' | 'failed';
+      current: string;
+      target: string;
+      requiredEnv: string[];
+    }>;
+    localOnlyCommands: string[];
+  };
+  externalElements?: {
+    clinicalEducationCompatibility: {
+      enabled: boolean;
+      sourceProjectLabel: string;
+    };
+    openAi: {
+      apiKeyConfigured: boolean;
+      knowledgeBaseVectorStoreConfigured: boolean;
+      researchModel: string;
+      renderModel: string;
+      renderProvider: string;
+    };
+    canon: {
+      autoDiscoveryEnabled: boolean;
+      root: string;
+      characterBiblePath: string;
+      seriesStyleBiblePath: string;
+      deckSpecPath: string;
+      episodeMemoryPath: string;
+    };
+    pipeline: {
+      mode: string;
+      maxConcurrentRuns: number;
+      retentionKeepLast: number;
+      fakeStepDelayMs: number;
+      kb0TimeoutMs: number;
+      stepAbAgentTimeoutMs: number;
+      stepCAgentTimeoutMs: number;
+      stepCDeckSpecTimeoutMs: number;
+      agentIsolationMode: string;
+    };
   };
 }
 

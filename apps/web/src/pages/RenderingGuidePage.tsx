@@ -46,7 +46,7 @@ export function RenderingGuidePage() {
       <PageHeader
         eyebrow="Rendering Guide"
         title="Rendering Guide"
-        description="Secondary OpenAI Image support guide with run-level execution instructions, per-panel prompts, retry guidance, and separate lettering overlays."
+        description="OpenAI GPT Image 2 execution guide with run-level instructions, per-panel prompts, retry guidance, and separate lettering overlays."
         actions={(
           <div className="flex flex-wrap gap-2">
             <Button
@@ -103,9 +103,9 @@ export function RenderingGuidePage() {
 
           <Card>
             <CardTitle>OpenAI panel execution brief</CardTitle>
-            <CardDescription>Use this as the run-level instruction set before generating or regenerating individual panels.</CardDescription>
+            <CardDescription>Use this as the run-level instruction set before generating or regenerating individual panels with OpenAI GPT Image 2.</CardDescription>
             <pre className="mt-4 overflow-x-auto rounded-2xl bg-shell-950 p-4 text-xs text-slate-100">
-              {renderingGuideState.data.renderingGuide.openAiPanelExecutionPrompt ?? renderingGuideState.data.renderingGuide.gensparkDeckBootstrapPrompt}
+              {renderingGuideState.data.renderingGuide.openAiPanelExecutionPrompt}
             </pre>
           </Card>
 
@@ -209,7 +209,7 @@ export function RenderingGuidePage() {
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">OpenAI Image Prompt</p>
                       <pre className="mt-2 overflow-x-auto rounded-2xl bg-shell-950 p-4 text-xs text-slate-100">
-                        {String(((panel.openAiImagePrompt ?? panel.nanoBananaPrompt) as Record<string, unknown>).prompt ?? '')}
+                        {String((panel.openAiImagePrompt as Record<string, unknown>)?.prompt ?? '')}
                       </pre>
                     </div>
                   </div>

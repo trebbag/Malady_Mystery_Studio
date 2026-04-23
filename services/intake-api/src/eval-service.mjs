@@ -5,6 +5,7 @@ import YAML from 'yaml';
 
 import { createId } from '../../../packages/shared-config/src/ids.mjs';
 import { findRepoRoot } from '../../../packages/shared-config/src/repo-paths.mjs';
+import { normalizeRenderingGuide } from '../../exporter/src/rendering-guide.mjs';
 import {
   reviewEducationalSequencing,
   reviewMysteryIntegrity,
@@ -246,6 +247,9 @@ function collectReleaseArtifactManifest(store, workflowRun) {
         checksum: artifactMetadata.checksum,
         contentType: artifactMetadata.contentType,
         retentionClass: artifactMetadata.retentionClass,
+        ...(artifactMetadata.artifactType === 'rendered-asset-manifest'
+          ? { payload: store.getArtifact(artifactMetadata.artifactType, artifactMetadata.artifactId) }
+          : {}),
       };
     });
 }
@@ -383,9 +387,25 @@ function scoreRenderedOutput(context) {
   )).length;
   const latestRenderJob = context.renderJobs.at(-1) ?? null;
   let score = renderedAssetCount === 0 ? 0 : roundScore(validRenderedAssetCount / renderedAssetCount);
+  const structuralPanelCount = (renderedAssetManifest.renderedAssets ?? []).filter((/** @type {any} */ asset) => (
+    typeof asset.promptHash === 'string'
+    && asset.letteringSeparationStatus === 'passed'
+    && Number(asset.continuityLockCount ?? 0) >= 2
+    && Number(asset.anatomyLockCount ?? 0) >= 2
+    && Number(asset.acceptanceCheckCount ?? 0) >= 1
+  )).length;
 
   if (!renderedAssetManifest.allPanelsRendered) {
     score = Math.min(score, 0.5);
+  }
+
+  if (renderedAssetManifest.renderMode === 'stub-placeholder') {
+    const structuralScore = renderedAssetCount === 0 ? 0 : roundScore(structuralPanelCount / renderedAssetCount);
+    score = Math.min(score, structuralScore);
+
+    if (!renderedAssetManifest.nonFinalPlaceholder || !renderedAssetManifest.localValidation?.structuralOnly) {
+      score = Math.min(score, 0.8);
+    }
   }
 
   if (!latestRenderJob || latestRenderJob.status !== 'completed') {
@@ -404,7 +424,7 @@ function scoreRenderedOutput(context) {
  * @returns {number}
  */
 function scoreRenderingGuideQuality(context) {
-  const renderingGuide = context.renderingGuide;
+  const renderingGuide = normalizeRenderingGuide(context.renderingGuide);
 
   if (!renderingGuide) {
     return 0;
@@ -412,15 +432,19 @@ function scoreRenderingGuideQuality(context) {
 
   let score = 1;
 
-  if (!renderingGuide.openAiPanelExecutionPrompt && !renderingGuide.gensparkDeckBootstrapPrompt) {
+  if (!renderingGuide.openAiPanelExecutionPrompt) {
     score -= 0.1;
   }
 
   for (const panel of renderingGuide.panels ?? []) {
-    const openAiPrompt = panel.openAiImagePrompt ?? panel.nanoBananaPrompt;
+    const openAiPrompt = panel.openAiImagePrompt;
 
     if (!openAiPrompt?.prompt) {
       score -= 0.2;
+    }
+
+    if (!(renderingGuide.providerTargets ?? []).includes('openai-gpt-image-2')) {
+      score -= 0.15;
     }
 
     if ((panel.continuityAnchors ?? []).length < 2) {
@@ -597,12 +621,16 @@ function scoreEvaluationCase(evaluationCase, context, threshold) {
     ? score === 1
     : score >= minimum;
 
+  const renderOutputMessageSuffix = evaluationCase.evalFamily === 'render_output_quality' && context.renderedAssetManifest?.renderMode === 'stub-placeholder'
+    ? ' Local stub-provider output validates panel coverage, prompt traceability, and release wiring only; it does not certify final image quality.'
+    : '';
+
   return {
     score: roundScore(score),
     status: passed ? 'passed' : 'failed',
     message: passed
-      ? `Case satisfied ${evaluationCase.evalFamily} requirements.`
-      : `Case fell below threshold ${minimum.toFixed(2)} for ${evaluationCase.evalFamily}.`,
+      ? `Case satisfied ${evaluationCase.evalFamily} requirements.${renderOutputMessageSuffix}`
+      : `Case fell below threshold ${minimum.toFixed(2)} for ${evaluationCase.evalFamily}.${renderOutputMessageSuffix}`,
   };
 }
 
@@ -739,6 +767,16 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
 }
 
 /**
+ * @param {any} context
+ * @returns {'local-structural' | 'provider-output'}
+ */
+function deriveValidationMode(context) {
+  return context.renderedAssetManifest?.renderMode === 'stub-placeholder'
+    ? 'local-structural'
+    : 'provider-output';
+}
+
+/**
  * @param {any} evalRun
  * @returns {any}
  */
@@ -794,6 +832,7 @@ export class EvalService {
     const familyScores = Object.fromEntries(
       familyResults.map((familyResult) => [familyResult.family, familyResult.score]),
     );
+    const validationMode = deriveValidationMode(context);
 
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -803,6 +842,7 @@ export class EvalService {
       canonicalDiseaseName: context.diseasePacket?.canonicalDiseaseName ?? options.workflowRun.input.diseaseName,
       evaluatedBy: options.actor.id,
       evaluatedAt,
+      validationMode,
       latestRelevantArtifactAt: getLatestRelevantArtifactAt(options.store, options.workflowRun),
       familyResults,
       summary: {
@@ -813,6 +853,7 @@ export class EvalService {
         passedCaseCount,
         failedCaseCount,
         allThresholdsMet: failedFamilyCount === 0,
+        structuralRenderOutputOnly: validationMode === 'local-structural',
         familyScores,
       },
     };

@@ -3,13 +3,17 @@ import path from 'node:path';
 
 import { Client } from 'pg';
 
+import { loadDotEnv } from '../packages/shared-config/src/env.mjs';
 import { findRepoRoot } from '../packages/shared-config/src/repo-paths.mjs';
 import { AzureBlobObjectStorage } from '../services/intake-api/src/azure-object-storage.mjs';
+
+loadDotEnv({ moduleUrl: import.meta.url });
 
 const rootDir = findRepoRoot(import.meta.url);
 const outputDir = path.join(rootDir, 'var', 'ops', 'restore-smoke');
 const timestamp = new Date().toISOString();
 const outputPath = path.join(outputDir, `${timestamp.replaceAll(':', '-')}.json`);
+const dryRun = process.argv.includes('--dry-run') || process.env.RESTORE_SMOKE_DRY_RUN === '1';
 
 /**
  * @param {string} name
@@ -34,6 +38,36 @@ const report = {
 };
 
 await mkdir(outputDir, { recursive: true });
+
+if (dryRun) {
+  const missingCredentials = [
+    'MANAGED_POSTGRES_URL',
+    'AZURE_BLOB_CONNECTION_STRING',
+  ].filter((name) => !process.env[name]);
+
+  /** @type {Array<Record<string, unknown>>} */ (report.checks).push(
+    {
+      name: 'postgres-connectivity',
+      status: process.env.MANAGED_POSTGRES_URL ? 'configured' : 'blocked-awaiting-credentials',
+    },
+    {
+      name: 'blob-roundtrip',
+      status: process.env.AZURE_BLOB_CONNECTION_STRING ? 'configured' : 'blocked-awaiting-credentials',
+    },
+    {
+      name: 'backup-policy',
+      status: 'manual-followup',
+      note: 'Dry run cannot verify Azure backup policy, Blob soft-delete, or scratch restore execution.',
+    },
+  );
+  report.status = missingCredentials.length === 0 ? 'configured' : 'blocked-awaiting-credentials';
+  report.mode = 'dry-run';
+  report.missingCredentials = missingCredentials;
+  report.completedAt = new Date().toISOString();
+  await writeFile(outputPath, JSON.stringify(report, null, 2));
+  console.log(outputPath);
+  process.exit(0);
+}
 
 const postgres = new Client({
   connectionString: requireEnv('MANAGED_POSTGRES_URL'),
@@ -89,4 +123,3 @@ try {
 }
 
 console.log(outputPath);
-

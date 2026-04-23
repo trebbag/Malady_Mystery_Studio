@@ -25,6 +25,7 @@ import { createResearchAssemblyService } from '../../clinical-retrieval/src/rese
 import { normalizeDiseaseInput } from '../../clinical-retrieval/src/ontology-adapter.mjs';
 import {
   buildRenderingGuide,
+  normalizeRenderingGuide,
   renderRenderingGuideMarkdown,
 } from '../../exporter/src/rendering-guide.mjs';
 import { createExporterService } from '../../exporter/src/service.mjs';
@@ -84,6 +85,7 @@ import {
   listWorkItemsForRun,
 } from './work-item-service.mjs';
 import { createPlatformRuntime } from './platform-runtime.mjs';
+import { createMetadataStore } from './metadata-store.mjs';
 import { PlatformStore } from './store.mjs';
 
 const SCHEMA_VERSION = '1.0.0';
@@ -97,50 +99,50 @@ const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
   areas: [
     {
       label: 'Foundation and local runtime',
+      percentComplete: 99,
+    },
+    {
+      label: 'Local storage, backup, restore, and artifact retention',
       percentComplete: 97,
     },
     {
       label: 'Open disease intake and research assembly',
-      percentComplete: 84,
+      percentComplete: 90,
     },
     {
       label: 'Clinical truth layer and governance',
-      percentComplete: 94,
+      percentComplete: 96,
     },
     {
       label: 'Workbook and guardrails',
-      percentComplete: 76,
+      percentComplete: 79,
     },
     {
       label: 'Scene, panel, and rendered-output flow',
-      percentComplete: 92,
+      percentComplete: 96,
     },
     {
-      label: 'Review, eval, and export workflow',
-      percentComplete: 98,
+      label: 'Review, eval, export, and queue operations',
+      percentComplete: 99,
     },
     {
-      label: 'Frontend structure and UX implementation',
-      percentComplete: 95,
+      label: 'Frontend UX',
+      percentComplete: 97,
     },
     {
-      label: 'Managed platform and pilot ops',
-      percentComplete: 64,
-    },
-    {
-      label: 'Optional external-art attachment and downstream publishing',
-      percentComplete: 48,
+      label: 'Optional managed deployment',
+      percentComplete: 20,
     },
   ],
   overall: {
-    localMvpReadiness: 95,
-    pilotReadiness: 68,
+    localMvpReadiness: 98,
+    pilotReadiness: 76,
   },
   remainingWork: [
-    'Broaden governed disease and source coverage through promoted packs, stronger source refresh ownership, and contradiction triage for newly typed diseases.',
-    'Deepen reviewer collaboration with richer mention delivery, thread ergonomics, and queue analytics beyond the current in-app baseline.',
-    'Finish the real managed runtime cutover from local SQLite/filesystem fallback to PostgreSQL plus Blob in the live execution path.',
-    'Run live Azure deployment, backup, restore, and observability drills with tenant credentials and production-grade secrets handling.',
+    'Run a deliberate real ChatGPT Image 2.0 / gpt-image-2 smoke with the configured local .env key; stub assets validate structure only.',
+    'Keep active app persistence on local SQLite plus filesystem object storage; managed database/blob cutover is deferred and optional.',
+    'Exercise local backup, reset, restore, and retention drills against realistic run volume before pilot use.',
+    'Broaden promoted governed source coverage and owner workflows beyond fixture-backed provisional packs.',
     'Integrate external auth at the frontend or gateway layer when the app moves beyond local-open mode.',
     'Add optional downstream publishing and distribution integrations after the rendered-panel export path is stable.',
   ],
@@ -596,6 +598,153 @@ function getServerBaseUrl(request) {
  */
 function getReadinessSnapshot() {
   return clone(FRONTEND_READINESS_SNAPSHOT);
+}
+
+/**
+ * @param {any} platformRuntime
+ * @returns {any}
+ */
+function getManagedRuntimeReadiness(platformRuntime) {
+  const checks = [
+    {
+      name: 'metadata-store',
+      status: process.env.MANAGED_POSTGRES_URL ? 'configured' : 'blocked-awaiting-credentials',
+      current: platformRuntime.metadataStoreKind,
+      target: 'postgres',
+      requiredEnv: ['MANAGED_POSTGRES_URL'],
+    },
+    {
+      name: 'object-store',
+      status: process.env.AZURE_BLOB_CONNECTION_STRING ? 'configured' : 'blocked-awaiting-credentials',
+      current: platformRuntime.objectStorageKind,
+      target: 'azure-blob',
+      requiredEnv: ['AZURE_BLOB_CONNECTION_STRING'],
+    },
+    {
+      name: 'async-queue',
+      status: process.env.AZURE_SERVICE_BUS_CONNECTION_STRING ? 'configured' : 'blocked-awaiting-credentials',
+      current: platformRuntime.queueBackend,
+      target: 'azure-service-bus',
+      requiredEnv: ['AZURE_SERVICE_BUS_CONNECTION_STRING'],
+    },
+    {
+      name: 'restore-smoke',
+      status: process.env.MANAGED_POSTGRES_URL && process.env.AZURE_BLOB_CONNECTION_STRING
+        ? 'configured'
+        : 'blocked-awaiting-credentials',
+      current: 'dry-run-available',
+      target: 'managed-restore-smoke',
+      requiredEnv: ['MANAGED_POSTGRES_URL', 'AZURE_BLOB_CONNECTION_STRING'],
+    },
+  ];
+  const blockedCount = checks.filter((check) => check.status === 'blocked-awaiting-credentials').length;
+
+  return {
+    status: blockedCount === 0 ? 'configured' : 'ready-locally',
+    dryRunAvailable: true,
+    checks,
+    localOnlyCommands: [
+      'pnpm migrate:managed -- --dry-run',
+      'pnpm ops:restore-smoke -- --dry-run',
+    ],
+  };
+}
+
+/**
+ * @param {{ dbFilePath: string, objectStoreDir: string }} storage
+ * @returns {any}
+ */
+function getLocalStoragePolicy(storage) {
+  return {
+    mode: 'local-only',
+    filesStayLocal: true,
+    filesPersistedInPostgres: false,
+    metadataStore: 'sqlite',
+    objectStore: 'filesystem',
+    dbFilePath: storage.dbFilePath,
+    objectStoreDir: storage.objectStoreDir,
+    postgresUsage: 'disabled-for-active-runtime',
+    managedObjectStorageUsage: 'disabled-for-active-runtime',
+    backupCommand: 'pnpm local:backup',
+    restoreCommand: 'pnpm local:restore -- --path var/backups/<timestamp>',
+    resetCommand: 'pnpm local:reset',
+    notes: [
+      'SQLite stores local metadata only.',
+      'Generated artifacts, rendered panels, release bundles, evidence packs, and attachments stay in the filesystem object store.',
+      'Postgres is not required for the active local app path and must not store binary files or large artifact payloads.',
+    ],
+  };
+}
+
+/**
+ * @param {string | undefined} value
+ * @returns {string | undefined}
+ */
+function readNonEmptyEnv(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+/**
+ * @param {string | undefined} value
+ * @param {number} fallback
+ * @returns {number}
+ */
+function parsePositiveIntegerEnv(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/**
+ * @param {string | undefined} value
+ * @param {number} fallback
+ * @returns {number}
+ */
+function parseNonNegativeIntegerEnv(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+/**
+ * @param {string} rootDir
+ * @param {any} renderExecutionService
+ * @returns {any}
+ */
+function getExternalElementsSnapshot(rootDir, renderExecutionService) {
+  const canonRoot = readNonEmptyEnv(process.env.MMS_CANON_ROOT) ?? path.join(rootDir, 'data', 'canon');
+  const canonAutoDiscoveryEnabled = !['1', 'true', 'yes'].includes(String(process.env.MMS_DISABLE_CANON_AUTO_DISCOVERY ?? '0').toLowerCase());
+
+  return {
+    clinicalEducationCompatibility: {
+      enabled: true,
+      sourceProjectLabel: 'ClinicalEducation / Malady Mystery Studio legacy app',
+    },
+    openAi: {
+      apiKeyConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+      knowledgeBaseVectorStoreConfigured: Boolean(process.env.KB_VECTOR_STORE_ID?.trim()),
+      researchModel: readNonEmptyEnv(process.env.OPENAI_RESEARCH_MODEL) ?? readNonEmptyEnv(process.env.MMS_MODEL) ?? 'gpt-5.2',
+      renderModel: readNonEmptyEnv(process.env.OPENAI_RENDER_MODEL) ?? 'gpt-image-2',
+      renderProvider: readNonEmptyEnv(process.env.RENDER_PROVIDER) ?? renderExecutionService.providerName,
+    },
+    canon: {
+      autoDiscoveryEnabled: canonAutoDiscoveryEnabled,
+      root: canonRoot,
+      characterBiblePath: readNonEmptyEnv(process.env.MMS_CHARACTER_BIBLE_PATH) ?? path.join(canonRoot, 'character_bible.md'),
+      seriesStyleBiblePath: readNonEmptyEnv(process.env.MMS_SERIES_STYLE_BIBLE_PATH) ?? path.join(canonRoot, 'series_style_bible.md'),
+      deckSpecPath: readNonEmptyEnv(process.env.MMS_DECK_SPEC_PATH) ?? path.join(canonRoot, 'episode', 'deck_spec.md'),
+      episodeMemoryPath: readNonEmptyEnv(process.env.MMS_EPISODE_MEMORY_PATH) ?? path.join(canonRoot, 'episode', 'episode_memory.json'),
+    },
+    pipeline: {
+      mode: readNonEmptyEnv(process.env.MMS_PIPELINE_MODE) ?? 'real',
+      maxConcurrentRuns: parsePositiveIntegerEnv(process.env.MAX_CONCURRENT_RUNS, 1),
+      retentionKeepLast: parsePositiveIntegerEnv(process.env.MMS_RUN_RETENTION_KEEP_LAST, 50),
+      fakeStepDelayMs: parseNonNegativeIntegerEnv(process.env.MMS_FAKE_STEP_DELAY_MS, 80),
+      kb0TimeoutMs: parsePositiveIntegerEnv(process.env.MMS_V2_KB0_TIMEOUT_MS, 120000),
+      stepAbAgentTimeoutMs: parsePositiveIntegerEnv(process.env.MMS_V2_STEP_AB_AGENT_TIMEOUT_MS, 120000),
+      stepCAgentTimeoutMs: parsePositiveIntegerEnv(process.env.MMS_V2_STEP_C_AGENT_TIMEOUT_MS, 180000),
+      stepCDeckSpecTimeoutMs: parsePositiveIntegerEnv(process.env.MMS_V2_STEP_C_DECKSPEC_TIMEOUT_MS, 300000),
+      agentIsolationMode: readNonEmptyEnv(process.env.MMS_V2_AGENT_ISOLATION_MODE) ?? '',
+    },
+  };
 }
 
 /**
@@ -1126,7 +1275,13 @@ function loadArtifactByReference(store, artifactReference) {
     return store.getProject(artifactReference.artifactId);
   }
 
-  return store.getArtifact(artifactReference.artifactType, artifactReference.artifactId);
+  const artifact = store.getArtifact(artifactReference.artifactType, artifactReference.artifactId);
+
+  if (artifactReference.artifactType === 'rendering-guide' && artifact) {
+    return normalizeRenderingGuide(artifact);
+  }
+
+  return artifact;
 }
 
 /**
@@ -1471,6 +1626,9 @@ function collectReleaseArtifactManifest(store, workflowRun) {
         checksum: artifactMetadata.checksum,
         contentType: artifactMetadata.contentType,
         retentionClass: artifactMetadata.retentionClass,
+        ...(artifactReference.artifactType === 'rendered-asset-manifest'
+          ? { payload: store.getArtifact(artifactReference.artifactType, artifactReference.artifactId) }
+          : {}),
       };
     });
 }
@@ -4023,6 +4181,19 @@ function appendThreadMessage(options) {
     tenantId: options.workflowRun.tenantId,
   });
 
+  if (options.resolutionNote) {
+    const resolvedThread = {
+      ...options.thread,
+      status: 'resolved',
+      resolvedAt: reviewMessage.resolvedAt ?? new Date().toISOString(),
+      updatedAt: reviewMessage.updatedAt,
+    };
+    assertSchema(options.schemaRegistry, 'contracts/review-thread.schema.json', resolvedThread);
+    options.store.saveArtifact('review-thread', resolvedThread.id, resolvedThread, {
+      tenantId: options.workflowRun.tenantId,
+    });
+  }
+
   createMentionNotifications({
     store: options.store,
     schemaRegistry: options.schemaRegistry,
@@ -5084,6 +5255,8 @@ function syncLatestEvalMetadata(store, schemaRegistry, workflowRun) {
  *   queueBackend?: string,
  *   telemetryBackend?: string,
  *   serviceBusConnectionString?: string,
+ *   metadataStorePool?: any,
+ *   localStorageOnly?: boolean,
  *   renderProvider?: string,
  *   researchAssemblyService?: any,
  *   openaiApiKey?: string,
@@ -5103,15 +5276,16 @@ export async function createApp(options = {}) {
     queueBackend: options.queueBackend,
     telemetryBackend: options.telemetryBackend,
     serviceBusConnectionString: options.serviceBusConnectionString,
+    localStorageOnly: options.localStorageOnly,
   });
-  if (!options.store && platformRuntime.metadataStoreKind !== 'sqlite') {
-    throw new Error(`METADATA_STORE_BACKEND=${platformRuntime.metadataStoreKind} is not yet supported by the live app. Keep metadata on sqlite for now or inject a compatible custom store.`);
-  }
-  const store = options.store ?? new PlatformStore({
+  const store = options.store ?? await createMetadataStore({
     rootDir,
     dbFilePath,
     objectStoreDir,
     objectStorage: platformRuntime.objectStorage,
+    metadataStoreKind: platformRuntime.metadataStoreKind,
+    postgresPool: options.metadataStorePool,
+    telemetry: platformRuntime.telemetry,
   });
   const schemaRegistry = await createSchemaRegistry(rootDir);
   const workflowSpec = await loadWorkflowSpec(rootDir);
@@ -6510,14 +6684,15 @@ export async function createApp(options = {}) {
       }
 
       if (method === 'GET' && isLocalRuntimeViewPath(pathname)) {
+        const storage = {
+          dbFilePath: store.dbFilePath,
+          objectStoreDir: store.objectStoreDir,
+        };
         const runtimeView = createLocalRuntimeView({
           actor,
           tenantId: actor.tenantId,
           serverBaseUrl: getServerBaseUrl(request),
-          storage: {
-            dbFilePath: store.dbFilePath,
-            objectStoreDir: store.objectStoreDir,
-          },
+          storage,
           platform: {
             runtimeMode: platformRuntime.runtimeMode,
             metadataStore: platformRuntime.metadataStoreKind,
@@ -6538,10 +6713,13 @@ export async function createApp(options = {}) {
             'pnpm local:backup',
             'pnpm local:reset',
             'pnpm local:restore -- --path var/backups/<timestamp>',
-            'pnpm migrate:managed',
-            'pnpm ops:restore-smoke',
+            'pnpm migrate:managed -- --dry-run',
+            'pnpm ops:restore-smoke -- --dry-run',
           ],
           readiness: getReadinessSnapshot(),
+          localStoragePolicy: getLocalStoragePolicy(storage),
+          managedRuntimeReadiness: getManagedRuntimeReadiness(platformRuntime),
+          externalElements: getExternalElementsSnapshot(rootDir, renderExecutionService),
         });
         assertSchema(schemaRegistry, 'contracts/local-runtime-view.schema.json', runtimeView);
         sendJson(response, 200, runtimeView);

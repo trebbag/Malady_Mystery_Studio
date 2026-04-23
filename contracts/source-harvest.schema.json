@@ -39,7 +39,7 @@
           "sourceType": { "type": "string" },
           "origin": {
             "type": "string",
-            "enum": ["seeded", "user-doc", "agent-web"]
+            "enum": ["seeded", "user-doc", "agent-web", "local-fixture"]
           },
           "sourceUrl": { "type": "string" },
           "retrievedAt": { "type": "string", "format": "date-time" },

@@ -56,6 +56,14 @@ function toObjectArray(value) {
 }
 
 /**
+ * @param {string | undefined} value
+ * @returns {string | undefined}
+ */
+function readNonEmptyEnv(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+/**
  * @param {string} rawInput
  * @returns {string}
  */
@@ -205,10 +213,12 @@ function normalizeKnowledgePack(draft, options) {
 }
 
 /**
- * @param {{ workflowRun: any, workflowInput: any, canonicalDisease: any, allowedDomains: string[] }} options
+ * @param {{ workflowRun: any, workflowInput: any, canonicalDisease: any, allowedDomains: string[], knowledgeBaseVectorStoreId?: string }} options
  * @returns {any}
  */
 function buildResearchBrief(options) {
+  const knowledgeBaseVectorStoreConfigured = Boolean(options.knowledgeBaseVectorStoreId?.trim());
+
   return {
     schemaVersion: SCHEMA_VERSION,
     id: createId('rbr'),
@@ -222,6 +232,11 @@ function buildResearchBrief(options) {
     qualityProfile: options.workflowInput.qualityProfile ?? 'commercial-grade',
     styleProfile: options.workflowInput.styleProfile ?? 'alien-detective-clinical-mystery',
     researchIntent: 'Compile a medically traceable provisional disease knowledge pack that can support downstream comic production artifacts.',
+    knowledgeBaseVectorStoreConfigured,
+    researchTooling: [
+      ...(knowledgeBaseVectorStoreConfigured ? ['openai-file-search'] : []),
+      ...(options.allowedDomains.length > 0 ? ['openai-web-search'] : []),
+    ],
     allowedDomains: options.allowedDomains,
     createdAt: new Date().toISOString(),
   };
@@ -328,7 +343,7 @@ function parseJsonObject(promptJson) {
 function buildResearchPrompt(diseaseName) {
   return [
     'Return JSON only.',
-    'Research the named disease using allowed web sources and compile a medically cautious provisional disease knowledge pack.',
+    'Research the named disease using the configured file-search knowledge base and allowed web sources, then compile a medically cautious provisional disease knowledge pack.',
     `Disease input: ${diseaseName}.`,
     'You must preserve medical traceability. Every clinically meaningful claim must map to a source catalog entry.',
     'Do not invent unsupported details. If evidence is weak, say so in buildReport.blockingIssues or buildReport.warnings.',
@@ -340,15 +355,272 @@ function buildResearchPrompt(diseaseName) {
   ].join(' ');
 }
 
+/**
+ * @param {string[]} allowedDomains
+ * @param {string} knowledgeBaseVectorStoreId
+ * @returns {any[]}
+ */
+function buildResearchTools(allowedDomains, knowledgeBaseVectorStoreId) {
+  const tools = [];
+
+  if (knowledgeBaseVectorStoreId) {
+    tools.push({
+      type: 'file_search',
+      vector_store_ids: [knowledgeBaseVectorStoreId],
+    });
+  }
+
+  if (allowedDomains.length > 0) {
+    tools.push({
+      type: 'web_search',
+      filters: {
+        allowed_domains: allowedDomains,
+      },
+      user_location: {
+        type: 'approximate',
+        country: 'US',
+        timezone: 'America/New_York',
+      },
+    });
+  }
+
+  return tools;
+}
+
+/**
+ * @param {string} knowledgeBaseVectorStoreId
+ * @param {string[]} allowedDomains
+ * @returns {string[]}
+ */
+function buildResearchIncludes(knowledgeBaseVectorStoreId, allowedDomains) {
+  return [
+    ...(allowedDomains.length > 0 ? ['web_search_call.action.sources'] : []),
+    ...(knowledgeBaseVectorStoreId ? ['output[*].file_search_call.search_results'] : []),
+  ];
+}
+
+/**
+ * @param {{ workflowRun: any, workflowInput: any, canonicalDisease: any }} options
+ * @returns {any}
+ */
+function compileLocalFixtureKnowledgePack(options) {
+  const timestamp = new Date().toISOString();
+  const canonicalDiseaseName = options.canonicalDisease.canonicalDiseaseName ?? toCanonicalDiseaseLabel(options.workflowInput.diseaseName);
+  const diseaseSlug = normalizeId(canonicalDiseaseName);
+  const sourceId = `src.${diseaseSlug}.local-fixture`;
+  const sourceLabel = `Local no-key provisional scaffold for ${canonicalDiseaseName}`;
+  const researchBrief = buildResearchBrief({
+    workflowRun: options.workflowRun,
+    workflowInput: options.workflowInput,
+    canonicalDisease: options.canonicalDisease,
+    allowedDomains: [],
+  });
+  researchBrief.researchIntent = 'Compile a local no-key provisional scaffold only. This fixture does not perform live medical research and must remain reviewer-gated.';
+  researchBrief.allowedDomains = [];
+  const sourceHarvest = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('shr'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    targetCanonicalDiseaseName: canonicalDiseaseName,
+    sources: [
+      {
+        sourceId,
+        sourceLabel,
+        sourceType: 'reference',
+        origin: 'local-fixture',
+        sourceUrl: `local-fixture://open-disease/${diseaseSlug}`,
+        retrievedAt: timestamp,
+        captureMethod: 'local-no-api-fixture',
+        status: 'provisional-scaffold',
+      },
+    ],
+    droppedSources: [],
+    generatedAt: timestamp,
+  };
+  const knowledgePack = {
+    schemaVersion: SCHEMA_VERSION,
+    id: `kp.${diseaseSlug}.${normalizeId(options.workflowRun.id)}`,
+    canonicalDiseaseName,
+    packStatus: 'provisional',
+    packScope: 'run',
+    generationMode: 'local-fixture',
+    derivedFromRunId: options.workflowRun.id,
+    sourceOrigins: {
+      seeded: 0,
+      'user-doc': 0,
+      'agent-web': 0,
+      'local-fixture': 1,
+    },
+    aliases: [options.workflowInput.diseaseName, canonicalDiseaseName],
+    ontologyId: `prov:${diseaseSlug}`,
+    diseaseCategory: 'provisional-research-needed',
+    educationalFocus: [
+      'reviewer-gated evidence traceability',
+      'condition-specific source governance before release',
+    ],
+    clinicalSummary: {
+      oneSentence: `${canonicalDiseaseName} has not been researched in this local no-key run, so the generated package is a provisional scaffold for reviewer completion.`,
+      patientExperienceSummary: 'Patient-facing details must be authored from approved sources before publication.',
+      keyMechanism: 'Mechanism, diagnostics, and treatment remain reviewer-gated until source-backed claims are added or approved.',
+      timeScale: 'requires source-backed review',
+    },
+    physiologyPrerequisites: [
+      {
+        topic: 'Evidence governance',
+        whyItMatters: 'The story may only make disease-specific medical claims after reviewer-approved source support exists.',
+      },
+    ],
+    pathophysiology: [
+      {
+        order: 1,
+        event: 'local scaffold created without live research',
+        mechanism: 'The app preserves workflow structure while preventing unverified disease-specific claims from being treated as final.',
+        scale: 'whole-body',
+        linkedClaimIds: [`clm.${diseaseSlug}.001`],
+      },
+    ],
+    presentation: {
+      hallmarkSymptoms: ['source-backed symptom pattern pending reviewer completion'],
+      historyClues: ['condition-specific history clues require approved evidence'],
+      examFindings: ['condition-specific exam findings require approved evidence'],
+      redFlags: ['do not publish without clinical source approval'],
+      typicalTimecourse: 'pending evidence review',
+    },
+    diagnostics: {
+      firstLineTests: ['evidence-backed diagnostic workup pending reviewer completion'],
+      confirmatoryTests: ['condition-specific confirmation requires approved sources'],
+      diagnosticLogic: ['Do not infer diagnostic logic from the disease name alone. Reviewers must add or approve source-backed claims.'],
+    },
+    management: {
+      stabilization: ['avoid disease-specific treatment claims until source governance approval'],
+      diseaseDirectedCare: ['reviewer-authored treatment plan pending approved evidence'],
+      monitoring: ['track provisional status, source freshness, and contradiction review before release'],
+      notes: ['This local fixture exists to exercise workflow, review, render, eval, and export gates without an API key.'],
+    },
+    evidence: [
+      {
+        claimId: `clm.${diseaseSlug}.001`,
+        claimText: `${canonicalDiseaseName} requires reviewer-approved condition-specific evidence before publication-ready medical claims can be made.`,
+        sourceId,
+        sourceLabel,
+        sourceType: 'reference',
+        sourceLocator: 'local fixture governance scaffold',
+        confidence: 0.5,
+        claimType: 'governance',
+        certaintyLevel: 'guarded',
+        diseaseStageApplicability: 'all stages pending review',
+        patientSubgroupApplicability: 'general pending review',
+        importanceRank: 1,
+      },
+      {
+        claimId: `clm.${diseaseSlug}.002`,
+        claimText: `Mechanism, diagnostic, and treatment details for ${canonicalDiseaseName} are provisional until tied to approved source records.`,
+        sourceId,
+        sourceLabel,
+        sourceType: 'reference',
+        sourceLocator: 'local fixture traceability scaffold',
+        confidence: 0.5,
+        claimType: 'traceability',
+        certaintyLevel: 'guarded',
+        diseaseStageApplicability: 'all stages pending review',
+        patientSubgroupApplicability: 'general pending review',
+        importanceRank: 2,
+      },
+    ],
+    sourceCatalog: [
+      {
+        id: sourceId,
+        canonicalDiseaseName,
+        sourceLabel,
+        sourceType: 'reference',
+        sourceTier: 'tenant-pack',
+        origin: 'local-fixture',
+        retrievedAt: timestamp,
+        captureMethod: 'local-no-api-fixture',
+        reviewState: 'promotion-required',
+        defaultApprovalStatus: 'conditional',
+        owner: 'clinical-governance',
+        primaryOwnerRole: 'Clinical Reviewer',
+        backupOwnerRole: 'Product Editor',
+        refreshCadenceDays: 30,
+        governanceNotes: [
+          'Local fixture only. Replace or approve with real source-backed evidence before publication.',
+        ],
+        topics: ['local scaffold', 'source governance'],
+        sourceUrl: `local-fixture://open-disease/${diseaseSlug}`,
+        lastReviewedAt: timestamp,
+      },
+    ],
+    clinicalTeachingPoints: [
+      {
+        order: 1,
+        title: 'Provisional evidence gate',
+        teachingPoint: 'A local no-key run can exercise workflow structure, but publishable disease teaching requires approved source-backed claims.',
+        linkedClaimIds: [`clm.${diseaseSlug}.001`],
+      },
+    ],
+    visualAnchors: [
+      {
+        anchorId: `vanchor.${diseaseSlug}.001`,
+        title: 'Evidence review checkpoint',
+        bodyScale: 'story',
+        location: 'case board',
+        description: 'Show the detectives pausing at a glowing evidence board with empty slots reserved for approved clinical sources.',
+        linkedClaimIds: [`clm.${diseaseSlug}.001`, `clm.${diseaseSlug}.002`],
+      },
+    ],
+    evidenceRelationships: [
+      {
+        fromClaimId: `clm.${diseaseSlug}.001`,
+        toClaimId: `clm.${diseaseSlug}.002`,
+        relationshipType: 'supports',
+        status: 'monitor',
+        notes: 'Both scaffold claims reinforce that this run is structurally valid but medically provisional.',
+      },
+    ],
+    generatedAt: timestamp,
+    generatedBy: 'local-fixture-research-assembly',
+  };
+  const buildReport = normalizeBuildReport({
+    status: 'review-required',
+    fitForStoryContinuation: true,
+    blockingIssues: [],
+    warnings: [
+      'No OpenAI API key was configured, so no live medical research was performed.',
+      'This provisional pack is suitable for local workflow testing only until reviewer-approved evidence is added or accepted.',
+    ],
+    missingEvidenceAreas: [
+      'condition-specific mechanism',
+      'condition-specific presentation',
+      'condition-specific diagnostics',
+      'condition-specific treatment',
+    ],
+  }, knowledgePack, {
+    workflowRun: options.workflowRun,
+    canonicalDiseaseName,
+    timestamp,
+  });
+
+  return {
+    researchBrief,
+    sourceHarvest,
+    knowledgePack,
+    buildReport,
+    responseSources: [],
+  };
+}
+
 export class ResearchAssemblyService {
   /**
-   * @param {{ apiKey?: string, fetchImpl?: typeof fetch, model?: string, allowedDomains?: string[], compiler?: Function }} [options]
+   * @param {{ apiKey?: string, fetchImpl?: typeof fetch, model?: string, allowedDomains?: string[], knowledgeBaseVectorStoreId?: string, compiler?: Function }} [options]
    */
   constructor(options = {}) {
     this.apiKey = options.apiKey ?? process.env.OPENAI_API_KEY ?? '';
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
-    this.model = options.model ?? process.env.OPENAI_RESEARCH_MODEL ?? 'gpt-5';
+    this.model = options.model ?? readNonEmptyEnv(process.env.OPENAI_RESEARCH_MODEL) ?? readNonEmptyEnv(process.env.MMS_MODEL) ?? 'gpt-5.2';
     this.allowedDomains = options.allowedDomains ?? DEFAULT_ALLOWED_DOMAINS;
+    this.knowledgeBaseVectorStoreId = options.knowledgeBaseVectorStoreId ?? readNonEmptyEnv(process.env.KB_VECTOR_STORE_ID) ?? '';
     this.compiler = options.compiler;
   }
 
@@ -362,7 +634,7 @@ export class ResearchAssemblyService {
     }
 
     if (!this.apiKey) {
-      throw new Error('Open disease research assembly requires OPENAI_API_KEY.');
+      return compileLocalFixtureKnowledgePack(options);
     }
 
     const researchBrief = buildResearchBrief({
@@ -370,8 +642,10 @@ export class ResearchAssemblyService {
       workflowInput: options.workflowInput,
       canonicalDisease: options.canonicalDisease,
       allowedDomains: [...this.allowedDomains],
+      knowledgeBaseVectorStoreId: this.knowledgeBaseVectorStoreId,
     });
     const timestamp = new Date().toISOString();
+    const tools = buildResearchTools([...this.allowedDomains], this.knowledgeBaseVectorStoreId);
     const response = await this.fetchImpl('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
@@ -383,21 +657,9 @@ export class ResearchAssemblyService {
         reasoning: {
           effort: 'low',
         },
-        tools: [
-          {
-            type: 'web_search',
-            filters: {
-              allowed_domains: this.allowedDomains,
-            },
-            user_location: {
-              type: 'approximate',
-              country: 'US',
-              timezone: 'America/New_York',
-            },
-          },
-        ],
+        tools,
         tool_choice: 'auto',
-        include: ['web_search_call.action.sources'],
+        include: buildResearchIncludes(this.knowledgeBaseVectorStoreId, [...this.allowedDomains]),
         text: {
           format: {
             type: 'json_object',
@@ -442,7 +704,7 @@ export class ResearchAssemblyService {
 }
 
 /**
- * @param {{ apiKey?: string, fetchImpl?: typeof fetch, model?: string, allowedDomains?: string[], compiler?: Function }} [options]
+ * @param {{ apiKey?: string, fetchImpl?: typeof fetch, model?: string, allowedDomains?: string[], knowledgeBaseVectorStoreId?: string, compiler?: Function }} [options]
  */
 export function createResearchAssemblyService(options = {}) {
   return new ResearchAssemblyService(options);

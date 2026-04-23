@@ -17,9 +17,9 @@ function sha256(value) {
 
 export const DEFAULT_RENDER_TARGET_PROFILE = Object.freeze({
   schemaVersion: '1.0.0',
-  id: 'rtp.openai-image-default',
+  id: 'rtp.openai-gpt-image-2-default',
   provider: 'openai-image',
-  model: 'gpt-image-1.5',
+  model: 'gpt-image-2',
   supportedAspectRatios: ['4:3', '16:9', '1:1'],
   fallbackStrategies: ['baseline', 'simplified-composition', 'tight-anatomy'],
   textHandlingPolicy: 'Never request visible lettering in generated art; preserve lettering as a separate overlay.',
@@ -37,6 +37,7 @@ export const DEFAULT_RENDER_TARGET_PROFILE = Object.freeze({
  */
 function strategyPrompt(renderPrompt, strategy) {
   const basePrompt = [
+    'Create a medically accurate, high-fidelity finished comic panel illustration.',
     renderPrompt.positivePrompt,
     renderPrompt.aspectRatio ? `Target aspect ratio: ${renderPrompt.aspectRatio}.` : '',
     renderPrompt.negativePrompt ? `Avoid the following problems: ${renderPrompt.negativePrompt}.` : '',
@@ -64,6 +65,8 @@ class StubRenderProvider {
    * @returns {Promise<any>}
    */
   async generate(renderPrompt, strategy) {
+    const prompt = strategyPrompt(renderPrompt, strategy);
+
     return {
       provider: this.provider,
       model: this.model,
@@ -71,6 +74,9 @@ class StubRenderProvider {
       mimeType: 'image/png',
       buffer: ONE_PIXEL_PNG,
       providerRequestId: `${renderPrompt.id}.${strategy}`,
+      isPlaceholder: true,
+      nonFinalReason: 'Local stub render used because no OpenAI image API key is configured. This validates structure only, not final art quality.',
+      promptHash: sha256(prompt),
       width: 1,
       height: 1,
     };
@@ -90,6 +96,36 @@ function mapAspectRatioToSize(aspectRatio) {
     default:
       return '1024x1024';
   }
+}
+
+/**
+ * @param {string | undefined} size
+ * @returns {{ width: number, height: number }}
+ */
+function parseSize(size) {
+  const [width, height] = String(size ?? '1024x1024')
+    .split('x')
+    .map((value) => Number.parseInt(value, 10));
+
+  return {
+    width: Number.isFinite(width) && width > 0 ? width : 1024,
+    height: Number.isFinite(height) && height > 0 ? height : 1024,
+  };
+}
+
+/**
+ * @param {any} renderPrompt
+ * @returns {{ letteringHandledSeparately: boolean, renderVisibleText: boolean, status: 'passed' | 'failed' }}
+ */
+function summarizeLetteringSeparation(renderPrompt) {
+  const letteringHandledSeparately = Boolean(renderPrompt?.textLayerPolicy?.letteringHandledSeparately);
+  const renderVisibleText = Boolean(renderPrompt?.textLayerPolicy?.renderVisibleText);
+
+  return {
+    letteringHandledSeparately,
+    renderVisibleText,
+    status: letteringHandledSeparately && !renderVisibleText ? 'passed' : 'failed',
+  };
 }
 
 class OpenAiImageProvider {
@@ -113,6 +149,10 @@ class OpenAiImageProvider {
       throw new Error('OpenAI image generation requires OPENAI_API_KEY or RENDER_PROVIDER_API_KEY.');
     }
 
+    const prompt = strategyPrompt(renderPrompt, strategy);
+    const size = mapAspectRatioToSize(renderPrompt.aspectRatio);
+    const dimensions = parseSize(size);
+
     const response = await fetch(
       'https://api.openai.com/v1/images/generations',
       {
@@ -123,8 +163,8 @@ class OpenAiImageProvider {
         },
         body: JSON.stringify({
           model: this.model,
-          prompt: strategyPrompt(renderPrompt, strategy),
-          size: mapAspectRatioToSize(renderPrompt.aspectRatio),
+          prompt,
+          size,
           quality: 'high',
           background: 'opaque',
           output_format: 'png',
@@ -151,8 +191,9 @@ class OpenAiImageProvider {
       mimeType: 'image/png',
       buffer: Buffer.from(imagePart.b64_json, 'base64'),
       providerRequestId: payload?.id ?? createId('greq'),
-      width: Number.parseInt(String(mapAspectRatioToSize(renderPrompt.aspectRatio).split('x')[0] ?? ''), 10) || undefined,
-      height: Number.parseInt(String(mapAspectRatioToSize(renderPrompt.aspectRatio).split('x')[1] ?? ''), 10) || undefined,
+      promptHash: sha256(prompt),
+      width: dimensions.width,
+      height: dimensions.height,
     };
   }
 }
@@ -258,6 +299,18 @@ export function createRenderExecutionService(options = {}) {
         thumbnailLocation,
         width: renderedImage.width,
         height: renderedImage.height,
+        isPlaceholder: Boolean(renderedImage.isPlaceholder),
+        ...(renderedImage.nonFinalReason ? { nonFinalReason: renderedImage.nonFinalReason } : {}),
+        promptHash: renderedImage.promptHash ?? sha256(renderPrompt.positivePrompt ?? ''),
+        retryStrategy: renderedImage.strategy ?? 'baseline',
+        continuityLocks: Array.isArray(renderPrompt.continuityAnchors) ? [...renderPrompt.continuityAnchors] : [],
+        anatomyLocks: Array.isArray(renderPrompt.anatomyLocks) ? [...renderPrompt.anatomyLocks] : [],
+        letteringSeparation: summarizeLetteringSeparation(renderPrompt),
+        acceptanceChecks: [
+          ...(Array.isArray(renderPrompt.acceptanceChecks) ? renderPrompt.acceptanceChecks : []),
+          'Panel art must be reviewed against the separate lettering map before release.',
+          ...(renderedImage.isPlaceholder ? ['Placeholder asset is not final artwork and must be replaced by live OpenAI output for visual quality certification.'] : []),
+        ],
         createdAt: new Date().toISOString(),
       };
     },
@@ -266,6 +319,11 @@ export function createRenderExecutionService(options = {}) {
      * @returns {any}
      */
     buildRenderedAssetManifest({ workflowRun, renderJob, renderedAssets }) {
+      const renderMode = renderJob.provider === 'stub-image'
+        ? 'stub-placeholder'
+        : (renderJob.provider === 'external-manual' ? 'external-manual' : 'live-provider');
+      const nonFinalPlaceholder = renderedAssets.some((asset) => asset.isPlaceholder);
+
       return {
         schemaVersion: '1.0.0',
         id: createId('rman'),
@@ -273,6 +331,11 @@ export function createRenderExecutionService(options = {}) {
         workflowRunId: workflowRun.id,
         renderJobId: renderJob.id,
         renderTargetProfileId: DEFAULT_RENDER_TARGET_PROFILE.id,
+        renderMode,
+        nonFinalPlaceholder,
+        providerNotice: nonFinalPlaceholder
+          ? 'Local stub images validate panel coverage, prompt traceability, and release wiring only. They do not certify final image quality.'
+          : 'Rendered asset manifest contains externally generated or live provider artwork.',
         allPanelsRendered: renderedAssets.length === renderJob.renderPromptIds.length,
         renderedAssets: renderedAssets.map((/** @type {any} */ asset) => ({
           renderedAssetId: asset.id,
@@ -281,7 +344,23 @@ export function createRenderExecutionService(options = {}) {
           location: asset.location,
           checksum: asset.checksum,
           mimeType: asset.mimeType,
+          isPlaceholder: Boolean(asset.isPlaceholder),
+          promptHash: asset.promptHash,
+          retryStrategy: asset.retryStrategy,
+          letteringSeparationStatus: asset.letteringSeparation?.status ?? 'failed',
+          continuityLockCount: asset.continuityLocks?.length ?? 0,
+          anatomyLockCount: asset.anatomyLocks?.length ?? 0,
+          acceptanceCheckCount: asset.acceptanceChecks?.length ?? 0,
         })),
+        localValidation: {
+          structuralOnly: renderMode === 'stub-placeholder',
+          requiredPanelCount: renderJob.renderPromptIds.length,
+          renderedPanelCount: renderedAssets.length,
+          panelPromptHashes: Object.fromEntries(renderedAssets.map((asset) => [asset.renderPromptId, asset.promptHash])),
+          letteringSeparationPassed: renderedAssets.every((asset) => asset.letteringSeparation?.status === 'passed'),
+          continuityLocksPresent: renderedAssets.every((asset) => (asset.continuityLocks?.length ?? 0) >= 2),
+          anatomyLocksPresent: renderedAssets.every((asset) => (asset.anatomyLocks?.length ?? 0) >= 2),
+        },
         generatedAt: new Date().toISOString(),
       };
     },

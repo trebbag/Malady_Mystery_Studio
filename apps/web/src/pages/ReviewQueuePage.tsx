@@ -96,12 +96,13 @@ export function ReviewQueuePage() {
             <Card>
               <CardTitle>Queue analytics</CardTitle>
               <CardDescription>Escalation and workload metrics across run review, source refresh, render retry, and operational follow-through.</CardDescription>
-              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
                 <MetricCard label="Total items" value={analyticsState.data.summary.totalItemCount} />
                 <MetricCard label="Overdue rate" value={Math.round(analyticsState.data.summary.overdueRate * 100)} suffix="%" />
                 <MetricCard label="Escalation rate" value={Math.round(analyticsState.data.summary.escalationRate * 100)} suffix="%" />
                 <MetricCard label="Median age" value={Math.round(analyticsState.data.summary.medianAgeHours)} suffix="h" />
                 <MetricCard label="Overdue items" value={analyticsState.data.summary.overdueItemCount} />
+                <MetricCard label="Unread notices" value={analyticsState.data.summary.unreadNotificationCount} />
               </div>
               <div className="mt-4 grid gap-4 xl:grid-cols-3">
                 <MetricList title="By work type" rows={analyticsState.data.countsByWorkType.map((row) => ({ label: row.workType, value: row.count }))} />
@@ -111,10 +112,11 @@ export function ReviewQueuePage() {
             </Card>
           ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <MetricCard label="Visible items" value={queueState.data.stats.visibleItemCount} />
             <MetricCard label="Overdue items" value={queueState.data.stats.overdueItemCount} />
             <MetricCard label="Escalated items" value={queueState.data.stats.escalatedItemCount} />
+            <MetricCard label="Due soon" value={queueState.data.stats.dueSoonItemCount} />
             <MetricCard label="Render retries" value={queueState.data.stats.renderRetryCount} />
             <MetricCard label="Source refresh" value={queueState.data.stats.sourceRefreshCount} />
           </div>
@@ -134,6 +136,7 @@ export function ReviewQueuePage() {
                     <Th>Assignee</Th>
                     <Th>Due</Th>
                     <Th>Threads</Th>
+                    <Th>Notices</Th>
                     <Th />
                   </tr>
                 </thead>
@@ -151,13 +154,20 @@ export function ReviewQueuePage() {
                               className="border-amber-300 bg-amber-50 text-amber-800"
                             />
                           ) : null}
+                          {item.reminderDue ? (
+                            <StatusPill
+                              label="reminder due"
+                              className="border-blue-300 bg-blue-50 text-blue-800"
+                            />
+                          ) : null}
                         </div>
                       </Td>
                       <Td>{item.priority}</Td>
                       <Td>{item.queueName}</Td>
                       <Td>{item.assignedActorDisplayName ?? 'Unassigned'}</Td>
                       <Td>{formatDateTime(item.dueAt)}</Td>
-                      <Td>{item.threadCount ?? 0}</Td>
+                      <Td>{item.threadCount ?? 0}{item.latestThreadStatus ? ` · ${item.latestThreadStatus}` : ''}</Td>
+                      <Td>{item.unreadNotificationCount ?? 0} unread / {item.notificationCount ?? 0}</Td>
                       <Td className="space-x-2 text-right">
                         {item.status !== 'completed' ? (
                           <Button

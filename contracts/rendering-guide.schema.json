@@ -52,10 +52,7 @@
       "items": {
         "type": "string",
         "enum": [
-          "openai-gpt-image",
-          "openai-image-2",
-          "nano-banana-pro",
-          "genspark-ai-slides"
+          "openai-gpt-image-2"
         ]
       }
     },
@@ -180,30 +177,6 @@
         }
       }
     },
-    "slideStrategy": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "onePanelPerSlide",
-        "sequentialGenerationRequired",
-        "firstSlideStyleLockRequired",
-        "forbidLiveResearch"
-      ],
-      "properties": {
-        "onePanelPerSlide": {
-          "type": "boolean"
-        },
-        "sequentialGenerationRequired": {
-          "type": "boolean"
-        },
-        "firstSlideStyleLockRequired": {
-          "type": "boolean"
-        },
-        "forbidLiveResearch": {
-          "type": "boolean"
-        }
-      }
-    },
     "globalNegativeConstraints": {
       "type": "array",
       "items": {
@@ -211,9 +184,6 @@
       }
     },
     "openAiPanelExecutionPrompt": {
-      "type": "string"
-    },
-    "gensparkDeckBootstrapPrompt": {
       "type": "string"
     },
     "retryGuidance": {
@@ -437,105 +407,6 @@
                 "items": {
                   "type": "string"
                 }
-              },
-              "notes": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "nanoBananaPrompt": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "aspectRatio",
-              "prompt",
-              "negativePrompt",
-              "styleLocks",
-              "characterLocks",
-              "anatomyLocks",
-              "notes"
-            ],
-            "properties": {
-              "aspectRatio": {
-                "type": "string"
-              },
-              "prompt": {
-                "type": "string"
-              },
-              "negativePrompt": {
-                "type": "string"
-              },
-              "styleLocks": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "characterLocks": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "anatomyLocks": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "notes": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "gensparkSlide": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "slideNumber",
-              "title",
-              "creationPrompt",
-              "styleLockInstruction",
-              "sequentialInstruction",
-              "overlayInstructions",
-              "useOnlyProvidedContent",
-              "forbidLiveResearch",
-              "notes"
-            ],
-            "properties": {
-              "slideNumber": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "title": {
-                "type": "string"
-              },
-              "creationPrompt": {
-                "type": "string"
-              },
-              "styleLockInstruction": {
-                "type": "string"
-              },
-              "sequentialInstruction": {
-                "type": "string"
-              },
-              "overlayInstructions": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "useOnlyProvidedContent": {
-                "type": "boolean"
-              },
-              "forbidLiveResearch": {
-                "type": "boolean"
               },
               "notes": {
                 "type": "array",

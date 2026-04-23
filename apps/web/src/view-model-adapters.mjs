@@ -123,7 +123,7 @@ export function createWorkflowArtifactListView(options) {
 }
 
 /**
- * @param {{ actor: any, tenantId: string, serverBaseUrl: string, storage: { dbFilePath: string, objectStoreDir: string }, platform: { runtimeMode: string, metadataStore: string, objectStore: string, queueBackend: string, telemetryBackend: string }, availableCommands: string[], readiness: any }} options
+ * @param {{ actor: any, tenantId: string, serverBaseUrl: string, storage: { dbFilePath: string, objectStoreDir: string }, platform: { runtimeMode: string, metadataStore: string, objectStore: string, queueBackend: string, telemetryBackend: string }, availableCommands: string[], readiness: any, localStoragePolicy?: any, managedRuntimeReadiness?: any, externalElements?: any }} options
  * @returns {any}
  */
 export function createLocalRuntimeView(options) {
@@ -140,6 +140,9 @@ export function createLocalRuntimeView(options) {
     platform: options.platform,
     availableCommands: options.availableCommands,
     readiness: options.readiness,
+    ...(options.localStoragePolicy ? { localStoragePolicy: options.localStoragePolicy } : {}),
+    ...(options.managedRuntimeReadiness ? { managedRuntimeReadiness: options.managedRuntimeReadiness } : {}),
+    ...(options.externalElements ? { externalElements: options.externalElements } : {}),
   };
 }
 

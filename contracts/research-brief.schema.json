@@ -32,6 +32,11 @@
     "qualityProfile": { "type": "string" },
     "styleProfile": { "type": "string" },
     "researchIntent": { "type": "string" },
+    "knowledgeBaseVectorStoreConfigured": { "type": "boolean" },
+    "researchTooling": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "allowedDomains": {
       "type": "array",
       "items": { "type": "string" }
