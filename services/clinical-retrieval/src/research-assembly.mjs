@@ -16,6 +16,7 @@ const DEFAULT_ALLOWED_DOMAINS = Object.freeze([
   'medlineplus.gov',
 ]);
 const ALLOWED_SOURCE_TYPES = new Set(['guideline', 'review', 'trial', 'textbook', 'reference']);
+const SAFE_ID_PATTERN = /^[A-Za-z0-9._:-]+$/u;
 
 /**
  * @param {unknown} value
@@ -31,6 +32,16 @@ function isRecord(value) {
  */
 function normalizeId(value) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} fallback
+ * @returns {string}
+ */
+function normalizeSafeId(value, fallback) {
+  const candidate = typeof value === 'string' ? value.trim() : '';
+  return SAFE_ID_PATTERN.test(candidate) ? candidate : fallback;
 }
 
 /**
@@ -132,39 +143,214 @@ function normalizeSourceType(source) {
 }
 
 /**
+ * @param {unknown} value
+ * @returns {number}
+ */
+function normalizeConfidence(value) {
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
+
+  if (!Number.isFinite(parsed)) {
+    return 0.8;
+  }
+
+  if (parsed >= 0 && parsed <= 1) {
+    return parsed;
+  }
+
+  if (parsed > 1 && parsed <= 100) {
+    return parsed / 100;
+  }
+
+  return 0.8;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'high' | 'moderate' | 'guarded'}
+ */
+function normalizeCertaintyLevel(value) {
+  const candidate = String(value ?? '').trim().toLowerCase();
+
+  if (['high', 'strong', 'certain', 'well-supported'].includes(candidate)) {
+    return 'high';
+  }
+
+  if (['moderate', 'medium', 'fair', 'mixed'].includes(candidate)) {
+    return 'moderate';
+  }
+
+  return 'guarded';
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'tier-1' | 'tier-2' | 'tier-3' | 'tenant-pack'}
+ */
+function normalizeSourceTier(value) {
+  const candidate = String(value ?? '').trim().toLowerCase();
+
+  if (['tier-1', 'tier 1', 'primary', 'guideline', 'major-guideline'].includes(candidate)) {
+    return 'tier-1';
+  }
+
+  if (['tier-2', 'tier 2', 'secondary', 'review', 'systematic-review'].includes(candidate)) {
+    return 'tier-2';
+  }
+
+  if (['tier-3', 'tier 3', 'tertiary', 'reference', 'background'].includes(candidate)) {
+    return 'tier-3';
+  }
+
+  return 'tenant-pack';
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'approved' | 'provisional' | 'promotion-required' | 'suspended'}
+ */
+function normalizeReviewState(value) {
+  const candidate = String(value ?? '').trim().toLowerCase().replace(/[_\s]+/gu, '-');
+
+  if (candidate === 'approved') {
+    return 'approved';
+  }
+
+  if (candidate === 'promotion-required' || candidate === 'promote' || candidate === 'needs-promotion') {
+    return 'promotion-required';
+  }
+
+  if (candidate === 'suspended' || candidate === 'blocked') {
+    return 'suspended';
+  }
+
+  return 'provisional';
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'approved' | 'conditional' | 'suspended'}
+ */
+function normalizeApprovalStatus(value) {
+  const candidate = String(value ?? '').trim().toLowerCase();
+
+  if (candidate === 'approved') {
+    return 'approved';
+  }
+
+  if (candidate === 'suspended' || candidate === 'blocked') {
+    return 'suspended';
+  }
+
+  return 'conditional';
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'seeded' | 'user-doc' | 'agent-web' | 'local-fixture'}
+ */
+function normalizeSourceOrigin(value) {
+  const candidate = String(value ?? '').trim().toLowerCase();
+
+  if (candidate === 'seeded' || candidate === 'user-doc' || candidate === 'agent-web' || candidate === 'local-fixture') {
+    return candidate;
+  }
+
+  return 'agent-web';
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'supports' | 'chronology' | 'contradicts' | 'qualifies'}
+ */
+function normalizeRelationshipType(value) {
+  const candidate = String(value ?? '').trim().toLowerCase().replace(/[_\s]+/gu, '-');
+
+  if (candidate === 'chronology' || candidate === 'precedes' || candidate === 'follows') {
+    return 'chronology';
+  }
+
+  if (candidate === 'contradicts' || candidate === 'contradiction' || candidate === 'conflicts') {
+    return 'contradicts';
+  }
+
+  if (candidate === 'qualifies' || candidate === 'qualification' || candidate === 'modifies') {
+    return 'qualifies';
+  }
+
+  return 'supports';
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'open' | 'monitor' | 'blocking' | 'resolved'}
+ */
+function normalizeRelationshipStatus(value) {
+  const candidate = String(value ?? '').trim().toLowerCase();
+
+  if (candidate === 'blocking' || candidate === 'blocked') {
+    return 'blocking';
+  }
+
+  if (candidate === 'resolved') {
+    return 'resolved';
+  }
+
+  if (candidate === 'monitor' || candidate === 'monitoring') {
+    return 'monitor';
+  }
+
+  return 'open';
+}
+
+/**
+ * @param {unknown} value
+ * @param {{ blockingIssues: string[], warnings: string[] }} context
+ * @returns {'ready' | 'review-required' | 'blocked'}
+ */
+function normalizeBuildReportStatus(value, context) {
+  const candidate = typeof value === 'string'
+    ? value.trim().toLowerCase().replace(/[_\s]+/gu, '-')
+    : '';
+
+  if (candidate === 'ready' || candidate === 'approved' || candidate === 'complete' || candidate === 'completed' || candidate === 'success' || candidate === 'succeeded') {
+    return context.blockingIssues.length > 0
+      ? 'blocked'
+      : (context.warnings.length > 0 ? 'review-required' : 'ready');
+  }
+
+  if (candidate === 'review-required' || candidate === 'needs-review' || candidate === 'warning' || candidate === 'warnings' || candidate === 'conditional' || candidate === 'provisional') {
+    return context.blockingIssues.length > 0 ? 'blocked' : 'review-required';
+  }
+
+  if (candidate === 'blocked' || candidate === 'failed' || candidate === 'failure' || candidate === 'unsafe') {
+    return 'blocked';
+  }
+
+  return context.blockingIssues.length > 0
+    ? 'blocked'
+    : (context.warnings.length > 0 ? 'review-required' : 'ready');
+}
+
+/**
  * @param {any} draft
  * @param {{ canonicalDiseaseName: string, workflowRunId: string, timestamp: string }} options
  * @returns {any}
  */
 function normalizeKnowledgePack(draft, options) {
   const diseaseSlug = normalizeId(options.canonicalDiseaseName);
-  const evidence = toObjectArray(draft?.evidence).map((record, index) => ({
-    claimId: record.claimId ?? `clm.${diseaseSlug}.${String(index + 1).padStart(3, '0')}`,
-    claimText: String(record.claimText ?? ''),
-    sourceId: record.sourceId ?? `src.${diseaseSlug}.${String(index + 1).padStart(3, '0')}`,
-    sourceType: normalizeSourceType(record),
-    sourceLabel: String(record.sourceLabel ?? ''),
-    sourceLocator: String(record.sourceLocator ?? record.sourceUrl ?? ''),
-    confidence: Number(record.confidence ?? 0.8),
-    ...(typeof record.lastReviewedAt === 'string' ? { lastReviewedAt: record.lastReviewedAt } : {}),
-    ...(typeof record.applicability === 'string' ? { applicability: record.applicability } : {}),
-    ...(typeof record.claimType === 'string' ? { claimType: record.claimType } : {}),
-    ...(typeof record.certaintyLevel === 'string' ? { certaintyLevel: record.certaintyLevel } : {}),
-    ...(typeof record.diseaseStageApplicability === 'string' ? { diseaseStageApplicability: record.diseaseStageApplicability } : {}),
-    ...(typeof record.patientSubgroupApplicability === 'string' ? { patientSubgroupApplicability: record.patientSubgroupApplicability } : {}),
-    ...(Number.isInteger(record.importanceRank) ? { importanceRank: record.importanceRank } : {}),
-  }));
-  const sourceCatalog = toObjectArray(draft?.sourceCatalog).map((entry, index) => ({
-    id: entry.id ?? `src.${diseaseSlug}.${String(index + 1).padStart(3, '0')}`,
+  const sourceIdMap = new Map();
+  const draftSourceCatalog = toObjectArray(draft?.sourceCatalog);
+  let sourceCatalog = draftSourceCatalog.map((entry, index) => ({
+    id: normalizeSafeId(entry.id, `src.${diseaseSlug}.${String(index + 1).padStart(3, '0')}`),
     canonicalDiseaseName: options.canonicalDiseaseName,
     sourceLabel: String(entry.sourceLabel ?? entry.title ?? ''),
     sourceType: normalizeSourceType(entry),
-    sourceTier: String(entry.sourceTier ?? 'tenant-pack'),
-    origin: String(entry.origin ?? 'agent-web'),
+    sourceTier: normalizeSourceTier(entry.sourceTier),
+    origin: normalizeSourceOrigin(entry.origin),
     retrievedAt: typeof entry.retrievedAt === 'string' ? entry.retrievedAt : options.timestamp,
     captureMethod: String(entry.captureMethod ?? 'responses-web-search'),
-    reviewState: String(entry.reviewState ?? 'provisional'),
-    defaultApprovalStatus: String(entry.defaultApprovalStatus ?? 'conditional'),
+    reviewState: normalizeReviewState(entry.reviewState),
+    defaultApprovalStatus: normalizeApprovalStatus(entry.defaultApprovalStatus),
     owner: String(entry.owner ?? 'clinical-governance'),
     primaryOwnerRole: String(entry.primaryOwnerRole ?? 'Clinical Reviewer'),
     backupOwnerRole: String(entry.backupOwnerRole ?? 'Product Editor'),
@@ -173,7 +359,91 @@ function normalizeKnowledgePack(draft, options) {
     topics: toStringArray(entry.topics),
     ...(typeof entry.sourceUrl === 'string' ? { sourceUrl: entry.sourceUrl } : {}),
     lastReviewedAt: typeof entry.lastReviewedAt === 'string' ? entry.lastReviewedAt : options.timestamp,
-  }));
+  })).map((entry, index) => {
+    const originalId = draftSourceCatalog[index]?.id;
+
+    if (typeof originalId === 'string') {
+      sourceIdMap.set(originalId, entry.id);
+    }
+
+    return entry;
+  });
+  if (sourceCatalog.length === 0) {
+    sourceCatalog = [
+      {
+        id: `src.${diseaseSlug}.agent-provisional`,
+        canonicalDiseaseName: options.canonicalDiseaseName,
+        sourceLabel: `Agent provisional research context for ${options.canonicalDiseaseName}`,
+        sourceType: 'reference',
+        sourceTier: 'tenant-pack',
+        origin: 'agent-web',
+        retrievedAt: options.timestamp,
+        captureMethod: 'responses-research-assembly',
+        reviewState: 'provisional',
+        defaultApprovalStatus: 'conditional',
+        owner: 'clinical-governance',
+        primaryOwnerRole: 'Clinical Reviewer',
+        backupOwnerRole: 'Product Editor',
+        refreshCadenceDays: 30,
+        governanceNotes: ['Agent output omitted source catalog entries; reviewer source governance is required.'],
+        topics: ['provisional source governance'],
+        sourceUrl: `agent-provisional://${diseaseSlug}`,
+        lastReviewedAt: options.timestamp,
+      },
+    ];
+  }
+  const claimIdMap = new Map();
+  let evidence = toObjectArray(draft?.evidence).map((record, index) => {
+    const claimId = normalizeSafeId(record.claimId, `clm.${diseaseSlug}.${String(index + 1).padStart(3, '0')}`);
+    const fallbackSourceId = sourceCatalog[index]?.id ?? sourceCatalog[0]?.id ?? `src.${diseaseSlug}.${String(index + 1).padStart(3, '0')}`;
+    const mappedSourceId = typeof record.sourceId === 'string'
+      ? sourceIdMap.get(record.sourceId) ?? normalizeSafeId(record.sourceId, fallbackSourceId)
+      : fallbackSourceId;
+    const sourceId = sourceCatalog.some((entry) => entry.id === mappedSourceId) ? mappedSourceId : fallbackSourceId;
+
+    if (typeof record.claimId === 'string') {
+      claimIdMap.set(record.claimId, claimId);
+    }
+
+    return {
+      claimId,
+      claimText: String(record.claimText ?? ''),
+      sourceId,
+      sourceType: normalizeSourceType(record),
+      sourceLabel: String(record.sourceLabel ?? sourceCatalog.find((entry) => entry.id === sourceId)?.sourceLabel ?? ''),
+      sourceLocator: String(record.sourceLocator ?? record.sourceUrl ?? sourceCatalog.find((entry) => entry.id === sourceId)?.sourceUrl ?? ''),
+      confidence: normalizeConfidence(record.confidence),
+      ...(typeof record.lastReviewedAt === 'string' ? { lastReviewedAt: record.lastReviewedAt } : {}),
+      ...(typeof record.applicability === 'string' ? { applicability: record.applicability } : {}),
+      ...(typeof record.claimType === 'string' ? { claimType: record.claimType } : {}),
+      certaintyLevel: normalizeCertaintyLevel(record.certaintyLevel),
+      ...(typeof record.diseaseStageApplicability === 'string' ? { diseaseStageApplicability: record.diseaseStageApplicability } : {}),
+      ...(typeof record.patientSubgroupApplicability === 'string' ? { patientSubgroupApplicability: record.patientSubgroupApplicability } : {}),
+      ...(Number.isInteger(record.importanceRank) ? { importanceRank: record.importanceRank } : { importanceRank: index + 1 }),
+    };
+  });
+  if (evidence.length === 0) {
+    evidence = [
+      {
+        claimId: `clm.${diseaseSlug}.001`,
+        claimText: `${options.canonicalDiseaseName} requires reviewer-approved condition-specific evidence before publication-ready medical claims can be made.`,
+        sourceId: sourceCatalog[0].id,
+        sourceType: sourceCatalog[0].sourceType,
+        sourceLabel: sourceCatalog[0].sourceLabel,
+        sourceLocator: sourceCatalog[0].sourceUrl ?? 'agent provisional source context',
+        confidence: 0.5,
+        claimType: 'governance',
+        certaintyLevel: 'guarded',
+        diseaseStageApplicability: 'all stages pending review',
+        patientSubgroupApplicability: 'general pending review',
+        importanceRank: 1,
+      },
+    ];
+  }
+  const validClaimIds = new Set(evidence.map((record) => record.claimId));
+  const educationalFocus = toStringArray(draft?.educationalFocus);
+  const clinicalTeachingPoints = toObjectArray(draft?.clinicalTeachingPoints);
+  const visualAnchors = toObjectArray(draft?.visualAnchors);
 
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -189,7 +459,9 @@ function normalizeKnowledgePack(draft, options) {
     aliases: toStringArray(draft?.aliases).length > 0 ? toStringArray(draft?.aliases) : [options.canonicalDiseaseName],
     ontologyId: String(draft?.ontologyId ?? `prov:${diseaseSlug}`),
     diseaseCategory: String(draft?.diseaseCategory ?? 'provisional-research-needed'),
-    educationalFocus: toStringArray(draft?.educationalFocus),
+    educationalFocus: educationalFocus.length > 0
+      ? educationalFocus
+      : ['source-backed disease mechanism', 'fair diagnostic clue sequencing', 'treatment as story climax'],
     clinicalSummary: isRecord(draft?.clinicalSummary) ? draft.clinicalSummary : {},
     physiologyPrerequisites: toObjectArray(draft?.physiologyPrerequisites),
     pathophysiology: toObjectArray(draft?.pathophysiology),
@@ -198,15 +470,50 @@ function normalizeKnowledgePack(draft, options) {
     management: isRecord(draft?.management) ? draft.management : {},
     evidence,
     sourceCatalog,
-    clinicalTeachingPoints: toObjectArray(draft?.clinicalTeachingPoints),
-    visualAnchors: toObjectArray(draft?.visualAnchors),
-    evidenceRelationships: toObjectArray(draft?.evidenceRelationships).map((relationship) => ({
-      fromClaimId: String(relationship.fromClaimId ?? ''),
-      toClaimId: String(relationship.toClaimId ?? ''),
-      relationshipType: String(relationship.relationshipType ?? 'supports'),
-      status: String(relationship.status ?? 'open'),
-      ...(typeof relationship.notes === 'string' ? { notes: relationship.notes } : {}),
-    })),
+    clinicalTeachingPoints: clinicalTeachingPoints.length > 0
+      ? clinicalTeachingPoints
+      : [
+        {
+          order: 1,
+          title: 'Reviewer-gated clinical teaching point',
+          teachingPoint: 'The provisional pack compiled successfully, but reviewers must confirm disease-specific teaching points against approved sources before release.',
+          linkedClaimIds: [evidence[0].claimId],
+        },
+      ],
+    visualAnchors: visualAnchors.length > 0
+      ? visualAnchors
+      : [
+        {
+          anchorId: `vanchor.${diseaseSlug}.001`,
+          title: 'Evidence review checkpoint',
+          bodyScale: 'story',
+          location: 'case board',
+          description: 'Show the detectives organizing source-backed clues before entering the body-world.',
+          linkedClaimIds: [evidence[0].claimId],
+        },
+      ],
+    evidenceRelationships: toObjectArray(draft?.evidenceRelationships)
+      .map((relationship) => {
+        const fromClaimId = typeof relationship.fromClaimId === 'string'
+          ? (claimIdMap.get(relationship.fromClaimId) ?? relationship.fromClaimId)
+          : '';
+        const toClaimId = typeof relationship.toClaimId === 'string'
+          ? (claimIdMap.get(relationship.toClaimId) ?? relationship.toClaimId)
+          : '';
+
+        if (!validClaimIds.has(fromClaimId) || !validClaimIds.has(toClaimId)) {
+          return null;
+        }
+
+        return {
+          fromClaimId,
+          toClaimId,
+          relationshipType: normalizeRelationshipType(relationship.relationshipType),
+          status: normalizeRelationshipStatus(relationship.status),
+          ...(typeof relationship.notes === 'string' ? { notes: relationship.notes } : {}),
+        };
+      })
+      .filter(Boolean),
     generatedAt: options.timestamp,
     generatedBy: 'research-assembly-agent',
   };
@@ -311,7 +618,7 @@ function normalizeBuildReport(buildReport, knowledgePack, options) {
     tenantId: options.workflowRun.tenantId,
     workflowRunId: options.workflowRun.id,
     targetCanonicalDiseaseName: options.canonicalDiseaseName,
-    status: String(buildReport?.status ?? (blockingIssues.length > 0 ? 'blocked' : (warnings.length > 0 ? 'review-required' : 'ready'))),
+    status: normalizeBuildReportStatus(buildReport?.status, { blockingIssues, warnings }),
     claimCount,
     sourceCount,
     blockingIssues,
@@ -327,7 +634,24 @@ function normalizeBuildReport(buildReport, knowledgePack, options) {
  * @returns {Record<string, unknown>}
  */
 function parseJsonObject(promptJson) {
-  const parsed = JSON.parse(promptJson);
+  let candidate = promptJson.trim();
+
+  const fencedMatch = candidate.match(/```(?:json)?\s*([\s\S]*?)```/iu);
+
+  if (fencedMatch?.[1]) {
+    candidate = fencedMatch[1].trim();
+  }
+
+  if (!candidate.startsWith('{')) {
+    const start = candidate.indexOf('{');
+    const end = candidate.lastIndexOf('}');
+
+    if (start >= 0 && end > start) {
+      candidate = candidate.slice(start, end + 1);
+    }
+  }
+
+  const parsed = JSON.parse(candidate);
 
   if (!isRecord(parsed)) {
     throw new Error('Research assembly did not return a JSON object.');
@@ -351,7 +675,7 @@ function buildResearchPrompt(diseaseName) {
     'knowledgePack must include canonicalDiseaseName, aliases, ontologyId, diseaseCategory, educationalFocus, clinicalSummary, physiologyPrerequisites, pathophysiology, presentation, diagnostics, management, evidence, sourceCatalog, clinicalTeachingPoints, visualAnchors, and evidenceRelationships.',
     'Each sourceCatalog entry must include sourceLabel, sourceType, sourceTier, sourceUrl, governanceNotes, and reviewState.',
     'Each evidence entry must include claimText, sourceId, sourceLabel, sourceType, sourceLocator, confidence, claimType, certaintyLevel, diseaseStageApplicability, patientSubgroupApplicability, and importanceRank.',
-    'buildReport must include status, fitForStoryContinuation, blockingIssues, warnings, and missingEvidenceAreas.',
+    'buildReport must include status, fitForStoryContinuation, blockingIssues, warnings, and missingEvidenceAreas. buildReport.status must be one of ready, review-required, or blocked.',
   ].join(' ');
 }
 
@@ -397,6 +721,82 @@ function buildResearchIncludes(knowledgeBaseVectorStoreId, allowedDomains) {
     ...(allowedDomains.length > 0 ? ['web_search_call.action.sources'] : []),
     ...(knowledgeBaseVectorStoreId ? ['output[*].file_search_call.search_results'] : []),
   ];
+}
+
+/**
+ * @param {string} model
+ * @param {any[]} tools
+ * @param {string[]} includes
+ * @param {string} input
+ * @returns {Record<string, unknown>}
+ */
+function buildResponsesRequestBody(model, tools, includes, input) {
+  const usesWebSearch = tools.some((tool) => tool?.type === 'web_search');
+  const body = {
+    model,
+    reasoning: {
+      effort: 'low',
+    },
+    tools,
+    tool_choice: 'auto',
+    include: includes,
+    input,
+  };
+
+  if (!usesWebSearch) {
+    return {
+      ...body,
+      text: {
+        format: {
+          type: 'json_object',
+        },
+      },
+    };
+  }
+
+  return body;
+}
+
+/**
+ * @param {{ apiKey: string, fetchImpl: typeof fetch, model: string, diseaseName: string, originalText: string }} options
+ * @returns {Promise<Record<string, unknown>>}
+ */
+async function repairResearchJson(options) {
+  const response = await options.fetchImpl('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${options.apiKey}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: options.model,
+      reasoning: {
+        effort: 'low',
+      },
+      text: {
+        format: {
+          type: 'json_object',
+        },
+      },
+      input: [
+        'Repair the following provisional disease research draft into valid JSON only.',
+        `Disease input: ${options.diseaseName}.`,
+        'Return exactly one object with keys knowledgePack and buildReport.',
+        'Do not add new medical facts. Preserve the claims, sources, caveats, and review warnings already present in the draft.',
+        'buildReport.status must be one of ready, review-required, or blocked.',
+        'Draft:',
+        options.originalText.slice(0, 24000),
+      ].join('\n'),
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Research assembly JSON repair failed: ${response.status} ${response.statusText}. ${text}`);
+  }
+
+  const payload = await response.json();
+  return parseJsonObject(extractOutputText(payload));
 }
 
 /**
@@ -646,27 +1046,19 @@ export class ResearchAssemblyService {
     });
     const timestamp = new Date().toISOString();
     const tools = buildResearchTools([...this.allowedDomains], this.knowledgeBaseVectorStoreId);
+    const input = buildResearchPrompt(options.workflowInput.diseaseName);
     const response = await this.fetchImpl('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         authorization: `Bearer ${this.apiKey}`,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        model: this.model,
-        reasoning: {
-          effort: 'low',
-        },
+      body: JSON.stringify(buildResponsesRequestBody(
+        this.model,
         tools,
-        tool_choice: 'auto',
-        include: buildResearchIncludes(this.knowledgeBaseVectorStoreId, [...this.allowedDomains]),
-        text: {
-          format: {
-            type: 'json_object',
-          },
-        },
-        input: buildResearchPrompt(options.workflowInput.diseaseName),
-      }),
+        buildResearchIncludes(this.knowledgeBaseVectorStoreId, [...this.allowedDomains]),
+        input,
+      )),
     });
 
     if (!response.ok) {
@@ -675,7 +1067,20 @@ export class ResearchAssemblyService {
     }
 
     const payload = await response.json();
-    const parsed = parseJsonObject(extractOutputText(payload));
+    const outputText = extractOutputText(payload);
+    let parsed;
+
+    try {
+      parsed = parseJsonObject(outputText);
+    } catch (error) {
+      parsed = await repairResearchJson({
+        apiKey: this.apiKey,
+        fetchImpl: this.fetchImpl,
+        model: this.model,
+        diseaseName: options.workflowInput.diseaseName,
+        originalText: outputText,
+      });
+    }
     const knowledgePack = normalizeKnowledgePack(parsed.knowledgePack, {
       canonicalDiseaseName: options.canonicalDisease.canonicalDiseaseName ?? toCanonicalDiseaseLabel(options.workflowInput.diseaseName),
       workflowRunId: options.workflowRun.id,

@@ -7,7 +7,7 @@ The items below are required only for live OpenAI rendering/research or optional
 ## OpenAI Render and Research Runtime
 
 - `OPENAI_API_KEY` and `KB_VECTOR_STORE_ID` may live in the repo-root `.env`; local Node entrypoints load that file automatically and never print the secret value.
-- Confirmation that your OpenAI org is verified for GPT Image usage if the image endpoint requires it.
+- Confirmation that your OpenAI org/project is verified and enabled for GPT Image usage. A local Celiac disease render smoke on 2026-04-24 loaded the configured key and reached OpenAI, but every `gpt-image-2` attempt returned a 403 model-access error for the configured project, so true rendered-panel quality validation is still credential/access-blocked rather than code-blocked.
 - Optional model override if you want something other than the default `OPENAI_RENDER_MODEL=gpt-image-2`.
 - Optional research-model override if you want something other than `OPENAI_RESEARCH_MODEL` / legacy `MMS_MODEL`.
 - Optional canon-file path overrides if the legacy ClinicalEducation character/style/deck files should be used from a location outside this repo.

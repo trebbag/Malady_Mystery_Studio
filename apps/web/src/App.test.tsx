@@ -829,6 +829,6 @@ describe('web app routes', () => {
       expect(await screen.findByText('Rendering Guide')).toBeInTheDocument();
     });
     expect(screen.getAllByText(/Secondary OpenAI Image support guide/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/OpenAI panel execution brief/i)).toBeInTheDocument();
+    expect(await screen.findByText(/OpenAI panel execution brief/i)).toBeInTheDocument();
   });
 });

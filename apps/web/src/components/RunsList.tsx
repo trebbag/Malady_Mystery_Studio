@@ -23,8 +23,12 @@ export function RunsList({
           {runs.length}
         </span>
       </div>
-      <div className="space-y-3">
-        {runs.map((run) => (
+      <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1 md:max-h-none md:overflow-visible md:pr-0">
+        {runs.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 px-4 py-5 text-sm leading-6 text-slate-300">
+            No local runs yet. Create a disease run from the dashboard to populate this Make-style production queue.
+          </div>
+        ) : runs.map((run) => (
           <NavLink
             key={run.runId}
             to={`/runs/${encodeURIComponent(run.runId)}/review`}

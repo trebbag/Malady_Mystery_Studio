@@ -55,6 +55,32 @@ test('story engine generates a workbook package that validates against repo cont
   assert.equal(generatedPackage.narrativeReviewTrace.verdict, 'pass');
 });
 
+test('story engine preserves treatment showdown fields when provisional treatment details are sparse', async () => {
+  const diseasePacket = {
+    ...createDiseasePacket('community-acquired pneumonia'),
+    management: {
+      acuteStabilization: [],
+      definitiveTherapies: [],
+      monitoring: [],
+      notes: [],
+    },
+  };
+  const schemaRegistry = await loadSchemaRegistry();
+  const generatedPackage = storyEngine.generateStoryWorkbookPackage(diseasePacket, {
+    styleProfile: 'whimsical-mystery',
+    workflowRunId: 'run.test.sparse-treatment',
+    existingStoryMemories: [],
+    timestamp: '2026-04-21T00:00:00Z',
+  });
+
+  schemaRegistry.assertValid('contracts/story-workbook.schema.json', generatedPackage.storyWorkbook);
+  assert.match(generatedPackage.storyWorkbook.treatmentShowdown.clinicalAction, /reviewed disease-directed intervention/u);
+  assert.equal(
+    generatedPackage.storyWorkbook.treatmentShowdown.mechanisticVisualization,
+    diseasePacket.pathophysiology[0].mechanism,
+  );
+});
+
 test('mystery guardrails catch early diagnosis leaks', () => {
   const diseasePacket = createDiseasePacket('myasthenia gravis');
   const generatedPackage = storyEngine.generateStoryWorkbookPackage(diseasePacket, {

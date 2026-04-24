@@ -6,6 +6,7 @@ import { createOntologyAdapter, normalizeDiseaseInput } from './ontology-adapter
 import { buildSourceRecord } from './source-registry.mjs';
 
 const SCHEMA_VERSION = '1.0.0';
+const SAFE_ID_PATTERN = /^[A-Za-z0-9._:-]+$/u;
 
 /**
  * @template T
@@ -14,6 +15,78 @@ const SCHEMA_VERSION = '1.0.0';
  */
 function clone(value) {
   return structuredClone(value);
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
+function isRecord(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} fallback
+ * @returns {string}
+ */
+function toText(value, fallback) {
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim();
+  }
+
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((item) => toText(item, ''))
+      .filter(Boolean)
+      .join('; ');
+    return joined || fallback;
+  }
+
+  if (isRecord(value)) {
+    const preferredKeys = ['text', 'summary', 'description', 'name', 'title', 'action', 'rationale'];
+    const preferredValue = preferredKeys
+      .map((key) => value[key])
+      .find((item) => typeof item === 'string' && item.trim());
+
+    if (typeof preferredValue === 'string') {
+      return preferredValue.trim();
+    }
+
+    const flattened = Object.entries(value)
+      .filter(([, entryValue]) => typeof entryValue === 'string' && entryValue.trim())
+      .map(([key, entryValue]) => `${key}: ${entryValue}`)
+      .join('; ');
+    return flattened || fallback;
+  }
+
+  return fallback;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+function toTextArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item, index) => toText(item, `Item ${index + 1}`))
+    .filter(Boolean);
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+function toSafeIdArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item) => typeof item === 'string' && SAFE_ID_PATTERN.test(item));
 }
 
 /**
@@ -295,20 +368,20 @@ function evidenceNeedsReview(sourceRecord, evidenceRecord) {
  */
 function normalizePresentation(presentation = {}, clinicalSummary = {}) {
   const commonSymptoms = Array.isArray(presentation.commonSymptoms)
-    ? clone(presentation.commonSymptoms)
-    : clone(presentation.hallmarkSymptoms ?? []);
+    ? toTextArray(presentation.commonSymptoms)
+    : toTextArray(presentation.hallmarkSymptoms ?? []);
   const commonSigns = Array.isArray(presentation.commonSigns)
-    ? clone(presentation.commonSigns)
-    : clone(presentation.hallmarkSigns ?? presentation.signs ?? []);
+    ? toTextArray(presentation.commonSigns)
+    : toTextArray(presentation.hallmarkSigns ?? presentation.signs ?? []);
   const historyClues = Array.isArray(presentation.historyClues)
-    ? clone(presentation.historyClues)
-    : clone(presentation.history ?? presentation.hallmarkSymptoms ?? []);
+    ? toTextArray(presentation.historyClues)
+    : toTextArray(presentation.history ?? presentation.hallmarkSymptoms ?? []);
   const physicalExamClues = Array.isArray(presentation.physicalExamClues)
-    ? clone(presentation.physicalExamClues)
-    : clone(presentation.examFindings ?? commonSigns);
+    ? toTextArray(presentation.physicalExamClues)
+    : toTextArray(presentation.examFindings ?? commonSigns);
   const complications = Array.isArray(presentation.complications)
-    ? clone(presentation.complications)
-    : clone(presentation.redFlags ?? []);
+    ? toTextArray(presentation.complications)
+    : toTextArray(presentation.redFlags ?? []);
   const typicalTimecourse = typeof presentation.typicalTimecourse === 'string'
     ? presentation.typicalTimecourse
     : (typeof presentation.timecourse === 'string' ? presentation.timecourse : clinicalSummary.timeScale);
@@ -321,6 +394,293 @@ function normalizePresentation(presentation = {}, clinicalSummary = {}) {
     complications,
     ...(typeof typicalTimecourse === 'string' && typicalTimecourse ? { typicalTimecourse } : {}),
   };
+}
+
+/**
+ * @param {any} clinicalSummary
+ * @param {string} canonicalDiseaseName
+ * @returns {{ oneSentence: string, keyMechanism: string, timeScale: string, patientExperienceSummary: string }}
+ */
+function normalizeClinicalSummary(clinicalSummary = {}, canonicalDiseaseName) {
+  const summary = isRecord(clinicalSummary) ? clinicalSummary : {};
+
+  return {
+    oneSentence: toText(
+      summary.oneSentence ?? summary.summary ?? summary.definition ?? summary.overview,
+      `${canonicalDiseaseName} is a reviewer-gated disease topic compiled from the run's governed evidence package.`,
+    ),
+    keyMechanism: toText(
+      summary.keyMechanism ?? summary.mechanism ?? summary.pathophysiology ?? summary.coreMechanism,
+      `The key mechanism for ${canonicalDiseaseName} must remain tied to approved evidence claims before release.`,
+    ),
+    timeScale: toText(
+      summary.timeScale ?? summary.timecourse ?? summary.temporalPattern,
+      'Variable clinical time scale; confirm disease-specific timing during clinical review.',
+    ),
+    patientExperienceSummary: toText(
+      summary.patientExperienceSummary ?? summary.patientExperience ?? summary.symptoms ?? summary.presentation,
+      `A learner-facing patient experience summary for ${canonicalDiseaseName} must be reviewed against the evidence packet.`,
+    ),
+  };
+}
+
+/**
+ * @param {any[]} physiologyPrerequisites
+ * @param {string} canonicalDiseaseName
+ * @returns {{ topic: string, whyItMatters: string }[]}
+ */
+function normalizePhysiologyPrerequisites(physiologyPrerequisites = [], canonicalDiseaseName) {
+  const normalized = /** @type {{ topic: string, whyItMatters: string }[]} */ ((Array.isArray(physiologyPrerequisites) ? physiologyPrerequisites : [])
+    .map((item, index) => {
+      if (typeof item === 'string') {
+        return {
+          topic: item,
+          whyItMatters: `This prerequisite helps learners follow the ${canonicalDiseaseName} mechanism in the story.`,
+        };
+      }
+
+      if (isRecord(item)) {
+        return {
+          topic: toText(item.topic ?? item.name ?? item.title, `Prerequisite ${index + 1}`),
+          whyItMatters: toText(
+            item.whyItMatters ?? item.rationale ?? item.description ?? item.summary,
+            `This prerequisite helps learners follow the ${canonicalDiseaseName} mechanism in the story.`,
+          ),
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean));
+
+  return normalized.length > 0
+    ? normalized
+    : [
+      {
+        topic: `${canonicalDiseaseName} core physiology`,
+        whyItMatters: 'The story and visual sequence need a reviewed physiology baseline before mechanism clues are staged.',
+      },
+    ];
+}
+
+/**
+ * @param {unknown} scale
+ * @returns {'whole-body' | 'organ' | 'tissue' | 'cellular' | 'molecular'}
+ */
+function normalizeMechanismScale(scale) {
+  const value = typeof scale === 'string' ? scale.toLowerCase() : '';
+
+  if (value.includes('molecular')) {
+    return 'molecular';
+  }
+
+  if (value.includes('cell')) {
+    return 'cellular';
+  }
+
+  if (value.includes('tissue')) {
+    return 'tissue';
+  }
+
+  if (value.includes('organ')) {
+    return 'organ';
+  }
+
+  if (value.includes('body') || value.includes('system')) {
+    return 'whole-body';
+  }
+
+  return 'organ';
+}
+
+/**
+ * @param {any[]} pathophysiology
+ * @param {{ keyMechanism: string }} clinicalSummary
+ * @param {{ claimId: string }[]} evidence
+ * @param {string} canonicalDiseaseName
+ * @returns {{ order: number, event: string, mechanism: string, scale: 'whole-body' | 'organ' | 'tissue' | 'cellular' | 'molecular', linkedClaimIds?: string[] }[]}
+ */
+function normalizePathophysiology(pathophysiology = [], clinicalSummary, evidence, canonicalDiseaseName) {
+  const validClaimIds = new Set((Array.isArray(evidence) ? evidence : []).map((record) => record.claimId));
+  const fallbackClaimIds = [...validClaimIds].slice(0, 2);
+  const normalized = /** @type {{ order: number, event: string, mechanism: string, scale: 'whole-body' | 'organ' | 'tissue' | 'cellular' | 'molecular', linkedClaimIds?: string[] }[]} */ ((Array.isArray(pathophysiology) ? pathophysiology : [])
+    .map((item, index) => {
+      if (typeof item === 'string') {
+        return {
+          order: index + 1,
+          event: item,
+          mechanism: clinicalSummary.keyMechanism,
+          scale: /** @type {'organ'} */ ('organ'),
+          ...(fallbackClaimIds.length > 0 ? { linkedClaimIds: fallbackClaimIds } : {}),
+        };
+      }
+
+      if (!isRecord(item)) {
+        return null;
+      }
+
+      const candidateClaimIds = item.linkedClaimIds ?? item.claimIds;
+      const linkedClaimIds = Array.isArray(candidateClaimIds)
+        ? candidateClaimIds.filter((/** @type {unknown} */ claimId) => typeof claimId === 'string' && validClaimIds.has(claimId))
+        : fallbackClaimIds;
+      const orderValue = Number(item.order);
+
+      return {
+        order: Number.isInteger(orderValue) && orderValue > 0 ? orderValue : index + 1,
+        event: toText(item.event ?? item.step ?? item.title ?? item.name, `Mechanism step ${index + 1}`),
+        mechanism: toText(
+          item.mechanism ?? item.description ?? item.explanation ?? item.process,
+          clinicalSummary.keyMechanism,
+        ),
+        scale: normalizeMechanismScale(item.scale ?? item.level),
+        ...(linkedClaimIds.length > 0 ? { linkedClaimIds } : {}),
+      };
+    })
+    .filter(Boolean));
+
+  return normalized.length > 0
+    ? normalized
+    : [
+      {
+        order: 1,
+        event: `${canonicalDiseaseName} mechanism checkpoint`,
+        mechanism: clinicalSummary.keyMechanism,
+        scale: 'organ',
+        ...(fallbackClaimIds.length > 0 ? { linkedClaimIds: fallbackClaimIds } : {}),
+      },
+    ];
+}
+
+/**
+ * @param {unknown} value
+ * @param {Set<string>} validClaimIds
+ * @param {string[]} fallbackClaimIds
+ * @returns {string[]}
+ */
+function normalizeLinkedClaimIds(value, validClaimIds, fallbackClaimIds) {
+  const claimIds = Array.isArray(value)
+    ? value.filter((claimId) => typeof claimId === 'string' && validClaimIds.has(claimId))
+    : [];
+
+  return claimIds.length > 0 ? claimIds : fallbackClaimIds;
+}
+
+/**
+ * @param {string} prefix
+ * @param {unknown} value
+ * @param {number} index
+ * @returns {string}
+ */
+function normalizeArtifactScopedId(prefix, value, index) {
+  const raw = typeof value === 'string' && value.trim()
+    ? value.trim()
+    : `${prefix}.${String(index + 1).padStart(3, '0')}`;
+  const safe = raw.replace(/[^A-Za-z0-9._:-]+/gu, '-').replace(/^-+|-+$/gu, '');
+  return safe || `${prefix}.${String(index + 1).padStart(3, '0')}`;
+}
+
+/**
+ * @param {any[]} teachingPoints
+ * @param {{ claimId: string }[]} evidence
+ * @param {string} canonicalDiseaseName
+ * @returns {{ order: number, title: string, teachingPoint: string, linkedClaimIds: string[] }[]}
+ */
+function normalizeClinicalTeachingPoints(teachingPoints = [], evidence, canonicalDiseaseName) {
+  const validClaimIds = new Set((Array.isArray(evidence) ? evidence : []).map((record) => record.claimId));
+  const fallbackClaimIds = [...validClaimIds].slice(0, 2);
+  const normalized = /** @type {{ order: number, title: string, teachingPoint: string, linkedClaimIds: string[] }[]} */ ((Array.isArray(teachingPoints) ? teachingPoints : [])
+    .map((item, index) => {
+      if (typeof item === 'string') {
+        return {
+          order: index + 1,
+          title: `Teaching point ${index + 1}`,
+          teachingPoint: item,
+          linkedClaimIds: fallbackClaimIds,
+        };
+      }
+
+      if (!isRecord(item)) {
+        return null;
+      }
+
+      const orderValue = Number(item.order);
+
+      return {
+        order: Number.isInteger(orderValue) && orderValue > 0 ? orderValue : index + 1,
+        title: toText(item.title ?? item.name ?? item.topic, `Teaching point ${index + 1}`),
+        teachingPoint: toText(
+          item.teachingPoint ?? item.point ?? item.description ?? item.explanation,
+          `Review how ${canonicalDiseaseName} should be taught in the story.`,
+        ),
+        linkedClaimIds: normalizeLinkedClaimIds(item.linkedClaimIds ?? item.claimIds, validClaimIds, fallbackClaimIds),
+      };
+    })
+    .filter((item) => item && item.linkedClaimIds.length > 0));
+
+  return normalized.length > 0
+    ? normalized
+    : [
+      {
+        order: 1,
+        title: `${canonicalDiseaseName} evidence checkpoint`,
+        teachingPoint: 'Reviewer should confirm the most important teachable clinical claims before release.',
+        linkedClaimIds: fallbackClaimIds.length > 0 ? fallbackClaimIds : ['clm.placeholder'],
+      },
+    ];
+}
+
+/**
+ * @param {any[]} visualAnchors
+ * @param {{ claimId: string }[]} evidence
+ * @param {string} canonicalDiseaseName
+ * @returns {{ anchorId: string, title: string, bodyScale: string, location: string, description: string, linkedClaimIds: string[] }[]}
+ */
+function normalizeVisualAnchors(visualAnchors = [], evidence, canonicalDiseaseName) {
+  const validClaimIds = new Set((Array.isArray(evidence) ? evidence : []).map((record) => record.claimId));
+  const fallbackClaimIds = [...validClaimIds].slice(0, 2);
+  const normalized = /** @type {{ anchorId: string, title: string, bodyScale: string, location: string, description: string, linkedClaimIds: string[] }[]} */ ((Array.isArray(visualAnchors) ? visualAnchors : [])
+    .map((item, index) => {
+      if (typeof item === 'string') {
+        return {
+          anchorId: normalizeArtifactScopedId('vanchor', undefined, index),
+          title: `Visual anchor ${index + 1}`,
+          bodyScale: 'story',
+          location: 'case board',
+          description: item,
+          linkedClaimIds: fallbackClaimIds,
+        };
+      }
+
+      if (!isRecord(item)) {
+        return null;
+      }
+
+      return {
+        anchorId: normalizeArtifactScopedId('vanchor', item.anchorId ?? item.id, index),
+        title: toText(item.title ?? item.name ?? item.topic, `Visual anchor ${index + 1}`),
+        bodyScale: toText(item.bodyScale ?? item.scale, 'story'),
+        location: toText(item.location ?? item.sceneLocation ?? item.anatomicLocation, 'case board'),
+        description: toText(
+          item.description ?? item.visualDescription ?? item.prompt ?? item.summary,
+          `Show a clear governed visual clue for ${canonicalDiseaseName}.`,
+        ),
+        linkedClaimIds: normalizeLinkedClaimIds(item.linkedClaimIds ?? item.claimIds, validClaimIds, fallbackClaimIds),
+      };
+    })
+    .filter((item) => item && item.linkedClaimIds.length > 0));
+
+  return normalized.length > 0
+    ? normalized
+    : [
+      {
+        anchorId: 'vanchor.placeholder.001',
+        title: `${canonicalDiseaseName} visual review checkpoint`,
+        bodyScale: 'story',
+        location: 'case board',
+        description: 'Show the detectives organizing source-backed clues before entering the body-world.',
+        linkedClaimIds: fallbackClaimIds.length > 0 ? fallbackClaimIds : ['clm.placeholder'],
+      },
+    ];
 }
 
 /**
@@ -347,11 +707,89 @@ function looksLikePathologyTest(testName) {
  */
 function normalizeDiagnosticItems(tests, purpose, expectedFinding) {
   return tests.map((testName) => ({
-    name: testName,
+    name: toText(testName, 'Diagnostic test'),
     purpose,
     expectedFinding,
     claimIds: [],
   }));
+}
+
+/**
+ * @param {any} item
+ * @param {number} index
+ * @param {string} defaultPurpose
+ * @param {string} defaultExpectedFinding
+ * @returns {{ name: string, purpose: string, expectedFinding: string, claimIds?: string[] }}
+ */
+function normalizeDiagnosticStudy(item, index, defaultPurpose, defaultExpectedFinding) {
+  if (typeof item === 'string') {
+    return {
+      name: item,
+      purpose: defaultPurpose,
+      expectedFinding: defaultExpectedFinding,
+      claimIds: [],
+    };
+  }
+
+  const record = isRecord(item) ? item : {};
+  const claimIds = toSafeIdArray(record.claimIds ?? record.linkedClaimIds);
+
+  return {
+    name: toText(record.name ?? record.test ?? record.title, `Diagnostic test ${index + 1}`),
+    purpose: toText(record.purpose ?? record.whyOrdered ?? record.rationale, defaultPurpose),
+    expectedFinding: toText(record.expectedFinding ?? record.finding ?? record.result, defaultExpectedFinding),
+    ...(claimIds.length > 0 ? { claimIds } : {}),
+  };
+}
+
+/**
+ * @param {any} item
+ * @param {number} index
+ * @returns {{ name: string, expectedFinding: string, claimIds?: string[] }}
+ */
+function normalizePathologyStudy(item, index) {
+  if (typeof item === 'string') {
+    return {
+      name: item,
+      expectedFinding: 'Pathology should confirm the disease-defining tissue or cellular finding.',
+      claimIds: [],
+    };
+  }
+
+  const record = isRecord(item) ? item : {};
+  const claimIds = toSafeIdArray(record.claimIds ?? record.linkedClaimIds);
+
+  return {
+    name: toText(record.name ?? record.test ?? record.title, `Pathology test ${index + 1}`),
+    expectedFinding: toText(
+      record.expectedFinding ?? record.finding ?? record.result,
+      'Pathology should confirm the disease-defining tissue or cellular finding.',
+    ),
+    ...(claimIds.length > 0 ? { claimIds } : {}),
+  };
+}
+
+/**
+ * @param {any} item
+ * @param {number} index
+ * @returns {{ disease: string, whyConsidered: string, whyLessLikely: string }}
+ */
+function normalizeDifferential(item, index) {
+  if (typeof item === 'string') {
+    return {
+      disease: item,
+      whyConsidered: 'It can share early clues with the target disease.',
+      whyLessLikely: 'The evidence trail should distinguish this mimic during the reveal.',
+    };
+  }
+
+  const record = isRecord(item) ? item : {};
+
+  return {
+    disease: toText(record.disease ?? record.name ?? record.diagnosis, `Differential ${index + 1}`),
+    whyConsidered: toText(record.whyConsidered ?? record.reason ?? record.overlap, 'It can share early clues with the target disease.'),
+    whyLessLikely: toText(record.whyLessLikely ?? record.distinguishingFeature ?? record.exclusionReason, 'The evidence trail should distinguish this mimic during the reveal.'),
+  };
 }
 
 /**
@@ -360,12 +798,35 @@ function normalizeDiagnosticItems(tests, purpose, expectedFinding) {
  */
 function normalizeManagement(management = {}) {
   const acuteStabilization = Array.isArray(management.acuteStabilization)
-    ? clone(management.acuteStabilization)
-    : clone(management.stabilization ?? management.firstLine ?? []);
+    ? management.acuteStabilization.map((/** @type {unknown} */ item, /** @type {number} */ index) => toText(item, `Initial stabilization step ${index + 1}`))
+    : (Array.isArray(management.stabilization ?? management.firstLine)
+      ? (management.stabilization ?? management.firstLine).map((/** @type {unknown} */ item, /** @type {number} */ index) => toText(item, `Initial management step ${index + 1}`))
+      : []);
   let definitiveTherapies = [];
 
   if (Array.isArray(management.definitiveTherapies) && management.definitiveTherapies.length > 0) {
-    definitiveTherapies = clone(management.definitiveTherapies);
+    definitiveTherapies = management.definitiveTherapies.map((/** @type {any} */ therapy, /** @type {number} */ index) => {
+      if (isRecord(therapy)) {
+        return {
+          name: toText(therapy.name ?? therapy.title, `Definitive therapy ${index + 1}`),
+          mechanismOfAction: toText(
+            therapy.mechanismOfAction ?? therapy.mechanism ?? therapy.rationale,
+            'Review the evidence-linked mechanism of action before release.',
+          ),
+          whenUsed: toText(
+            therapy.whenUsed ?? therapy.indication ?? therapy.timing,
+            'Use when clinical review confirms the diagnosis and treatment context.',
+          ),
+          ...(Array.isArray(therapy.claimIds) ? { claimIds: clone(therapy.claimIds) } : {}),
+        };
+      }
+
+      return {
+        name: toText(therapy, `Definitive therapy ${index + 1}`),
+        mechanismOfAction: `Use ${toText(therapy, `therapy ${index + 1}`)} as part of the disease-directed treatment plan once the diagnosis is supported.`,
+        whenUsed: 'Use after the workup supports the diagnosis and specialty-directed care is appropriate.',
+      };
+    });
   } else if (Array.isArray(management.diseaseDirectedCare) && management.diseaseDirectedCare.length > 0) {
     definitiveTherapies = management.diseaseDirectedCare.map((/** @type {string} */ therapyName) => ({
       name: therapyName,
@@ -383,8 +844,12 @@ function normalizeManagement(management = {}) {
   return {
     acuteStabilization,
     definitiveTherapies,
-    monitoring: clone(management.monitoring ?? []),
-    notes: clone(management.notes ?? management.diseaseDirectedCare ?? []),
+    monitoring: Array.isArray(management.monitoring)
+      ? management.monitoring.map((/** @type {unknown} */ item, /** @type {number} */ index) => toText(item, `Monitoring item ${index + 1}`))
+      : [],
+    notes: Array.isArray(management.notes ?? management.diseaseDirectedCare)
+      ? (management.notes ?? management.diseaseDirectedCare).map((/** @type {unknown} */ item, /** @type {number} */ index) => toText(item, `Management note ${index + 1}`))
+      : [],
   };
 }
 
@@ -407,32 +872,40 @@ function normalizeDiagnostics(diagnostics = {}) {
 
   return {
     labs: Array.isArray(diagnostics.labs) && diagnostics.labs.length > 0
-      ? clone(diagnostics.labs)
+      ? diagnostics.labs.map((/** @type {unknown} */ item, /** @type {number} */ index) => normalizeDiagnosticStudy(
+        item,
+        index,
+        'Establish the initial diagnostic signal for the suspected disease.',
+        'Findings should support the suspected diagnosis or show the expected physiologic disturbance.',
+      ))
       : normalizeDiagnosticItems(
         derivedLabs,
         'Establish the initial diagnostic signal for the suspected disease.',
         'Findings should support the suspected diagnosis or show the expected physiologic disturbance.',
       ),
     imaging: Array.isArray(diagnostics.imaging) && diagnostics.imaging.length > 0
-      ? clone(diagnostics.imaging)
+      ? diagnostics.imaging.map((/** @type {unknown} */ item, /** @type {number} */ index) => normalizeDiagnosticStudy(
+        item,
+        index,
+        'Visualize the most likely anatomic or organ-level clue.',
+        'Imaging should show a finding that supports the suspected disease process.',
+      ))
       : normalizeDiagnosticItems(
         derivedImaging,
         'Visualize the most likely anatomic or organ-level clue.',
         'Imaging should show a finding that supports the suspected disease process.',
       ),
     pathology: Array.isArray(diagnostics.pathology) && diagnostics.pathology.length > 0
-      ? diagnostics.pathology.map((/** @type {any} */ item) => ({
-        name: item.name,
-        expectedFinding: item.expectedFinding,
-        claimIds: clone(item.claimIds ?? []),
-      }))
+      ? diagnostics.pathology.map((/** @type {unknown} */ item, /** @type {number} */ index) => normalizePathologyStudy(item, index))
       : derivedPathology.map((/** @type {string} */ testName) => ({
         name: testName,
         expectedFinding: 'Pathology should confirm the disease-defining tissue or cellular finding.',
         claimIds: [],
       })),
-    diagnosticLogic,
-    differentials: clone(diagnostics.differentials ?? []),
+    diagnosticLogic: toTextArray(diagnosticLogic),
+    differentials: Array.isArray(diagnostics.differentials)
+      ? diagnostics.differentials.map((/** @type {unknown} */ item, /** @type {number} */ index) => normalizeDifferential(item, index))
+      : [],
   };
 }
 
@@ -726,14 +1199,22 @@ export class ClinicalRetrievalService {
       schemaVersion: SCHEMA_VERSION,
       id: createId('ctp'),
       canonicalDiseaseName: knowledgePack.canonicalDiseaseName,
-      points: clone(knowledgePack.clinicalTeachingPoints ?? []),
+      points: normalizeClinicalTeachingPoints(
+        knowledgePack.clinicalTeachingPoints,
+        evidenceRecords,
+        knowledgePack.canonicalDiseaseName,
+      ),
     };
 
     const visualAnchorCatalog = {
       schemaVersion: SCHEMA_VERSION,
       id: createId('vac'),
       canonicalDiseaseName: knowledgePack.canonicalDiseaseName,
-      anchors: clone(knowledgePack.visualAnchors ?? []),
+      anchors: normalizeVisualAnchors(
+        knowledgePack.visualAnchors,
+        evidenceRecords,
+        knowledgePack.canonicalDiseaseName,
+      ),
     };
 
     const sourceSetHash = createHash('sha256').update(JSON.stringify({
@@ -761,6 +1242,18 @@ export class ClinicalRetrievalService {
       return sourceRecord ? evidenceNeedsReview(sourceRecord, record) : false;
     }).length;
 
+    const clinicalSummary = normalizeClinicalSummary(knowledgePack.clinicalSummary, knowledgePack.canonicalDiseaseName);
+    const physiologyPrerequisites = normalizePhysiologyPrerequisites(
+      knowledgePack.physiologyPrerequisites,
+      knowledgePack.canonicalDiseaseName,
+    );
+    const pathophysiology = normalizePathophysiology(
+      knowledgePack.pathophysiology,
+      clinicalSummary,
+      evidenceRecords,
+      knowledgePack.canonicalDiseaseName,
+    );
+
     const diseasePacket = {
       schemaVersion: SCHEMA_VERSION,
       id: createId('dpk'),
@@ -786,10 +1279,10 @@ export class ClinicalRetrievalService {
           : (reviewRequiredEvidence > 0 ? 'review-required' : 'approved'),
       },
       educationalFocus: clone(knowledgePack.educationalFocus),
-      clinicalSummary: clone(knowledgePack.clinicalSummary),
-      physiologyPrerequisites: clone(knowledgePack.physiologyPrerequisites),
-      pathophysiology: clone(knowledgePack.pathophysiology),
-      presentation: normalizePresentation(knowledgePack.presentation, knowledgePack.clinicalSummary),
+      clinicalSummary,
+      physiologyPrerequisites,
+      pathophysiology,
+      presentation: normalizePresentation(knowledgePack.presentation, clinicalSummary),
       diagnostics: normalizeDiagnostics(knowledgePack.diagnostics),
       management: normalizeManagement(knowledgePack.management),
       evidence: evidenceRecords,

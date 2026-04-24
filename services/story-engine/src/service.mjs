@@ -289,6 +289,13 @@ function createStoryWorkbook(diseasePacket, profile, toneProfile) {
   const openingSetup = selectVariant(profile.openingSetups, diseasePacket.canonicalDiseaseName);
   const sideJokeSeed = selectVariant(profile.sideJokes, diseasePacket.canonicalDiseaseName);
   const patientPattern = summarizeSymptoms(diseasePacket);
+  const treatmentAction = firstTherapy?.name
+    ?? diseasePacket.management.acuteStabilization[0]
+    ?? `Choose the reviewed disease-directed intervention for ${diseasePacket.canonicalDiseaseName}`;
+  const treatmentMechanism = firstTherapy?.mechanismOfAction
+    ?? diseasePacket.management.notes[0]
+    ?? primaryPathophysiology.mechanism
+    ?? diseasePacket.clinicalSummary.keyMechanism;
   const redHerrings = diseasePacket.diagnostics.differentials.length > 0
     ? diseasePacket.diagnostics.differentials.slice(0, 2).map((/** @type {{ disease: string, whyConsidered: string, whyLessLikely: string }} */ differential) => ({
       misleadingInterpretation: differential.disease,
@@ -363,8 +370,8 @@ function createStoryWorkbook(diseasePacket, profile, toneProfile) {
       ],
     },
     treatmentShowdown: {
-      clinicalAction: firstTherapy?.name ?? diseasePacket.management.acuteStabilization[0],
-      mechanisticVisualization: firstTherapy?.mechanismOfAction ?? diseasePacket.management.notes[0],
+      clinicalAction: treatmentAction,
+      mechanisticVisualization: treatmentMechanism,
       whyItResolvesTheConflict: `The climax works because the intervention targets the same hidden process the detectives uncovered rather than papering over the symptoms.`,
     },
     wrapUp: {

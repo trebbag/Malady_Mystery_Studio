@@ -9,7 +9,7 @@ export function Sidebar({ runs }: { runs: DashboardRun[] }) {
   const params = useParams<{ runId: string }>();
 
   return (
-    <aside className="flex min-h-screen w-full max-w-sm flex-col gap-6 border-r border-white/10 bg-shell-950 px-5 py-6 text-white lg:max-w-[23rem]">
+    <aside className="flex w-full max-w-none flex-col gap-6 border-b border-white/10 bg-shell-950 px-5 py-6 text-white md:min-h-screen md:max-w-[23rem] md:border-b-0 md:border-r">
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-300">Disease Comic Platform</p>
         <h1 className="font-display text-2xl font-semibold">Local Production Shell</h1>

@@ -189,7 +189,7 @@ test('research assembly reuses the ClinicalEducation vector store when configure
       requestBody = JSON.parse(String(init?.body ?? '{}'));
 
       return new Response(JSON.stringify({
-        output_text: JSON.stringify({
+        output_text: `Research complete.\n\n\`\`\`json\n${JSON.stringify({
           knowledgePack: {
             canonicalDiseaseName: 'Vector Store Disease',
             aliases: ['Vector Store Disease'],
@@ -250,13 +250,13 @@ test('research assembly reuses the ClinicalEducation vector store when configure
             evidenceRelationships: [],
           },
           buildReport: {
-            status: 'ready',
+            status: 'success',
             warnings: [],
             blockingIssues: [],
             missingEvidenceAreas: [],
             fitForStoryContinuation: true,
           },
-        }),
+        })}\n\`\`\``,
         output: [],
       }), {
         status: 200,
@@ -286,6 +286,148 @@ test('research assembly reuses the ClinicalEducation vector store when configure
   assert.deepEqual(compiled.researchBrief.researchTooling, ['openai-file-search', 'openai-web-search']);
   assert.deepEqual(requestBody.tools.map((/** @type {any} */ tool) => tool.type), ['file_search', 'web_search']);
   assert.deepEqual(requestBody.tools[0].vector_store_ids, ['vs_clinical_education_test']);
+  assert.equal(requestBody.text, undefined);
   assert.equal(requestBody.include.includes('output[*].file_search_call.search_results'), true);
+  assert.equal(compiled.buildReport.status, 'ready');
   assert.equal(compiled.sourceHarvest.sources[0].captureMethod, 'responses-file-search');
+});
+
+test('research assembly repairs malformed web-search JSON through a strict no-tool pass', async () => {
+  /** @type {any[]} */
+  const requestBodies = [];
+  const validDraft = {
+    knowledgePack: {
+      canonicalDiseaseName: 'Repairable Disease',
+      aliases: ['Repairable Disease'],
+      ontologyId: 'prov:repairable-disease',
+      diseaseCategory: 'provisional-research-needed',
+      educationalFocus: [],
+      clinicalSummary: {
+        oneSentence: 'Malformed model output can be normalized without adding facts.',
+        patientExperienceSummary: 'Reviewer-gated.',
+        keyMechanism: 'Preserved from draft.',
+        timeScale: 'variable',
+      },
+      physiologyPrerequisites: [],
+      pathophysiology: [],
+      presentation: {},
+      diagnostics: {},
+      management: {},
+      evidence: [
+        {
+          claimId: 'clm.repair.001',
+          claimText: 'The repaired draft preserves the original claim.',
+          sourceId: 'S3',
+          sourceType: 'reference',
+          sourceLabel: 'Repair source',
+          sourceLocator: 'draft',
+          confidence: 88,
+          certaintyLevel: 'medium',
+          claimType: 'governance',
+          diseaseStageApplicability: 'general',
+          patientSubgroupApplicability: 'general',
+          importanceRank: 1,
+        },
+      ],
+      sourceCatalog: [
+        {
+          id: 'src.repair.001',
+          canonicalDiseaseName: 'Repairable Disease',
+          sourceLabel: 'Repair source',
+          sourceType: 'reference',
+          sourceTier: 'primary',
+          origin: 'agent-web',
+          retrievedAt: '2026-04-23T12:00:00Z',
+          captureMethod: 'responses-web-search',
+          reviewState: 'pending',
+          defaultApprovalStatus: 'conditional',
+          owner: 'clinical-governance',
+          primaryOwnerRole: 'Clinical Reviewer',
+          backupOwnerRole: 'Product Editor',
+          refreshCadenceDays: 180,
+          governanceNotes: [],
+          topics: ['schema repair'],
+          sourceUrl: 'https://pubmed.ncbi.nlm.nih.gov/repair',
+          lastReviewedAt: '2026-04-23T12:00:00Z',
+        },
+      ],
+      clinicalTeachingPoints: [],
+      visualAnchors: [],
+      evidenceRelationships: [
+        {
+          fromClaimId: 'clm.repair.001',
+          toClaimId: 'clm.repair.001',
+          relationshipType: 'conflicts',
+          status: 'blocked',
+        },
+      ],
+    },
+    buildReport: {
+      status: 'completed',
+      warnings: [],
+      blockingIssues: [],
+      missingEvidenceAreas: [],
+      fitForStoryContinuation: true,
+    },
+  };
+  const service = createResearchAssemblyService({
+    apiKey: 'sk-test',
+    model: 'gpt-test',
+    allowedDomains: ['pubmed.ncbi.nlm.nih.gov'],
+    fetchImpl: async (_url, init) => {
+      requestBodies.push(JSON.parse(String(init?.body ?? '{}')));
+
+      if (requestBodies.length === 1) {
+        return new Response(JSON.stringify({
+          output_text: '{"knowledgePack": {"canonicalDiseaseName": "Repairable Disease", "aliases": ["Repairable Disease"],',
+          output: [],
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        output_text: JSON.stringify(validDraft),
+        output: [],
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    },
+  });
+
+  const compiled = await service.compileProvisionalKnowledgePack({
+    workflowRun: {
+      id: 'run.test.004',
+      tenantId: 'tenant.local',
+    },
+    workflowInput: {
+      diseaseName: 'Repairable disease',
+      audienceTier: 'provider-education',
+    },
+    canonicalDisease: {
+      canonicalDiseaseName: 'Repairable Disease',
+      resolutionStatus: 'new-disease',
+    },
+  });
+
+  assert.equal(requestBodies.length, 2);
+  assert.equal(requestBodies[0].text, undefined);
+  assert.equal(requestBodies[1].tools, undefined);
+  assert.equal(requestBodies[1].text.format.type, 'json_object');
+  assert.equal(compiled.knowledgePack.canonicalDiseaseName, 'Repairable Disease');
+  assert.equal(compiled.knowledgePack.educationalFocus.length, 3);
+  assert.equal(compiled.knowledgePack.evidence[0].confidence, 0.88);
+  assert.equal(compiled.knowledgePack.evidence[0].sourceId, 'src.repair.001');
+  assert.equal(compiled.knowledgePack.evidence[0].certaintyLevel, 'moderate');
+  assert.equal(compiled.knowledgePack.sourceCatalog[0].sourceTier, 'tier-1');
+  assert.equal(compiled.knowledgePack.sourceCatalog[0].reviewState, 'provisional');
+  assert.equal(compiled.knowledgePack.evidenceRelationships[0].relationshipType, 'contradicts');
+  assert.equal(compiled.knowledgePack.evidenceRelationships[0].status, 'blocking');
+  assert.equal(compiled.buildReport.status, 'ready');
 });

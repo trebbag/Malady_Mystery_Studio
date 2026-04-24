@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { FigmaMakeEmptyQueue, FigmaMakeHero } from '@/components/FigmaMakeFrame';
 import { PageHeader } from '@/components/PageHeader';
 import { ErrorPanel, LoadingPanel } from '@/components/StatePanel';
 import { StatusPill } from '@/components/StatusPill';
@@ -80,6 +81,8 @@ export function ReviewDashboardPage() {
         description="Primary local shell for run selection, workflow initiation, and at-a-glance gate health."
         actions={<Button variant="secondary" onClick={() => navigate('/review/queue')}>Open review queue</Button>}
       />
+
+      <FigmaMakeHero dashboardView={dashboardState.data} onOpenQueue={() => navigate('/review/queue')} />
 
       <div className="grid gap-4 xl:grid-cols-[1.8fr_1fr]">
         <Card>
@@ -172,6 +175,8 @@ export function ReviewDashboardPage() {
             <MetricCard label="Overdue work" value={dashboardState.data.stats.overdueWorkItemCount} />
             <MetricCard label="Escalated runs" value={dashboardState.data.stats.escalatedWorkItemCount} />
           </div>
+
+          <FigmaMakeEmptyQueue runs={dashboardState.data.runs} />
 
           <Card>
             <CardTitle>Active review queue</CardTitle>
