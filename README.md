@@ -16,6 +16,7 @@ Local-first platform for turning any typed disease or condition into a medically
 
 ```bash
 pnpm install
+pnpm dev
 pnpm dev:api
 pnpm dev:worker
 pnpm dev:web
@@ -38,6 +39,15 @@ pnpm ops:restore-smoke
 
 The active product path is local-only. Managed/Postgres/Azure portability scripts may remain in the repo for archival comparison, but they are not part of the local-storage pilot workflow or Settings readiness surface.
 
+## GitHub run action
+
+The repository CI workflow can be started manually from GitHub Actions with **Run workflow**. It runs in local-only mode with `RENDER_PROVIDER=stub-image` and supports four profiles:
+
+- `full`: `pnpm validate:pack`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`
+- `contracts`: `pnpm validate:pack`
+- `tests`: `pnpm test`
+- `build`: `pnpm build`
+
 ## No-key local behavior
 
 - `RENDER_PROVIDER=stub-image` is the default. It creates deterministic rendered-asset manifests for every required panel, with prompt hashes, continuity locks, anatomy locks, lettering-separation status, retry strategy, and acceptance checks.
@@ -59,7 +69,8 @@ The active render path remains OpenAI-targeted (`gpt-image-2`) or local `stub-im
 
 ## Local review flow
 
-- In active frontend development, run `pnpm dev:web` and open [http://127.0.0.1:5173/review](http://127.0.0.1:5173/review).
+- For the normal local app, run `pnpm dev` from the repo root and open [http://127.0.0.1:5173/review](http://127.0.0.1:5173/review). This starts the intake API, render worker, and Vite web app together, with the web proxy pointed at the active API port.
+- If you need to debug one process at a time, run `pnpm dev:api`, `pnpm dev:worker`, and `pnpm dev:web` separately.
 - In built mode, the intake API serves the SPA at [http://127.0.0.1:3000/review](http://127.0.0.1:3000/review).
 - The primary SPA routes are:
   - `/review`

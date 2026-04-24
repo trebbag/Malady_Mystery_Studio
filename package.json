@@ -6,6 +6,7 @@
   "scripts": {
     "build": "pnpm build:web && node scripts/build_workspaces.mjs",
     "build:web": "pnpm --filter @dcp/web build",
+    "dev": "node scripts/dev_all.mjs",
     "dev:api": "node services/intake-api/src/server.mjs",
     "dev:worker": "node services/intake-api/src/worker.mjs",
     "dev:web": "pnpm --filter @dcp/web dev",

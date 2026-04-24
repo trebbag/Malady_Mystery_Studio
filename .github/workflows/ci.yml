@@ -1,10 +1,36 @@
 name: Repository CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      verification_profile:
+        description: Verification profile to run
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - contracts
+          - tests
+          - build
   pull_request:
   push:
     branches:
       - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+  LOCAL_STORAGE_ONLY: '1'
+  METADATA_STORE_BACKEND: sqlite
+  OBJECT_STORE_BACKEND: filesystem
+  RENDER_PROVIDER: stub-image
 
 jobs:
   validate-and-test:
@@ -14,31 +40,36 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.0
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate repository pack
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verification_profile == 'full' || inputs.verification_profile == 'contracts' }}
+        run: pnpm validate:pack
+
       - name: Lint
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verification_profile == 'full' }}
         run: pnpm lint
 
       - name: Typecheck
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verification_profile == 'full' }}
         run: pnpm typecheck
 
       - name: Test
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verification_profile == 'full' || inputs.verification_profile == 'tests' }}
         run: pnpm test
 
-      - name: Validate repository pack
-        run: pnpm validate:pack
-
       - name: Build starter workspace
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verification_profile == 'full' || inputs.verification_profile == 'build' }}
         run: pnpm build

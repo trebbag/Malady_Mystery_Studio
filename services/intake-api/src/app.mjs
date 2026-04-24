@@ -8643,6 +8643,7 @@ export async function createApp(options = {}) {
             telemetryBackend: process.env.TELEMETRY_BACKEND ?? 'stdout',
           },
           availableCommands: [
+            'pnpm dev',
             'pnpm dev:api',
             'pnpm dev:worker',
             'pnpm dev:web',

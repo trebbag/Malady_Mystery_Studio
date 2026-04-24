@@ -21,6 +21,7 @@
     "runtimeMode": "local"
   },
   "availableCommands": [
+    "pnpm dev",
     "pnpm dev:api",
     "pnpm dev:web",
     "pnpm dev:worker",

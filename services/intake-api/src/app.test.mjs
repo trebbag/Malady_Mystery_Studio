@@ -1190,6 +1190,7 @@ test('dashboard, review run, artifact list, and local runtime API views return t
     const localRuntimeView = await localRuntimeResponse.json();
     assert.equal(localRuntimeView.actor.id, 'local-operator');
     assert.equal(localRuntimeView.tenantId, 'tenant.local');
+    assert.equal(localRuntimeView.availableCommands.includes('pnpm dev'), true);
     assert.equal(localRuntimeView.availableCommands.includes('pnpm dev:web'), true);
     assert.equal(localRuntimeView.localStoragePolicy.filesStayLocal, true);
     assert.equal(localRuntimeView.localStoragePolicy.filesPersistedInPostgres, false);
