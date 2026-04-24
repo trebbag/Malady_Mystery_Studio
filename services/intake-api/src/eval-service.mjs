@@ -247,7 +247,7 @@ function collectReleaseArtifactManifest(store, workflowRun) {
         checksum: artifactMetadata.checksum,
         contentType: artifactMetadata.contentType,
         retentionClass: artifactMetadata.retentionClass,
-        ...(artifactMetadata.artifactType === 'rendered-asset-manifest'
+        ...(['rendered-asset-manifest', 'rendering-guide', 'visual-reference-pack', 'render-guide-review-decision'].includes(artifactMetadata.artifactType)
           ? { payload: store.getArtifact(artifactMetadata.artifactType, artifactMetadata.artifactId) }
           : {}),
       };
@@ -377,6 +377,23 @@ function scoreRenderedOutput(context) {
     return 0;
   }
 
+  const approvedGuideProvenance = Boolean(
+    context.renderingGuide
+    && context.visualReferencePack
+    && context.renderGuideReviewDecision
+    && context.renderingGuide.reviewStatus === 'approved'
+    && context.visualReferencePack.approvalStatus === 'approved'
+    && context.renderGuideReviewDecision.decision === 'approved'
+    && context.renderGuideReviewDecision.renderingGuideId === context.renderingGuide.id
+    && context.renderGuideReviewDecision.visualReferencePackId === context.visualReferencePack.id
+    && renderedAssetManifest.renderingGuideId === context.renderingGuide.id
+    && renderedAssetManifest.visualReferencePackId === context.visualReferencePack.id,
+  );
+
+  if (!approvedGuideProvenance) {
+    return 0;
+  }
+
   const renderedAssetCount = Array.isArray(renderedAssetManifest.renderedAssets)
     ? renderedAssetManifest.renderedAssets.length
     : 0;
@@ -425,19 +442,55 @@ function scoreRenderedOutput(context) {
  */
 function scoreRenderingGuideQuality(context) {
   const renderingGuide = normalizeRenderingGuide(context.renderingGuide);
+  const visualReferencePack = context.visualReferencePack;
+  const reviewDecision = context.renderGuideReviewDecision;
 
   if (!renderingGuide) {
     return 0;
   }
 
+  const approvedGuide = Boolean(
+    visualReferencePack
+    && reviewDecision
+    && renderingGuide.reviewStatus === 'approved'
+    && visualReferencePack.approvalStatus === 'approved'
+    && reviewDecision.decision === 'approved'
+    && renderingGuide.visualReferencePackId === visualReferencePack.id
+    && reviewDecision.renderingGuideId === renderingGuide.id
+    && reviewDecision.visualReferencePackId === visualReferencePack.id,
+  );
+
+  if (!approvedGuide) {
+    return 0;
+  }
+
   let score = 1;
+  const referenceItems = visualReferencePack?.items ?? [];
+  const panelReferenceMap = new Map((visualReferencePack?.panelReferenceMap ?? []).map((/** @type {any} */ row) => [row.panelId, row.visualReferenceItemIds ?? []]));
 
   if (!renderingGuide.openAiPanelExecutionPrompt) {
     score -= 0.1;
   }
 
+  if (!referenceItems.some((/** @type {any} */ item) => item.id === 'vref.character.cyto-kine' && item.approvalStatus === 'approved')) {
+    score -= 0.2;
+  }
+
+  if (!referenceItems.some((/** @type {any} */ item) => item.id === 'vref.character.pip' && item.approvalStatus === 'approved')) {
+    score -= 0.2;
+  }
+
+  if ((visualReferencePack?.coverageSummary?.missingPanelReferenceCount ?? 0) > 0) {
+    score -= 0.2;
+  }
+
+  if ((visualReferencePack?.coverageSummary?.recurringItemCount ?? 0) < 3) {
+    score -= 0.05;
+  }
+
   for (const panel of renderingGuide.panels ?? []) {
     const openAiPrompt = panel.openAiImagePrompt;
+    const referenceItemIds = panel.visualReferenceItemIds ?? panelReferenceMap.get(panel.panelId) ?? [];
 
     if (!openAiPrompt?.prompt) {
       score -= 0.2;
@@ -451,7 +504,15 @@ function scoreRenderingGuideQuality(context) {
       score -= 0.08;
     }
 
+    if (referenceItemIds.length === 0) {
+      score -= 0.12;
+    }
+
     if ((openAiPrompt?.anatomyLocks ?? []).length < 2) {
+      score -= 0.08;
+    }
+
+    if ((openAiPrompt?.characterLocks ?? []).length < 2 || (openAiPrompt?.styleLocks ?? []).length < 2) {
       score -= 0.08;
     }
 
@@ -709,6 +770,8 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
   const panelPlans = loadArtifactsByType(store, workflowRun, 'panel-plan');
   const renderPrompts = loadArtifactsByType(store, workflowRun, 'render-prompt');
   const renderingGuide = loadLatestArtifactByType(store, workflowRun, 'rendering-guide');
+  const visualReferencePack = loadLatestArtifactByType(store, workflowRun, 'visual-reference-pack');
+  const renderGuideReviewDecision = loadLatestArtifactByType(store, workflowRun, 'render-guide-review-decision');
   const letteringMaps = loadArtifactsByType(store, workflowRun, 'lettering-map');
   const renderJobs = loadArtifactsByType(store, workflowRun, 'render-job');
   const renderedAssetManifest = loadLatestArtifactByType(store, workflowRun, 'rendered-asset-manifest');
@@ -747,6 +810,8 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
     panelPlans,
     renderPrompts,
     renderingGuide,
+    visualReferencePack,
+    renderGuideReviewDecision,
     letteringMaps,
     renderJobs,
     renderedAssetManifest,

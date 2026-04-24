@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/local-delivery-mirror.schema.json",
+  "title": "LocalDeliveryMirror",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "releaseId",
+    "workflowRunId",
+    "status",
+    "deliveryDir",
+    "files",
+    "checksumManifestLocation",
+    "createdBy",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "releaseId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "status": { "type": "string", "enum": ["mirrored", "partial", "failed"] },
+    "deliveryDir": { "type": "string" },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "path", "checksum", "byteLength"],
+        "properties": {
+          "label": { "type": "string" },
+          "path": { "type": "string" },
+          "checksum": { "type": "string" },
+          "byteLength": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "checksumManifestLocation": { "type": "string" },
+    "createdBy": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

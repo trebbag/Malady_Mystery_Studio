@@ -183,6 +183,9 @@
               "panel-plan",
               "render-prompt",
               "rendering-guide",
+              "visual-reference-pack",
+              "render-guide-review-decision",
+              "rendered-panel-qa-decision",
               "render-job",
               "render-attempt",
               "rendered-asset",
@@ -235,6 +238,7 @@
         "clinical-governance-blocked",
         "provisional-knowledge-pack-review-required",
         "source-refresh-required",
+        "render-guide-review-required",
         "render-retry-required"
       ]
     },

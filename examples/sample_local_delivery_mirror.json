@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "ldm.local.001",
+  "tenantId": "tenant.local",
+  "releaseId": "rel.local.001",
+  "workflowRunId": "run.local.001",
+  "status": "mirrored",
+  "deliveryDir": "var/delivery/rel.local.001",
+  "files": [
+    {
+      "label": "release-bundle",
+      "path": "var/delivery/rel.local.001/release-bundle.json",
+      "checksum": "demo-checksum",
+      "byteLength": 4096
+    },
+    {
+      "label": "bundle-index",
+      "path": "var/delivery/rel.local.001/bundle-index.md",
+      "checksum": "demo-index-checksum",
+      "byteLength": 2048
+    }
+  ],
+  "warnings": [],
+  "checksumManifestLocation": "var/delivery/rel.local.001/checksums.json",
+  "createdBy": "local-operator",
+  "createdAt": "2026-04-24T12:05:00Z"
+}

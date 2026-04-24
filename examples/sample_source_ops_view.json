@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "1.0.0",
+  "filters": {
+    "disease": "",
+    "freshnessState": "stale",
+    "approvalStatus": "",
+    "ownerRole": "",
+    "openRefreshOnly": true
+  },
+  "summary": {
+    "visibleSourceCount": 1,
+    "staleSourceCount": 1,
+    "blockedSourceCount": 0,
+    "suspendedSourceCount": 0,
+    "ownerlessSourceCount": 0,
+    "openRefreshTaskCount": 1,
+    "impactedRunCount": 2,
+    "promotedDiseaseCount": 18
+  },
+  "sourceRecords": [
+    {
+      "schemaVersion": "1.0.0",
+      "id": "src.local.ops.001",
+      "canonicalDiseaseName": "Chronic obstructive pulmonary disease",
+      "sourceLabel": "CDC COPD overview",
+      "sourceType": "reference",
+      "sourceTier": "tier-1",
+      "origin": "seeded",
+      "reviewState": "approved",
+      "approvalStatus": "approved",
+      "freshnessScore": 0.62,
+      "freshnessStatus": "stale",
+      "contradictionStatus": "none",
+      "owner": "clinical-governance",
+      "primaryOwnerRole": "Primary Care Clinical Reviewer",
+      "backupOwnerRole": "Pulmonary Editor",
+      "refreshCadenceDays": 180,
+      "governanceNotes": ["Pilot source refresh proof item."],
+      "sourceUrl": "https://www.cdc.gov/copd/about/index.html",
+      "lastReviewedAt": "2024-01-01T00:00:00Z",
+      "nextReviewDueAt": "2024-06-29T00:00:00Z",
+      "freshnessState": "stale",
+      "impactedDiseaseCount": 1,
+      "impactedRunCount": 2,
+      "openRefreshTaskCount": 1
+    }
+  ],
+  "refreshTasks": [
+    {
+      "schemaVersion": "1.0.0",
+      "id": "srt.local.ops.001",
+      "tenantId": "tenant.local",
+      "sourceId": "src.local.ops.001",
+      "canonicalDiseaseName": "Chronic obstructive pulmonary disease",
+      "status": "open",
+      "reason": "Source freshness state is stale.",
+      "freshnessState": "stale",
+      "workItemId": "wrk.local.ops.001",
+      "nextReviewDueAt": "2024-06-29T00:00:00Z",
+      "createdAt": "2026-04-24T12:00:00Z",
+      "updatedAt": "2026-04-24T12:00:00Z"
+    }
+  ],
+  "workItems": [
+    {
+      "schemaVersion": "1.0.0",
+      "id": "wrk.local.ops.001",
+      "tenantId": "tenant.local",
+      "workType": "source-refresh",
+      "status": "queued",
+      "priority": "high",
+      "queueName": "source-governance",
+      "fallbackQueueName": "source-governance-fallback",
+      "subjectType": "source-record",
+      "subjectId": "src.local.ops.001",
+      "originType": "source-refresh-task",
+      "originId": "srt.local.ops.001",
+      "assignedActorRoles": [],
+      "slaHours": 120,
+      "reminderAt": "2026-04-27T00:00:00Z",
+      "dueAt": "2026-04-29T12:00:00Z",
+      "notes": ["Source freshness state is stale."],
+      "metadata": {
+        "reason": "stale"
+      },
+      "createdAt": "2026-04-24T12:00:00Z",
+      "updatedAt": "2026-04-24T12:00:00Z"
+    }
+  ]
+}

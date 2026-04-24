@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,7 +51,7 @@ test('managed migration dry run validates local data without managed credentials
   }
 });
 
-test('restore smoke dry run reports credential-blocked managed checks without failing', async () => {
+test('restore smoke dry run reports local filesystem readiness without managed credentials', async () => {
   const sandbox = await createSandbox();
 
   try {
@@ -64,7 +64,13 @@ test('restore smoke dry run reports credential-blocked managed checks without fa
       },
     });
 
-    assert.match(stdout, /restore-smoke/u);
+    const outputPath = stdout.trim();
+    const report = JSON.parse(await readFile(outputPath, 'utf8'));
+
+    assert.match(outputPath, /restore-smoke/u);
+    assert.equal(report.status, 'ready-locally');
+    assert.equal(report.metadataStore, 'sqlite');
+    assert.equal(report.objectStore, 'filesystem');
   } finally {
     await sandbox.cleanup();
   }

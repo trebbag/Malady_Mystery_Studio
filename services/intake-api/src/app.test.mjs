@@ -72,58 +72,22 @@ async function startServer(options) {
   };
 }
 
-test('createApp boots with a managed metadata backend when a postgres adapter is available', async () => {
+test('createApp keeps SQLite active even when managed metadata env vars are present', async () => {
   const sandbox = await createSandbox();
   const previousMetadataStoreBackend = process.env.METADATA_STORE_BACKEND;
   const previousLocalStorageOnly = process.env.LOCAL_STORAGE_ONLY;
-  const fakePostgresPool = {
-    schemaMigrationIds: new Set(),
-    /**
-     * @param {string} sql
-     * @param {unknown[]} [values]
-     * @returns {Promise<{ rows: any[] }>}
-     */
-    async query(sql, values = []) {
-      const normalizedSql = sql.trim().replace(/\s+/g, ' ');
-
-      if (normalizedSql.startsWith('CREATE TABLE IF NOT EXISTS schema_migrations')) {
-        return { rows: [] };
-      }
-
-      if (normalizedSql.startsWith('SELECT id FROM schema_migrations')) {
-        return {
-          rows: [...this.schemaMigrationIds].map((id) => ({ id })),
-        };
-      }
-
-      if (normalizedSql.startsWith('INSERT INTO schema_migrations')) {
-        this.schemaMigrationIds.add(String(values[0] ?? ''));
-        return { rows: [] };
-      }
-
-      if (normalizedSql.startsWith('SELECT COUNT(*)::int AS count FROM workflow_runs')) {
-        return { rows: [{ count: 0 }] };
-      }
-
-      if (normalizedSql.startsWith('CREATE TABLE IF NOT EXISTS') || normalizedSql.startsWith('INSERT INTO "retention_policies"')) {
-        return { rows: [] };
-      }
-
-      throw new Error(`Unexpected postgres query in createApp test: ${normalizedSql}`);
-    },
-  };
 
   process.env.METADATA_STORE_BACKEND = 'postgres';
-  delete process.env.LOCAL_STORAGE_ONLY;
+  process.env.LOCAL_STORAGE_ONLY = '0';
 
   try {
     const app = await createApp({
         dbFilePath: sandbox.dbFilePath,
         objectStoreDir: sandbox.objectStoreDir,
-        metadataStorePool: fakePostgresPool,
         localStorageOnly: false,
       });
 
+    assert.equal(app.store.dbFilePath, sandbox.dbFilePath);
     app.store.close();
   } finally {
     if (previousMetadataStoreBackend === undefined) {
@@ -216,6 +180,47 @@ async function submitApproval(baseUrl, runId, role, decision = 'approved') {
   return response.json();
 }
 
+/**
+ * @param {string} baseUrl
+ * @param {string} runId
+ * @returns {Promise<any>}
+ */
+async function approveRenderingGuide(baseUrl, runId) {
+  const response = await fetch(`${baseUrl}/api/v1/workflow-runs/${encodeURIComponent(runId)}/rendering-guide/review-decisions`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      decision: 'approved',
+      comment: 'Local reviewer approved the full rendering guide and visual reference pack.',
+    }),
+  });
+
+  assert.equal(response.status, 201, await response.clone().text());
+  const payload = await response.json();
+  assert.equal(payload.gateStatus, 'approved');
+  return payload;
+}
+
+/**
+ * @param {string} baseUrl
+ * @param {string} runId
+ * @returns {Promise<any>}
+ */
+async function queueRenderJob(baseUrl, runId) {
+  const response = await fetch(`${baseUrl}/api/v1/workflow-runs/${encodeURIComponent(runId)}/render-jobs`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  });
+
+  assert.equal(response.status, 202, await response.clone().text());
+  return response.json();
+}
+
 test('local review pages load without sign-in and auth routes are gone', async () => {
   const sandbox = await createSandbox();
   const app = await startServer(sandbox);
@@ -276,10 +281,12 @@ test('starting a workflow run renders local review actions and artifact groups',
     const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
 
     assert.equal(workflowRun.state, 'review');
-    assert.equal(workflowRun.currentStage, 'review');
+    assert.equal(workflowRun.currentStage, 'render-prep');
+    assert.equal(workflowRun.pauseReason, 'render-guide-review-required');
     assert.equal(workflowRun.tenantId, 'tenant.local');
     assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'render-prompt'), true);
     assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'rendering-guide'), true);
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'visual-reference-pack'), true);
 
     const reviewResponse = await fetch(`${app.baseUrl}/debug/review/runs/${encodeURIComponent(workflowRun.id)}`);
     assert.equal(reviewResponse.status, 200);
@@ -386,7 +393,8 @@ test('canonicalization can be resolved from the local review page', async () => 
     const updatedRun = await updatedRunResponse.json();
 
     assert.equal(updatedRun.state, 'review');
-    assert.equal(updatedRun.currentStage, 'review');
+    assert.equal(updatedRun.currentStage, 'render-prep');
+    assert.equal(updatedRun.pauseReason, 'render-guide-review-required');
     assert.equal(updatedRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'disease-packet'), true);
   } finally {
     await app.close();
@@ -498,9 +506,9 @@ test('contradiction resolution plus rebuild regenerates downstream artifacts', a
     assert.equal(rebuildResponse.status, 200);
     workflowRun = await rebuildResponse.json();
 
-    assert.equal(workflowRun.pauseReason ?? null, null);
+    assert.equal(workflowRun.pauseReason, 'render-guide-review-required');
     assert.equal(workflowRun.state, 'review');
-    assert.equal(workflowRun.currentStage, 'review');
+    assert.equal(workflowRun.currentStage, 'render-prep');
     assert.equal(workflowRun.artifacts.some((/** @type {any} */ artifact) => artifact.artifactType === 'story-workbook'), true);
   } finally {
     await app.close();
@@ -518,6 +526,13 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
     });
     let workflowRun = await startWorkflowRun(app.baseUrl, project.id);
 
+    await approveRenderingGuide(app.baseUrl, workflowRun.id);
+    const renderJobPayload = await queueRenderJob(app.baseUrl, workflowRun.id);
+    assert.ok(renderJobPayload.renderJob.renderingGuideId);
+    assert.ok(renderJobPayload.renderJob.visualReferencePackId);
+
+    const postRenderRunResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}`);
+    workflowRun = await postRenderRunResponse.json();
     workflowRun = await submitApproval(app.baseUrl, workflowRun.id, 'clinical');
     workflowRun = await submitApproval(app.baseUrl, workflowRun.id, 'editorial');
     workflowRun = await submitApproval(app.baseUrl, workflowRun.id, 'product');
@@ -573,6 +588,21 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
     assert.equal(exportPayload.exportHistoryEntry.evalRunId, evaluationPayload.evaluation.id);
     assert.ok(exportPayload.releaseBundle.renderedAssetManifestId);
 
+    const mirrorResponse = await fetch(`${app.baseUrl}/api/v1/release-bundles/${encodeURIComponent(exportPayload.releaseBundle.releaseId)}/mirror-local`, {
+      method: 'POST',
+    });
+    assert.equal(mirrorResponse.status, 201, await mirrorResponse.clone().text());
+    const mirror = await mirrorResponse.json();
+    assert.equal(mirror.releaseId, exportPayload.releaseBundle.releaseId);
+
+    const verifyMirrorResponse = await fetch(`${app.baseUrl}/api/v1/release-bundles/${encodeURIComponent(exportPayload.releaseBundle.releaseId)}/verify-local-mirror`, {
+      method: 'POST',
+    });
+    assert.equal(verifyMirrorResponse.status, 201, await verifyMirrorResponse.clone().text());
+    const mirrorVerification = await verifyMirrorResponse.json();
+    assert.equal(mirrorVerification.status, 'passed');
+    assert.equal(mirrorVerification.localDeliveryMirrorId, mirror.id);
+
     const reviewRunViewResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/review-run-view`);
     assert.equal(reviewRunViewResponse.status, 200);
     const reviewRunView = await reviewRunViewResponse.json();
@@ -580,6 +610,15 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
     assert.equal(reviewRunView.evaluationSummary.latestEvalRunId, evaluationPayload.evaluation.id);
     assert.equal(reviewRunView.exportHistory.entries.length, 1);
     assert.equal(reviewRunView.exportHistory.entries[0].releaseId, exportPayload.releaseBundle.releaseId);
+
+    const restoreSmokeResponse = await fetch(`${app.baseUrl}/api/v1/local-ops/restore-smoke`, {
+      method: 'POST',
+    });
+    assert.equal(restoreSmokeResponse.status, 201, await restoreSmokeResponse.clone().text());
+    const restoreSmoke = await restoreSmokeResponse.json();
+    assert.equal(restoreSmoke.stats.missingObjectReferenceCount, 0);
+    assert.equal(restoreSmoke.stats.schemaValidationFailureCount, 0);
+    assert.equal(restoreSmoke.stats.deliveryVerificationCount >= 1, true);
   } finally {
     await app.close();
     await sandbox.cleanup();
@@ -601,7 +640,21 @@ test('rendering guide endpoints and manual rendered-asset attachment remain avai
     const renderingGuideView = await renderingGuideResponse.json();
 
     assert.equal(renderingGuideView.runId, workflowRun.id);
-    assert.equal(renderingGuideView.attachmentSummary.attachmentMode, 'external-art-attached');
+    assert.equal(renderingGuideView.gateStatus, 'not-reviewed');
+    assert.equal(renderingGuideView.attachmentSummary.attachmentMode, 'guide-only');
+
+    const blockedRenderResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/render-jobs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    assert.equal(blockedRenderResponse.status, 409);
+    const blockedRenderPayload = await blockedRenderResponse.json();
+    assert.match(blockedRenderPayload.error, /reviewed and approved/i);
+
+    await approveRenderingGuide(app.baseUrl, workflowRun.id);
 
     const attachmentResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/rendered-assets/attach`, {
       method: 'POST',
@@ -625,7 +678,7 @@ test('rendering guide endpoints and manual rendered-asset attachment remain avai
     const attachedGuideView = await attachmentResponse.json();
 
     assert.equal(attachedGuideView.attachmentSummary.attachmentMode, 'external-art-attached');
-    assert.equal(attachedGuideView.attachmentSummary.attachedRenderedAssetCount, 25);
+    assert.equal(attachedGuideView.attachmentSummary.attachedRenderedAssetCount, 1);
 
     const refreshedRunResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}`);
     const refreshedRun = await refreshedRunResponse.json();
@@ -806,11 +859,12 @@ test('free-text disease input can compile through agent research into a provisio
     const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
 
     assert.equal(workflowRun.state, 'review');
-    assert.equal(workflowRun.currentStage, 'review');
-    assert.equal(workflowRun.pauseReason, 'provisional-knowledge-pack-review-required');
+    assert.equal(workflowRun.currentStage, 'render-prep');
+    assert.equal(workflowRun.pauseReason, 'render-guide-review-required');
     assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'research-brief'), true);
     assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'disease-knowledge-pack'), true);
-    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'rendered-asset-manifest'), true);
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'visual-reference-pack'), true);
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'rendered-asset-manifest'), false);
 
     const researchBriefResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/research-brief`);
     assert.equal(researchBriefResponse.status, 200);
@@ -865,8 +919,8 @@ test('free-text disease input falls back to local fixture research without an AP
     const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
 
     assert.equal(workflowRun.state, 'review');
-    assert.equal(workflowRun.currentStage, 'review');
-    assert.equal(workflowRun.pauseReason, 'provisional-knowledge-pack-review-required');
+    assert.equal(workflowRun.currentStage, 'render-prep');
+    assert.equal(workflowRun.pauseReason, 'render-guide-review-required');
 
     const artifactListResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/artifacts?artifactType=disease-knowledge-pack,source-harvest&expand=true`);
     assert.equal(artifactListResponse.status, 200);
@@ -967,6 +1021,37 @@ test('mentions and assignments create notifications, and queue analytics summari
     assert.equal(analytics.summary.unreadNotificationCount >= 2, true);
     assert.equal(analytics.countsByWorkType.some((/** @type {{ workType: string }} */ row) => row.workType === 'run-review'), true);
 
+    const snapshotResponse = await fetch(`${app.baseUrl}/api/v1/review-queue/analytics/snapshots`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        snapshotLabel: 'threaded-review-test',
+      }),
+    });
+    assert.equal(snapshotResponse.status, 201, await snapshotResponse.clone().text());
+    const snapshot = await snapshotResponse.json();
+    assert.equal(snapshot.snapshotLabel, 'threaded-review-test');
+    assert.equal(snapshot.analytics.summary.totalItemCount >= 1, true);
+
+    const snapshotHistoryResponse = await fetch(`${app.baseUrl}/api/v1/review-queue/analytics/history`);
+    assert.equal(snapshotHistoryResponse.status, 200);
+    const snapshotHistory = await snapshotHistoryResponse.json();
+    assert.equal(snapshotHistory.some((/** @type {any} */ item) => item.id === snapshot.id), true);
+
+    const proofScenarioResponse = await fetch(`${app.baseUrl}/api/v1/review-queue/proof-scenario`, {
+      method: 'POST',
+    });
+    assert.equal(proofScenarioResponse.status, 201, await proofScenarioResponse.clone().text());
+    const proofScenario = await proofScenarioResponse.json();
+    assert.equal(proofScenario.scenarioCases.length, 5);
+    assert.equal(proofScenario.workItems.length, 5);
+    assert.equal(
+      proofScenario.workItems.some((/** @type {any} */ item) => item.metadata?.proofScenarioId === 'pilot-proof.render-retry'),
+      true,
+    );
+
     const threadsResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/threads`);
     assert.equal(threadsResponse.status, 200);
     const threads = await threadsResponse.json();
@@ -1033,6 +1118,10 @@ test('workflow runs and eval state persist across restart', async () => {
       diseaseName: 'hepatocellular carcinoma',
     });
     let workflowRun = await startWorkflowRun(app.baseUrl, project.id);
+    await approveRenderingGuide(app.baseUrl, workflowRun.id);
+    await queueRenderJob(app.baseUrl, workflowRun.id);
+    const postRenderRunResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}`);
+    workflowRun = await postRenderRunResponse.json();
     workflowRun = await submitApproval(app.baseUrl, workflowRun.id, 'clinical');
     workflowRun = await submitApproval(app.baseUrl, workflowRun.id, 'editorial');
     workflowRun = await submitApproval(app.baseUrl, workflowRun.id, 'product');
@@ -1105,8 +1194,8 @@ test('dashboard, review run, artifact list, and local runtime API views return t
     assert.equal(localRuntimeView.localStoragePolicy.filesStayLocal, true);
     assert.equal(localRuntimeView.localStoragePolicy.filesPersistedInPostgres, false);
     assert.equal(localRuntimeView.localStoragePolicy.objectStore, 'filesystem');
-    assert.equal(localRuntimeView.managedRuntimeReadiness.dryRunAvailable, true);
-    assert.equal(localRuntimeView.managedRuntimeReadiness.localOnlyCommands.includes('pnpm migrate:managed -- --dry-run'), true);
+    assert.equal(localRuntimeView.availableCommands.includes('pnpm ops:restore-smoke'), true);
+    assert.equal('managedRuntimeReadiness' in localRuntimeView, false);
     assert.equal(localRuntimeView.externalElements.clinicalEducationCompatibility.enabled, true);
     assert.equal(localRuntimeView.externalElements.openAi.renderModel, 'gpt-image-2');
     assert.equal(localRuntimeView.externalElements.pipeline.maxConcurrentRuns, 1);
@@ -1239,6 +1328,12 @@ test('review queue, threaded review, source ownership, refresh tasks, and render
     const queueView = await queueResponse.json();
     assert.equal(queueView.items.some((/** @type {any} */ item) => item.workItemId === refreshTask.workItemId), true);
 
+    const sourceCalendarResponse = await fetch(`${app.baseUrl}/api/v1/source-ops/calendar`);
+    assert.equal(sourceCalendarResponse.status, 200);
+    const sourceCalendar = await sourceCalendarResponse.json();
+    assert.equal(sourceCalendar.summary.totalSourceCount > 0, true);
+    assert.equal(sourceCalendar.items.some((/** @type {any} */ item) => item.sourceId === sourceRecord.id), true);
+
     const workItemResponse = await fetch(`${app.baseUrl}/api/v1/work-items/${encodeURIComponent(refreshTask.workItemId)}`);
     assert.equal(workItemResponse.status, 200);
     const workItem = await workItemResponse.json();
@@ -1258,16 +1353,20 @@ test('review queue, threaded review, source ownership, refresh tasks, and render
     const updatedWorkItem = await updatedWorkItemResponse.json();
     assert.equal(updatedWorkItem.status, 'completed');
 
-    const renderJobResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/render-jobs`, {
+    const blockedRenderJobResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/render-jobs`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
       body: JSON.stringify({}),
     });
-    assert.equal(renderJobResponse.status, 202);
-    const renderJobPayload = await renderJobResponse.json();
+    assert.equal(blockedRenderJobResponse.status, 409);
+
+    await approveRenderingGuide(app.baseUrl, workflowRun.id);
+    const renderJobPayload = await queueRenderJob(app.baseUrl, workflowRun.id);
     assert.equal(renderJobPayload.renderJob.workflowRunId, workflowRun.id);
+    assert.ok(renderJobPayload.renderJob.renderingGuideId);
+    assert.ok(renderJobPayload.renderJob.visualReferencePackId);
 
     const renderJobDetailResponse = await fetch(`${app.baseUrl}/api/v1/render-jobs/${encodeURIComponent(renderJobPayload.renderJob.id)}`);
     assert.equal(renderJobDetailResponse.status, 200);
@@ -1280,6 +1379,26 @@ test('review queue, threaded review, source ownership, refresh tasks, and render
     assert.equal(renderJobDetail.renderedAssetManifest.renderMode, 'stub-placeholder');
     assert.equal(renderJobDetail.renderedAssetManifest.localValidation.structuralOnly, true);
     assert.equal(renderJobDetail.renderedAssetManifest.renderedAssets.every((/** @type {any} */ asset) => asset.letteringSeparationStatus === 'passed'), true);
+
+    const qaDecisionResponse = await fetch(`${app.baseUrl}/api/v1/rendered-asset-manifests/${encodeURIComponent(renderJobDetail.renderedAssetManifest.id)}/qa-decisions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        decision: 'structural-only',
+        notes: 'Stub render QA recorded during local pilot proof.',
+      }),
+    });
+    assert.equal(qaDecisionResponse.status, 201, await qaDecisionResponse.clone().text());
+    const qaDecision = await qaDecisionResponse.json();
+    assert.equal(qaDecision.decision, 'structural-only');
+    assert.equal(qaDecision.checklist.letteringSeparation, true);
+
+    const qaDecisionListResponse = await fetch(`${app.baseUrl}/api/v1/rendered-asset-manifests/${encodeURIComponent(renderJobDetail.renderedAssetManifest.id)}/qa-decisions`);
+    assert.equal(qaDecisionListResponse.status, 200);
+    const qaDecisionList = await qaDecisionListResponse.json();
+    assert.equal(qaDecisionList.some((/** @type {any} */ item) => item.id === qaDecision.id), true);
   } finally {
     await app.close();
     await sandbox.cleanup();

@@ -108,12 +108,35 @@ const queueAnalyticsView = {
     completedItemCount: 0,
     fallbackQueueItemCount: 0,
     unreadNotificationCount: 1,
+    unresolvedMentionCount: 1,
+    sourceRefreshOpenCount: 0,
+    renderRetryOpenCount: 0,
+    opsDrillOpenCount: 0,
+    medianThreadResolutionHours: 0,
   },
   countsByWorkType: [{ workType: 'run-review', count: 1 }],
   countsByStatus: [{ status: 'queued', count: 1 }],
   countsByPriority: [{ priority: 'medium', count: 1 }],
   assigneeLoad: [{ assignee: 'Local Operator', count: 1 }],
   runBlockersByStage: [{ stage: 'review', count: 1 }],
+  overdueAgingBuckets: [{ bucket: 'not-overdue', count: 1 }],
+  slaBuckets: [{ bucket: 'on-track', count: 1 }],
+  sourceRefreshBurden: [],
+  threadResolution: {
+    openThreadCount: 1,
+    resolvedThreadCount: 0,
+    medianResolutionHours: 0,
+  },
+};
+
+const queueAnalyticsSnapshot = {
+  schemaVersion: '1.0.0',
+  id: 'qas.local.001',
+  tenantId: 'tenant.local',
+  snapshotLabel: 'pilot-rehearsal-snapshot',
+  analytics: queueAnalyticsView,
+  createdBy: 'local-operator',
+  createdAt: '2026-04-22T12:00:00Z',
 };
 
 const notifications = [
@@ -368,6 +391,17 @@ const reviewRunView = {
     generatedAt: '2026-04-22T12:10:00Z',
     markdownDocumentId: 'rgd.local.001',
     markdownLocation: '/api/v1/release-bundles/rel.local.001/rendering-guide',
+    visualReferencePackId: 'vrp.local.001',
+    reviewStatus: 'approved',
+    referenceCoverageSummary: {
+      panelCount: 1,
+      panelsWithReferenceItems: 1,
+      missingPanelReferenceCount: 0,
+      requiredCharacterItems: 2,
+      presentCharacterItems: 2,
+      recurringItemCount: 3,
+      warnings: [],
+    },
     runSummary: {
       oneSentence: 'A lung infection should emerge through fair mystery clues.',
       patientExperienceSummary: 'The patient becomes progressively short of breath and febrile.',
@@ -411,6 +445,7 @@ const reviewRunView = {
         compositionNotes: 'Use vessel lines toward the affected alveoli.',
         lightingMood: 'humid tension',
         continuityAnchors: ['jet packs', 'alveoli', 'case tablet'],
+        visualReferenceItemIds: ['vref.character.cyto-kine', 'vref.character.pip', 'vref.style.series-felt-cinematic'],
         acceptanceChecks: ['alveoli readable'],
         claimReferences: [
           {
@@ -486,7 +521,87 @@ const renderingGuideView = {
     attachedRenderedAssetCount: 0,
     attachmentMode: 'guide-only',
   },
-  availableActions: ['regenerate-rendering-guide', 'attach-rendered-assets'],
+  visualReferencePack: {
+    schemaVersion: '1.0.0',
+    id: 'vrp.local.001',
+    tenantId: 'tenant.local',
+    workflowRunId: 'run.local.001',
+    renderingGuideId: 'rgd.local.001',
+    generatedAt: '2026-04-22T12:10:00Z',
+    approvalStatus: 'approved',
+    requiredBeforeRender: true,
+    items: [
+      {
+        schemaVersion: '1.0.0',
+        id: 'vref.character.cyto-kine',
+        tenantId: 'tenant.local',
+        workflowRunId: 'run.local.001',
+        renderingGuideId: 'rgd.local.001',
+        itemType: 'character',
+        canonicalName: 'Detective Cyto Kine',
+        source: 'local-canon',
+        approvalStatus: 'approved',
+        usagePanelIds: ['pnl.local.001'],
+        imageReferenceLocations: [],
+        textLocks: ['HUD visor', 'evidence vial'],
+        personalityLocks: ['calm', 'precise', 'dryly funny', 'protective of Pip'],
+        continuityLocks: ['stable felt detective silhouette'],
+        styleLocks: ['premium cinematic 3D animated felt-toy rendering'],
+        negativeLocks: ['no generated text'],
+        createdAt: '2026-04-22T12:10:00Z',
+      },
+      {
+        schemaVersion: '1.0.0',
+        id: 'vref.character.pip',
+        tenantId: 'tenant.local',
+        workflowRunId: 'run.local.001',
+        renderingGuideId: 'rgd.local.001',
+        itemType: 'character',
+        canonicalName: 'Deputy Pip',
+        source: 'local-canon',
+        approvalStatus: 'approved',
+        usagePanelIds: ['pnl.local.001'],
+        imageReferenceLocations: [],
+        textLocks: ['micro-scanner', 'badge'],
+        personalityLocks: ['earnest', 'loyal', 'curious', 'competent'],
+        continuityLocks: ['stable felt assistant silhouette'],
+        styleLocks: ['premium cinematic 3D animated felt-toy rendering'],
+        negativeLocks: ['no generated text'],
+        createdAt: '2026-04-22T12:10:00Z',
+      },
+    ],
+    panelReferenceMap: [
+      {
+        panelId: 'pnl.local.001',
+        visualReferenceItemIds: ['vref.character.cyto-kine', 'vref.character.pip', 'vref.style.series-felt-cinematic'],
+      },
+    ],
+    coverageSummary: {
+      panelCount: 1,
+      panelsWithReferenceItems: 1,
+      missingPanelReferenceCount: 0,
+      requiredCharacterItems: 2,
+      presentCharacterItems: 2,
+      recurringItemCount: 3,
+      warnings: [],
+    },
+  },
+  reviewDecision: {
+    schemaVersion: '1.0.0',
+    id: 'rgd-review.local.001',
+    tenantId: 'tenant.local',
+    workflowRunId: 'run.local.001',
+    renderingGuideId: 'rgd.local.001',
+    visualReferencePackId: 'vrp.local.001',
+    decision: 'approved',
+    reviewerId: 'local-operator',
+    reviewerRoles: ['Local Operator'],
+    createdAt: '2026-04-22T12:11:00Z',
+  },
+  gateStatus: 'approved',
+  renderDisabledReason: '',
+  guideWarnings: [],
+  availableActions: ['regenerate-rendering-guide', 'regenerate-visual-reference-pack', 'approve-rendering-guide', 'queue-panel-rendering', 'attach-rendered-assets'],
 };
 
 const auditEntries = [
@@ -577,20 +692,6 @@ const localRuntimeView = {
     resetCommand: 'pnpm local:reset',
     notes: ['Files stay local.'],
   },
-  managedRuntimeReadiness: {
-    status: 'ready-locally',
-    dryRunAvailable: true,
-    checks: [
-      {
-        name: 'metadata-store',
-        status: 'blocked-awaiting-credentials',
-        current: 'sqlite',
-        target: 'postgres',
-        requiredEnv: ['MANAGED_POSTGRES_URL'],
-      },
-    ],
-    localOnlyCommands: ['pnpm migrate:managed -- --dry-run'],
-  },
   externalElements: {
     clinicalEducationCompatibility: {
       enabled: true,
@@ -623,6 +724,69 @@ const localRuntimeView = {
       agentIsolationMode: '',
     },
   },
+};
+
+const localOpsStatus = {
+  schemaVersion: '1.0.0',
+  tenantId: 'tenant.local',
+  storage: {
+    mode: 'local-only',
+    dbFilePath: 'var/db/platform.sqlite',
+    objectStoreDir: 'var/object-store',
+    backupRootDir: 'var/backups',
+    deliveryRootDir: 'var/delivery',
+    objectCount: 12,
+    byteLength: 4096,
+  },
+  latestBackup: {
+    path: 'var/backups/2026-04-22T12-00-00-000Z',
+    createdAt: '2026-04-22T12:00:00Z',
+  },
+  latestRestoreSmoke: {
+    schemaVersion: '1.0.0',
+    id: 'rsm.local.001',
+    tenantId: 'tenant.local',
+    status: 'passed',
+    mode: 'local-filesystem',
+    backupDir: 'var/backups/restore-smoke-2026-04-22T12-00-00-000Z',
+    scratchDir: 'var/ops/restore-smoke/restore-smoke-2026-04-22T12-00-00-000Z',
+    checks: [{ name: 'restored-sqlite-present', status: 'passed' }],
+    stats: {
+      dbFileCopied: true,
+      objectCount: 12,
+      byteLength: 4096,
+      releaseBundleCount: 1,
+      renderedManifestCount: 1,
+      schemaValidatedArtifactCount: 8,
+      schemaValidationFailureCount: 0,
+      objectReferenceCount: 12,
+      missingObjectReferenceCount: 0,
+      deliveryVerificationCount: 1,
+      failedDeliveryVerificationCount: 0,
+    },
+    createdBy: 'local-operator',
+    startedAt: '2026-04-22T12:00:00Z',
+    completedAt: '2026-04-22T12:01:00Z',
+  },
+  latestDeliveryMirror: null,
+  latestDeliveryVerification: {
+    schemaVersion: '1.0.0',
+    id: 'ldv.local.001',
+    tenantId: 'tenant.local',
+    releaseId: 'rel.local.001',
+    workflowRunId: 'run.local.001',
+    localDeliveryMirrorId: 'ldm.local.001',
+    status: 'passed',
+    deliveryDir: 'var/delivery/rel.local.001',
+    checks: [{ name: 'release-bundle', status: 'passed' }],
+    verifiedFileCount: 1,
+    failedFileCount: 0,
+    checksumManifestLocation: 'var/delivery/rel.local.001/checksums.json',
+    createdBy: 'local-operator',
+    createdAt: '2026-04-22T12:00:00Z',
+  },
+  opsDrillWorkItems: [],
+  generatedAt: '2026-04-22T12:02:00Z',
 };
 
 const artifactDiffView = {
@@ -673,12 +837,32 @@ function mockFetch(url: string) {
     return Response.json(localRuntimeView);
   }
 
+  if (parsed.pathname === '/api/v1/local-ops/status') {
+    return Response.json(localOpsStatus);
+  }
+
+  if (parsed.pathname === '/api/v1/local-ops/restore-smoke') {
+    return Response.json(localOpsStatus.latestRestoreSmoke);
+  }
+
   if (parsed.pathname === '/api/v1/review-queue') {
     return Response.json(queueView);
   }
 
   if (parsed.pathname === '/api/v1/review-queue/analytics') {
     return Response.json(queueAnalyticsView);
+  }
+
+  if (parsed.pathname === '/api/v1/review-queue/analytics/history') {
+    return Response.json([queueAnalyticsSnapshot]);
+  }
+
+  if (parsed.pathname === '/api/v1/review-queue/analytics/snapshots') {
+    return Response.json(queueAnalyticsSnapshot);
+  }
+
+  if (parsed.pathname === '/api/v1/review-queue/proof-scenario') {
+    return Response.json({});
   }
 
   if (parsed.pathname === '/api/v1/notifications') {
@@ -694,6 +878,10 @@ function mockFetch(url: string) {
   }
 
   if (parsed.pathname === '/api/v1/workflow-runs/run.local.001/rendering-guide') {
+    return Response.json(renderingGuideView);
+  }
+
+  if (parsed.pathname === '/api/v1/workflow-runs/run.local.001/rendering-guide-review') {
     return Response.json(renderingGuideView);
   }
 
@@ -737,15 +925,121 @@ function mockFetch(url: string) {
     return Response.json(clinicalPackage.sourceGovernance.sourceRecords);
   }
 
+  if (parsed.pathname === '/api/v1/source-ops') {
+    return Response.json({
+      schemaVersion: '1.0.0',
+      filters: {
+        disease: parsed.searchParams.get('disease') ?? '',
+        freshnessState: parsed.searchParams.get('freshnessState') ?? '',
+        approvalStatus: parsed.searchParams.get('approvalStatus') ?? '',
+        ownerRole: parsed.searchParams.get('ownerRole') ?? '',
+        openRefreshOnly: parsed.searchParams.get('openRefreshOnly') === 'true',
+      },
+      summary: {
+        visibleSourceCount: clinicalPackage.sourceGovernance.sourceRecords.length,
+        staleSourceCount: 0,
+        blockedSourceCount: 0,
+        suspendedSourceCount: 0,
+        ownerlessSourceCount: 0,
+        openRefreshTaskCount: 0,
+        impactedRunCount: 1,
+        promotedDiseaseCount: 12,
+      },
+      sourceRecords: clinicalPackage.sourceGovernance.sourceRecords,
+      refreshTasks: [],
+      workItems: [],
+    });
+  }
+
+  if (parsed.pathname === '/api/v1/source-ops/calendar') {
+    return Response.json({
+      schemaVersion: '1.0.0',
+      tenantId: 'tenant.local',
+      generatedAt: '2026-04-22T12:00:00Z',
+      summary: {
+        totalSourceCount: 1,
+        dueSoonCount: 1,
+        overdueCount: 0,
+        ownerlessCount: 0,
+        openRefreshWorkCount: 1,
+      },
+      items: [{
+        sourceId: 'src.cap.guideline',
+        sourceLabel: 'CAP guideline',
+        canonicalDiseaseName: 'Community-acquired pneumonia',
+        primaryOwnerRole: 'Clinical Reviewer',
+        backupOwnerRole: 'Product Editor',
+        freshnessState: 'aging',
+        nextReviewDueAt: '2026-05-22T12:00:00Z',
+        daysUntilDue: 28,
+        bucket: 'due-30-days',
+        openRefreshWorkItemIds: ['wrk.local.001'],
+      }],
+    });
+  }
+
   if (parsed.pathname === '/api/v1/release-bundles/rel.local.001') {
     return Response.json({
       releaseId: 'rel.local.001',
       version: 'cap-local-1',
       bundleIndexLocation: '/api/v1/release-bundles/rel.local.001/index',
+      renderedAssetManifestId: 'rman.local.001',
+      qualitySummary: {
+        renderOutputQuality: 1,
+      },
     });
   }
 
-  if (parsed.pathname.endsWith('/approvals') || parsed.pathname.endsWith('/canonicalization-resolution') || parsed.pathname.endsWith('/rebuild') || parsed.pathname.endsWith('/governance-decisions') || parsed.pathname.endsWith('/contradiction-resolutions') || parsed.pathname.endsWith('/exports') || parsed.pathname.endsWith('/comments') || parsed.pathname.endsWith('/assignments') || parsed.pathname.endsWith('/rendering-guide/regenerate') || parsed.pathname.endsWith('/rendered-assets/attach') || parsed.pathname.endsWith('/threads') || parsed.pathname.includes('/review-threads/')) {
+  if (parsed.pathname === '/api/v1/release-bundles/rel.local.001/mirror-local') {
+    return Response.json({
+      schemaVersion: '1.0.0',
+      id: 'ldm.local.001',
+      tenantId: 'tenant.local',
+      releaseId: 'rel.local.001',
+      workflowRunId: 'run.local.001',
+      status: 'mirrored',
+      deliveryDir: 'var/delivery/rel.local.001',
+      files: [],
+      checksumManifestLocation: 'var/delivery/rel.local.001/checksums.json',
+      createdBy: 'local-operator',
+      createdAt: '2026-04-22T12:00:00Z',
+    });
+  }
+
+  if (parsed.pathname === '/api/v1/release-bundles/rel.local.001/verify-local-mirror') {
+    return Response.json(localOpsStatus.latestDeliveryVerification);
+  }
+
+  if (parsed.pathname === '/api/v1/rendered-asset-manifests/rman.local.001/qa-decisions') {
+    if (parsed.search) {
+      return Response.json([]);
+    }
+
+    return Response.json([{
+      schemaVersion: '1.0.0',
+      id: 'rpq.local.001',
+      tenantId: 'tenant.local',
+      workflowRunId: 'run.local.001',
+      renderedAssetManifestId: 'rman.local.001',
+      decision: 'approved',
+      checklist: {
+        cytoConsistency: true,
+        pipConsistency: true,
+        styleConsistency: true,
+        anatomyFidelity: true,
+        setPieceContinuity: true,
+        letteringSeparation: true,
+        noVisibleText: true,
+        panelOrder: true,
+        guideProvenance: true,
+      },
+      reviewerId: 'local-operator',
+      reviewerRoles: ['Local Operator'],
+      createdAt: '2026-04-22T12:00:00Z',
+    }]);
+  }
+
+  if (parsed.pathname.endsWith('/approvals') || parsed.pathname.endsWith('/canonicalization-resolution') || parsed.pathname.endsWith('/rebuild') || parsed.pathname.endsWith('/governance-decisions') || parsed.pathname.endsWith('/contradiction-resolutions') || parsed.pathname.endsWith('/exports') || parsed.pathname.endsWith('/comments') || parsed.pathname.endsWith('/assignments') || parsed.pathname.endsWith('/rendering-guide/regenerate') || parsed.pathname.endsWith('/visual-reference-pack/regenerate') || parsed.pathname.endsWith('/rendering-guide/review-decisions') || parsed.pathname.endsWith('/render-jobs') || parsed.pathname.endsWith('/rendered-assets/attach') || parsed.pathname.endsWith('/threads') || parsed.pathname.endsWith('/refresh-tasks') || parsed.pathname.endsWith('/ownership') || parsed.pathname.includes('/review-threads/')) {
     return Response.json({});
   }
 
@@ -809,6 +1103,7 @@ describe('web app routes', () => {
       expect(await screen.findByText('ClinicalEducation external elements')).toBeInTheDocument();
     });
     expect(screen.getByText('Active local storage policy')).toBeInTheDocument();
+    expect(screen.getByText('Local operational proof')).toBeInTheDocument();
     expect(screen.getAllByText(/Files stay local/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Research model: gpt-5.2/i)).toBeInTheDocument();
     expect(screen.getByText(/KB vector store: missing/i)).toBeInTheDocument();
@@ -826,9 +1121,10 @@ describe('web app routes', () => {
   it('shows the rendering guide page with OpenAI prompt content', async () => {
     renderRoute('/runs/run.local.001/rendering-guide');
     await waitFor(async () => {
-      expect(await screen.findByText('Rendering Guide')).toBeInTheDocument();
+      expect(await screen.findByText('Rendering Guide Workbench')).toBeInTheDocument();
     });
-    expect(screen.getAllByText(/Secondary OpenAI Image support guide/i).length).toBeGreaterThan(0);
-    expect(await screen.findByText(/OpenAI panel execution brief/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Pre-render gate/i).length).toBeGreaterThan(0);
+    expect(await screen.findByText(/Style bible and global locks/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Detective Cyto Kine and Pip locks/i)).toBeInTheDocument();
   });
 });

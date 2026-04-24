@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildRenderingGuide, normalizeRenderingGuide, renderRenderingGuideMarkdown } from './rendering-guide.mjs';
+import { applyVisualReferencePackToRenderingGuide, buildVisualReferencePack } from './visual-reference-pack.mjs';
 
 test('rendering guide compiler preserves panel order and emits OpenAI panel prompt blocks', () => {
   const guide = buildRenderingGuide({
@@ -215,4 +216,60 @@ test('rendering guide normalization removes unsupported legacy provider fields',
   assert.deepEqual(normalizedGuide.providerTargets, ['openai-gpt-image-2']);
   assert.equal(normalizedGuide.openAiPanelExecutionPrompt, 'Current OpenAI execution prompt.');
   assert.equal(normalizedGuide.panels[0].openAiImagePrompt.prompt, 'Current OpenAI image prompt.');
+});
+
+test('visual reference pack extraction adds Cyto, Pip, reusable props, and panel reference IDs', () => {
+  const renderingGuide = {
+    id: 'rgd.demo.001',
+    workflowRunId: 'run.demo.001',
+    tenantId: 'tenant.local',
+    panels: [
+      {
+        panelId: 'pnl.demo.001',
+        location: 'alveolar district',
+        bodyScale: 'tissue',
+        actionSummary: 'Detective Cyto Kine and Deputy Pip inspect a clue.',
+        continuityAnchors: ['jet packs', 'case tablet'],
+        openAiImagePrompt: {
+          prompt: 'Create a panel with Detective Cyto Kine and Deputy Pip.',
+          characterLocks: [
+            'Detective Cyto Kine is the felt lead investigator with HUD visor and evidence vial',
+            'Deputy Pip is the felt field deputy with micro-scanner and learner questions',
+          ],
+          styleLocks: ['premium cinematic 3D animated felt-toy rendering'],
+        },
+      },
+      {
+        panelId: 'pnl.demo.002',
+        location: 'alveolar district',
+        bodyScale: 'tissue',
+        actionSummary: 'Detective Cyto Kine and Deputy Pip compare the same environment.',
+        continuityAnchors: ['jet packs', 'case tablet'],
+        openAiImagePrompt: {
+          prompt: 'Create a panel with Detective Cyto Kine and Deputy Pip.',
+          characterLocks: [
+            'Detective Cyto Kine is the felt lead investigator with HUD visor and evidence vial',
+            'Deputy Pip is the felt field deputy with micro-scanner and learner questions',
+          ],
+          styleLocks: ['premium cinematic 3D animated felt-toy rendering'],
+        },
+      },
+    ],
+  };
+  const visualReferencePack = buildVisualReferencePack({
+    workflowRun: {
+      id: 'run.demo.001',
+      tenantId: 'tenant.local',
+    },
+    renderingGuide,
+    generatedAt: '2026-04-24T12:00:00Z',
+  });
+  const updatedGuide = applyVisualReferencePackToRenderingGuide(renderingGuide, visualReferencePack);
+
+  assert.equal(visualReferencePack.items.some((/** @type {any} */ item) => item.id === 'vref.character.cyto-kine'), true);
+  assert.equal(visualReferencePack.items.some((/** @type {any} */ item) => item.id === 'vref.character.pip'), true);
+  assert.equal(visualReferencePack.items.some((/** @type {any} */ item) => item.itemType === 'set-piece'), true);
+  assert.equal(updatedGuide.visualReferencePackId, visualReferencePack.id);
+  assert.equal(updatedGuide.panels.every((/** @type {any} */ panel) => panel.visualReferenceItemIds.length > 0), true);
+  assert.match(updatedGuide.panels[0].openAiImagePrompt.prompt, /Use approved visual reference item ids/u);
 });

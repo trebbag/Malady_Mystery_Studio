@@ -11,7 +11,11 @@
     "countsByStatus",
     "countsByPriority",
     "assigneeLoad",
-    "runBlockersByStage"
+    "runBlockersByStage",
+    "overdueAgingBuckets",
+    "slaBuckets",
+    "sourceRefreshBurden",
+    "threadResolution"
   ],
   "properties": {
     "schemaVersion": { "type": "string" },
@@ -28,7 +32,12 @@
         "dueSoonItemCount",
         "completedItemCount",
         "fallbackQueueItemCount",
-        "unreadNotificationCount"
+        "unreadNotificationCount",
+        "unresolvedMentionCount",
+        "sourceRefreshOpenCount",
+        "renderRetryOpenCount",
+        "opsDrillOpenCount",
+        "medianThreadResolutionHours"
       ],
       "properties": {
         "totalItemCount": { "type": "integer", "minimum": 0 },
@@ -40,7 +49,12 @@
         "dueSoonItemCount": { "type": "integer", "minimum": 0 },
         "completedItemCount": { "type": "integer", "minimum": 0 },
         "fallbackQueueItemCount": { "type": "integer", "minimum": 0 },
-        "unreadNotificationCount": { "type": "integer", "minimum": 0 }
+        "unreadNotificationCount": { "type": "integer", "minimum": 0 },
+        "unresolvedMentionCount": { "type": "integer", "minimum": 0 },
+        "sourceRefreshOpenCount": { "type": "integer", "minimum": 0 },
+        "renderRetryOpenCount": { "type": "integer", "minimum": 0 },
+        "opsDrillOpenCount": { "type": "integer", "minimum": 0 },
+        "medianThreadResolutionHours": { "type": "number", "minimum": 0 }
       }
     },
     "countsByWorkType": {
@@ -101,6 +115,54 @@
           "stage": { "type": "string" },
           "count": { "type": "integer", "minimum": 0 }
         }
+      }
+    },
+    "overdueAgingBuckets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bucket", "count"],
+        "properties": {
+          "bucket": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "slaBuckets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bucket", "count"],
+        "properties": {
+          "bucket": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "sourceRefreshBurden": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["canonicalDiseaseName", "ownerRole", "openCount", "overdueCount"],
+        "properties": {
+          "canonicalDiseaseName": { "type": "string" },
+          "ownerRole": { "type": "string" },
+          "openCount": { "type": "integer", "minimum": 0 },
+          "overdueCount": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "threadResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["openThreadCount", "resolvedThreadCount", "medianResolutionHours"],
+      "properties": {
+        "openThreadCount": { "type": "integer", "minimum": 0 },
+        "resolvedThreadCount": { "type": "integer", "minimum": 0 },
+        "medianResolutionHours": { "type": "number", "minimum": 0 }
       }
     }
   }

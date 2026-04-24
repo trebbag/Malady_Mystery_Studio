@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/render-guide-review-decision.schema.json",
+  "title": "RenderGuideReviewDecision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "renderingGuideId",
+    "visualReferencePackId",
+    "decision",
+    "reviewerId",
+    "reviewerRoles",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "tenantId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflowRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "renderingGuideId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "visualReferencePackId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "changes-requested",
+        "rejected"
+      ]
+    },
+    "reviewerId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "reviewerRoles": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "comment": { "type": "string" },
+    "requiredChanges": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

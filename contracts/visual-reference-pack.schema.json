@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/visual-reference-pack.schema.json",
+  "title": "VisualReferencePack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "renderingGuideId",
+    "generatedAt",
+    "approvalStatus",
+    "requiredBeforeRender",
+    "items",
+    "panelReferenceMap",
+    "coverageSummary"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "tenantId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflowRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "renderingGuideId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approvalStatus": {
+      "type": "string",
+      "enum": [
+        "not-reviewed",
+        "approved",
+        "changes-requested",
+        "rejected",
+        "stale"
+      ]
+    },
+    "requiredBeforeRender": { "type": "boolean" },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "visual-reference-item.schema.json"
+      }
+    },
+    "panelReferenceMap": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "panelId",
+          "visualReferenceItemIds"
+        ],
+        "properties": {
+          "panelId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "visualReferenceItemIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          }
+        }
+      }
+    },
+    "coverageSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "panelCount",
+        "panelsWithReferenceItems",
+        "missingPanelReferenceCount",
+        "requiredCharacterItems",
+        "presentCharacterItems",
+        "recurringItemCount",
+        "warnings"
+      ],
+      "properties": {
+        "panelCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "panelsWithReferenceItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingPanelReferenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requiredCharacterItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "presentCharacterItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recurringItemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

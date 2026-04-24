@@ -4,12 +4,16 @@ import type {
   ClinicalPackageView,
   EvalRun,
   ExportHistoryEntry,
+  LocalDeliveryMirror,
+  LocalDeliveryVerification,
+  LocalOpsStatus,
   LocalRuntimeView,
   Notification,
   RenderedAssetAttachmentRequest,
   RenderingGuideView,
   ReviewMessage,
   ReviewQueueAnalyticsView,
+  ReviewQueueAnalyticsSnapshot,
   ReviewQueueView,
   ReleaseBundle,
   ReviewAssignment,
@@ -18,6 +22,10 @@ import type {
   ReviewRunView,
   ReviewThread,
   RenderJob,
+  RestoreSmokeResult,
+  RenderedPanelQaDecision,
+  SourceRefreshCalendar,
+  SourceOpsView,
   WorkItem,
   WorkflowArtifactListView,
   WorkflowRun,
@@ -101,6 +109,24 @@ export function fetchReviewQueueAnalytics() {
   return request<ReviewQueueAnalyticsView>('/api/v1/review-queue/analytics');
 }
 
+export function fetchReviewQueueAnalyticsHistory() {
+  return request<ReviewQueueAnalyticsSnapshot[]>('/api/v1/review-queue/analytics/history');
+}
+
+export function captureReviewQueueAnalyticsSnapshot(snapshotLabel?: string) {
+  return request<ReviewQueueAnalyticsSnapshot>('/api/v1/review-queue/analytics/snapshots', {
+    method: 'POST',
+    body: JSON.stringify({ snapshotLabel }),
+  });
+}
+
+export function seedQueueProofScenario() {
+  return request<Record<string, unknown>>('/api/v1/review-queue/proof-scenario', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
 export function fetchNotifications() {
   return request<Notification[]>('/api/v1/notifications');
 }
@@ -109,6 +135,13 @@ export function updateNotification(notificationId: string, payload: Record<strin
   return request<Notification>(`/api/v1/notifications/${encodeURIComponent(notificationId)}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
+  });
+}
+
+export function markAllNotificationsRead() {
+  return request<Notification[]>('/api/v1/notifications', {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'read' }),
   });
 }
 
@@ -122,6 +155,10 @@ export function fetchReviewRunView(runId: string) {
 
 export function fetchRenderingGuideView(runId: string) {
   return request<RenderingGuideView>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/rendering-guide`);
+}
+
+export function fetchRenderingGuideReview(runId: string) {
+  return request<RenderingGuideView>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/rendering-guide-review`);
 }
 
 export function fetchResearchBrief(runId: string) {
@@ -157,6 +194,20 @@ export function regenerateRenderingGuide(runId: string) {
   return request<RenderingGuideView>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/rendering-guide/regenerate`, {
     method: 'POST',
     body: JSON.stringify({}),
+  });
+}
+
+export function regenerateVisualReferencePack(runId: string) {
+  return request<RenderingGuideView>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/visual-reference-pack/regenerate`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export function submitRenderingGuideReviewDecision(runId: string, payload: Record<string, unknown>) {
+  return request<RenderingGuideView>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/rendering-guide/review-decisions`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 
@@ -295,6 +346,31 @@ export function fetchReleaseBundle(releaseId: string) {
   return request<ReleaseBundle>(`/api/v1/release-bundles/${encodeURIComponent(releaseId)}`);
 }
 
+export function mirrorReleaseBundleLocal(releaseId: string) {
+  return request<LocalDeliveryMirror>(`/api/v1/release-bundles/${encodeURIComponent(releaseId)}/mirror-local`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export function verifyReleaseBundleLocalMirror(releaseId: string) {
+  return request<LocalDeliveryVerification>(`/api/v1/release-bundles/${encodeURIComponent(releaseId)}/verify-local-mirror`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export function fetchRenderedPanelQaDecisions(manifestId: string) {
+  return request<RenderedPanelQaDecision[]>(`/api/v1/rendered-asset-manifests/${encodeURIComponent(manifestId)}/qa-decisions`);
+}
+
+export function recordRenderedPanelQaDecision(manifestId: string, payload: Record<string, unknown>) {
+  return request<RenderedPanelQaDecision>(`/api/v1/rendered-asset-manifests/${encodeURIComponent(manifestId)}/qa-decisions`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getReleaseBundleRenderingGuideUrl(releaseId: string) {
   return toUrl(`/api/v1/release-bundles/${encodeURIComponent(releaseId)}/rendering-guide`);
 }
@@ -309,8 +385,33 @@ export function fetchSourceCatalog() {
   return request<Array<Record<string, unknown>>>('/api/v1/source-catalog');
 }
 
+export function fetchSourceOps(params: Partial<SourceOpsView['filters']> = {}) {
+  return request<SourceOpsView>(`/api/v1/source-ops${buildQuery({
+    disease: params.disease,
+    freshnessState: params.freshnessState,
+    approvalStatus: params.approvalStatus,
+    ownerRole: params.ownerRole,
+    openRefreshOnly: params.openRefreshOnly ? 'true' : undefined,
+  })}`);
+}
+
+export function fetchSourceRefreshCalendar() {
+  return request<SourceRefreshCalendar>('/api/v1/source-ops/calendar');
+}
+
 export function fetchLocalRuntimeView() {
   return request<LocalRuntimeView>('/api/v1/local-runtime-view');
+}
+
+export function fetchLocalOpsStatus() {
+  return request<LocalOpsStatus>('/api/v1/local-ops/status');
+}
+
+export function runRestoreSmoke() {
+  return request<RestoreSmokeResult>('/api/v1/local-ops/restore-smoke', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
 }
 
 export function createProject(payload: Record<string, unknown>) {

@@ -9,7 +9,14 @@ import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Table, Td, Th } from '@/components/ui/table';
-import { fetchReviewQueue, fetchReviewQueueAnalytics, updateWorkItem } from '@/lib/api';
+import {
+  captureReviewQueueAnalyticsSnapshot,
+  fetchReviewQueue,
+  fetchReviewQueueAnalytics,
+  fetchReviewQueueAnalyticsHistory,
+  seedQueueProofScenario,
+  updateWorkItem,
+} from '@/lib/api';
 import { useRefreshContext, useRefreshSignal } from '@/lib/refresh-context';
 import { useRemoteData } from '@/lib/use-remote-data';
 import { formatDateTime } from '@/lib/utils';
@@ -31,6 +38,7 @@ export function ReviewQueuePage() {
     [filters.workType, filters.status, filters.priority, filters.queueName, filters.assignee, refreshSignal],
   );
   const analyticsState = useRemoteData(() => fetchReviewQueueAnalytics(), [refreshSignal]);
+  const analyticsHistoryState = useRemoteData(() => fetchReviewQueueAnalyticsHistory(), [refreshSignal]);
 
   const updateFilter = (name: string, value: string) => {
     const nextSearchParams = new URLSearchParams(searchParams);
@@ -54,6 +62,12 @@ export function ReviewQueuePage() {
         eyebrow="Queue"
         title="Review Queue"
         description="Cross-run operational queue for run review, source refresh, contradiction follow-up, render retry, and ops drill work."
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => void captureReviewQueueAnalyticsSnapshot('pilot-rehearsal-snapshot').then(refreshAll)}>Capture trend snapshot</Button>
+            <Button variant="secondary" onClick={() => void seedQueueProofScenario().then(refreshAll)}>Seed proof scenario</Button>
+          </div>
+        )}
       />
 
       <Card>
@@ -101,14 +115,35 @@ export function ReviewQueuePage() {
                 <MetricCard label="Overdue rate" value={Math.round(analyticsState.data.summary.overdueRate * 100)} suffix="%" />
                 <MetricCard label="Escalation rate" value={Math.round(analyticsState.data.summary.escalationRate * 100)} suffix="%" />
                 <MetricCard label="Median age" value={Math.round(analyticsState.data.summary.medianAgeHours)} suffix="h" />
-                <MetricCard label="Overdue items" value={analyticsState.data.summary.overdueItemCount} />
-                <MetricCard label="Unread notices" value={analyticsState.data.summary.unreadNotificationCount} />
+                <MetricCard label="Unresolved mentions" value={analyticsState.data.summary.unresolvedMentionCount} />
+                <MetricCard label="Thread resolution" value={Math.round(analyticsState.data.summary.medianThreadResolutionHours)} suffix="h" />
               </div>
               <div className="mt-4 grid gap-4 xl:grid-cols-3">
                 <MetricList title="By work type" rows={analyticsState.data.countsByWorkType.map((row) => ({ label: row.workType, value: row.count }))} />
+                <MetricList title="SLA health" rows={analyticsState.data.slaBuckets.map((row) => ({ label: row.bucket, value: row.count }))} />
+                <MetricList title="Overdue aging" rows={analyticsState.data.overdueAgingBuckets.map((row) => ({ label: row.bucket, value: row.count }))} />
+              </div>
+              <div className="mt-4 grid gap-4 xl:grid-cols-3">
                 <MetricList title="Assignee load" rows={analyticsState.data.assigneeLoad.map((row) => ({ label: row.assignee, value: row.count }))} />
                 <MetricList title="Run blockers by stage" rows={analyticsState.data.runBlockersByStage.map((row) => ({ label: row.stage, value: row.count }))} />
+                <MetricList title="Source refresh burden" rows={analyticsState.data.sourceRefreshBurden.map((row) => ({ label: `${row.canonicalDiseaseName} · ${row.ownerRole}`, value: row.openCount }))} />
               </div>
+              {analyticsHistoryState.data?.length ? (
+                <div className="mt-4 rounded-2xl border border-black/10 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-shell-950">Trend snapshots</p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    {analyticsHistoryState.data.slice(0, 6).map((snapshot) => (
+                      <div key={snapshot.id} className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm">
+                        <p className="font-medium text-shell-950">{snapshot.snapshotLabel}</p>
+                        <p className="text-xs text-slate-500">{formatDateTime(snapshot.createdAt)}</p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          {snapshot.analytics.summary.totalItemCount} items · {Math.round(snapshot.analytics.summary.overdueRate * 100)}% overdue
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </Card>
           ) : null}
 

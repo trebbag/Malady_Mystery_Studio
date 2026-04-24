@@ -170,7 +170,7 @@ test('openai image render service uses the image generations endpoint', async (t
   assert.equal(body.quality, 'medium');
   assert.equal(body.background, 'opaque');
   assert.equal(requests[0].init?.signal instanceof AbortSignal, true);
-  assert.match(body.prompt, /^Create a medically accurate, high-fidelity finished comic panel illustration\./);
+  assert.match(body.prompt, /^Create a premium cinematic 3D animated felt-toy finished comic panel illustration/);
   assert.match(body.prompt, /Simplify the composition/);
 });
 

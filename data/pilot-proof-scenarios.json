@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "1.0.0",
+  "description": "Local-only pilot proof scenarios used to seed realistic queue, review, source, render, and ops work against existing local workflow runs.",
+  "scenarios": [
+    {
+      "id": "pilot-proof.clean-promoted-pack",
+      "label": "Clean promoted-pack review",
+      "workType": "run-review",
+      "queueName": "review-queue",
+      "subjectType": "workflow-run",
+      "reason": "clinical-governance-review-required",
+      "priority": "high",
+      "notes": ["Proof scenario: reviewer clears a promoted-pack clinical review and confirms the run can proceed."]
+    },
+    {
+      "id": "pilot-proof.provisional-pack-promotion",
+      "label": "Provisional typed-disease promotion",
+      "workType": "run-review",
+      "queueName": "review-queue",
+      "subjectType": "workflow-run",
+      "reason": "provisional-knowledge-pack-review-required",
+      "priority": "high",
+      "notes": ["Proof scenario: reviewer checks a provisional typed-disease pack and decides whether it can be promoted."]
+    },
+    {
+      "id": "pilot-proof.stale-source-refresh",
+      "label": "Stale source refresh",
+      "workType": "source-refresh",
+      "queueName": "source-governance",
+      "subjectType": "source-record",
+      "reason": "aging",
+      "priority": "high",
+      "notes": ["Proof scenario: refresh a governed source before it blocks export."]
+    },
+    {
+      "id": "pilot-proof.render-retry",
+      "label": "Render retry review",
+      "workType": "render-retry",
+      "queueName": "render-review",
+      "subjectType": "workflow-run",
+      "reason": "default",
+      "priority": "medium",
+      "notes": ["Proof scenario: inspect a rendered panel retry queue item and verify guide/reference provenance."]
+    },
+    {
+      "id": "pilot-proof.ops-drill",
+      "label": "Local ops drill",
+      "workType": "ops-drill",
+      "queueName": "local-ops",
+      "subjectType": "workflow-run",
+      "reason": "default",
+      "priority": "low",
+      "notes": ["Proof scenario: verify restore-smoke, delivery mirror verification, and bundle integrity follow-through."]
+    }
+  ]
+}

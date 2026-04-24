@@ -174,6 +174,14 @@ function toTitleCase(value) {
 }
 
 /**
+ * @param {string} value
+ * @returns {string}
+ */
+function slugifyReferenceId(value) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'reference';
+}
+
+/**
  * @template T
  * @param {readonly T[]} values
  * @param {string} key
@@ -1403,12 +1411,26 @@ function createRenderPrompt(panel, storyWorkbook, diseasePacket, options) {
   const styleLocks = takeDistinct([
     ...(storyWorkbook.toneProfile ?? []),
     options.styleProfile ?? '',
+    'premium cinematic 3D animated felt-toy rendering',
+    'warm feature-animation lighting with soft tactile fibers',
     'felt detective characters in accurate 3D animated anatomy environments',
+    'stable character silhouettes, expressive eyes, subtle stitching, and consistent prop scale',
     'clear panel staging',
     'empty space reserved for lettering',
-  ], 5);
+  ], 7);
   const leadDetectivePresent = panel.charactersPresent.includes(DETECTIVE_LEAD_NAME);
   const deputyDetectivePresent = panel.charactersPresent.includes(DETECTIVE_DEPUTY_NAME);
+  const visualReferenceItemIds = takeDistinct([
+    'vref.style.series-felt-cinematic',
+    leadDetectivePresent ? 'vref.character.cyto-kine' : '',
+    leadDetectivePresent ? 'vref.prop.hud-visor' : '',
+    leadDetectivePresent ? 'vref.prop.evidence-vial' : '',
+    leadDetectivePresent ? 'vref.prop.agency-badge' : '',
+    deputyDetectivePresent ? 'vref.character.pip' : '',
+    deputyDetectivePresent ? 'vref.prop.micro-scanner' : '',
+    deputyDetectivePresent ? 'vref.prop.agency-badge' : '',
+    `vref.set-piece.${slugifyReferenceId(`${panel.location} ${panel.bodyScale}`)}`,
+  ], 10);
 
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -1416,13 +1438,13 @@ function createRenderPrompt(panel, storyWorkbook, diseasePacket, options) {
     panelId: panel.panelId,
     modelFamily: 'openai-gpt-image-2',
     aspectRatio: panel.storyFunction === 'diagnosis reveal' ? '16:9' : '4:3',
-    positivePrompt: `Create a high-fidelity comic-book panel illustration. Scene and background: ${panel.location} at ${panel.bodyScale} scale. Subject and action: ${panel.actionSummary}. Key medical details: ${panel.medicalObjective}. Story purpose: ${panel.storyFunction}. Camera and composition: ${panel.cameraFraming}, ${panel.cameraAngle}, ${panel.compositionNotes}. Lighting: ${panel.lightingMood}. Keep ${panel.renderIntent.toLowerCase()} while preserving medical clarity and no visible text.`,
+    positivePrompt: `Create a premium cinematic 3D animated felt-toy comic panel illustration. Scene and background: ${panel.location} at ${panel.bodyScale} scale. Subject and action: ${panel.actionSummary}. Key medical details: ${panel.medicalObjective}. Story purpose: ${panel.storyFunction}. Camera and composition: ${panel.cameraFraming}, ${panel.cameraAngle}, ${panel.compositionNotes}. Lighting: ${panel.lightingMood}. Preserve soft tactile fibers, stable character silhouettes, warm feature-animation lighting, and consistent approved visual references while keeping ${panel.renderIntent.toLowerCase()} and no visible text.`,
     negativePrompt: 'no speech bubbles, no captions, no labels, no medical chart overlays, no large text blocks, no duplicate characters, no anatomy contradictions, no generic sci-fi background, no illegible signage',
     continuityAnchors: panel.continuityAnchors,
     linkedClaimIds: panel.linkedClaimIds ?? [],
     characterLocks: takeDistinct([
-      leadDetectivePresent ? `${DETECTIVE_LEAD_NAME} is the felt lead investigator with a HUD visor, evidence vial, calm noir reasoning, and precise clinical pattern recognition.` : '',
-      deputyDetectivePresent ? `${DETECTIVE_DEPUTY_NAME} is the felt field deputy with a micro-scanner, earnest curiosity, and action-forward learner questions.` : '',
+      leadDetectivePresent ? `${DETECTIVE_LEAD_NAME} is the felt lead investigator with a HUD visor, evidence vial, tiny agency badge, calm precise noir reasoning, dry humor, and protective consistency toward Pip.` : '',
+      deputyDetectivePresent ? `${DETECTIVE_DEPUTY_NAME} is the felt field deputy with a micro-scanner, tiny agency badge, earnest curiosity, theatrical noir energy, and competent action-forward learner questions.` : '',
       panel.charactersPresent.includes('doctor') ? 'Doctor remains human-scale and visually distinct from the detectives.' : '',
     ], 3),
     anatomyLocks: takeDistinct([
@@ -1431,6 +1453,7 @@ function createRenderPrompt(panel, storyWorkbook, diseasePacket, options) {
       panel.clueRevealed ? `Show clue: ${panel.clueRevealed}` : '',
     ], 4),
     styleLocks,
+    visualReferenceItemIds,
     textLayerPolicy: {
       renderVisibleText: false,
       letteringHandledSeparately: true,

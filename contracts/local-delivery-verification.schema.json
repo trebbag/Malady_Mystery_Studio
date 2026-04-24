@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/local-delivery-verification.schema.json",
+  "title": "LocalDeliveryVerification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "releaseId",
+    "workflowRunId",
+    "localDeliveryMirrorId",
+    "status",
+    "deliveryDir",
+    "checks",
+    "verifiedFileCount",
+    "failedFileCount",
+    "checksumManifestLocation",
+    "createdBy",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "releaseId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "localDeliveryMirrorId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "status": { "type": "string", "enum": ["passed", "failed"] },
+    "deliveryDir": { "type": "string" },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "status"],
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "type": "string", "enum": ["passed", "failed", "warning"] },
+          "details": { "type": "string" }
+        }
+      }
+    },
+    "verifiedFileCount": { "type": "integer", "minimum": 0 },
+    "failedFileCount": { "type": "integer", "minimum": 0 },
+    "checksumManifestLocation": { "type": "string" },
+    "createdBy": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,7 +1,6 @@
 import path from 'node:path';
 
 import { findRepoRoot } from '../../../packages/shared-config/src/repo-paths.mjs';
-import { AzureBlobObjectStorage } from './azure-object-storage.mjs';
 import { ObjectStorage } from './object-storage.mjs';
 import { createQueueAdapter } from './queue-adapters.mjs';
 import { createTelemetry } from './telemetry.mjs';
@@ -27,33 +26,11 @@ import { createTelemetry } from './telemetry.mjs';
  */
 
 /**
- * @param {unknown} value
- * @returns {boolean}
- */
-function isDisabled(value) {
-  return ['0', 'false', 'no', 'off'].includes(String(value ?? '').toLowerCase());
-}
-
-/**
  * @param {PlatformRuntimeOptions} [options]
  */
 export function createObjectStorage(options = {}) {
-  const localStorageOnly = options.localStorageOnly ?? !isDisabled(process.env.LOCAL_STORAGE_ONLY);
-  const objectStoreBackend = localStorageOnly ? 'filesystem' : (options.objectStoreBackend ?? process.env.OBJECT_STORE_BACKEND ?? 'filesystem');
-
-  if (objectStoreBackend === 'azure-blob') {
-    return {
-      kind: objectStoreBackend,
-      client: new AzureBlobObjectStorage({
-        connectionString: options.blobConnectionString ?? process.env.AZURE_BLOB_CONNECTION_STRING ?? '',
-        containerName: options.blobContainerName ?? process.env.AZURE_BLOB_CONTAINER_NAME ?? 'dcp-artifacts',
-        prefix: options.blobPrefix ?? process.env.AZURE_BLOB_PREFIX ?? '',
-      }),
-    };
-  }
-
   return {
-    kind: objectStoreBackend,
+    kind: 'filesystem',
     client: new ObjectStorage({
       baseDir: options.objectStoreDir ?? process.env.OBJECT_STORE_DIR ?? path.join(findRepoRoot(import.meta.url), 'var', 'object-store'),
     }),
@@ -65,28 +42,13 @@ export function createObjectStorage(options = {}) {
  */
 export function createPlatformRuntime(options = {}) {
   const rootDir = options.rootDir ?? findRepoRoot(import.meta.url);
-  const localStorageOnly = options.localStorageOnly ?? !isDisabled(process.env.LOCAL_STORAGE_ONLY);
-  const metadataStoreKind = localStorageOnly ? 'sqlite' : (options.metadataStoreKind ?? process.env.METADATA_STORE_BACKEND ?? 'sqlite');
-  const queueBackend = localStorageOnly ? 'in-process' : (options.queueBackend ?? process.env.ASYNC_QUEUE_BACKEND ?? 'in-process');
+  const metadataStoreKind = 'sqlite';
+  const queueBackend = 'in-process';
   const telemetryBackend = options.telemetryBackend ?? process.env.TELEMETRY_BACKEND ?? 'stdout';
   const objectStorage = options.objectStorage ?? createObjectStorage({
-    objectStoreBackend: options.objectStoreBackend,
     objectStoreDir: options.objectStoreDir,
-    blobConnectionString: options.blobConnectionString,
-    blobContainerName: options.blobContainerName,
-    blobPrefix: options.blobPrefix,
-    localStorageOnly,
   });
-  const runtimeMode = options.runtimeMode
-    ?? process.env.RUNTIME_MODE
-    ?? (
-      metadataStoreKind !== 'sqlite'
-      || objectStorage.kind !== 'filesystem'
-      || queueBackend !== 'in-process'
-      || telemetryBackend !== 'stdout'
-        ? 'managed'
-        : 'local'
-    );
+  const runtimeMode = 'local';
   const queueAdapter = options.queueAdapter ?? createQueueAdapter({
     backend: queueBackend,
     connectionString: options.serviceBusConnectionString,

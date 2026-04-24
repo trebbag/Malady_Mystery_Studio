@@ -11,6 +11,17 @@
   "generatedAt": "2026-04-23T15:00:00Z",
   "markdownDocumentId": "rgd.hcc.001",
   "markdownLocation": "tenant.local/rendering-guide-markdown/rgd.hcc.001.md",
+  "visualReferencePackId": "vrp.hcc.001",
+  "reviewStatus": "approved",
+  "referenceCoverageSummary": {
+    "panelCount": 1,
+    "panelsWithReferenceItems": 1,
+    "missingPanelReferenceCount": 0,
+    "requiredCharacterItems": 2,
+    "presentCharacterItems": 2,
+    "recurringItemCount": 5,
+    "warnings": []
+  },
   "runSummary": {
     "oneSentence": "Hepatocellular carcinoma is a primary liver malignancy that often emerges from chronically injured tissue and should be discovered through fair clues.",
     "patientExperienceSummary": "The patient notices vague but escalating symptoms that only make sense once the detectives investigate the hidden liver lesion.",
@@ -93,6 +104,15 @@
         "clm.hcc.002",
         "clm.hcc.003"
       ],
+      "visualReferenceItemIds": [
+        "vref.style.series-felt-cinematic",
+        "vref.character.cyto-kine",
+        "vref.prop.hud-visor",
+        "vref.prop.evidence-vial",
+        "vref.prop.agency-badge",
+        "vref.character.pip",
+        "vref.prop.micro-scanner"
+      ],
       "acceptanceChecks": [
         "focal lesion implied",
         "no explicit diagnosis label in art",
@@ -129,11 +149,12 @@
       ],
       "openAiImagePrompt": {
         "aspectRatio": "4:3",
-        "prompt": "Create a high-fidelity finished comic-book panel illustration. Scene and background: adjacent to suspicious liver region at tissue scale. Subject and action: They hover near a district of cells whose architecture breaks the surrounding pattern. Key medical details: Suggest autonomous abnormal growth without naming the diagnosis. Story purpose: first major clue. Camera and composition: medium shot with focal push-in, slightly canted, Contrast the suspicious region against more orderly surrounding tissue. Lighting and atmosphere: ominous discovery. Continuity anchors: case tablet hologram; jet pack glow; distorted tissue geometry. Character locks: Detective Cyto Kine is the felt lead investigator with HUD visor and evidence vial; Deputy Pip is the felt field deputy with micro-scanner and learner questions. Anatomy and mechanism locks: liver-inspired tissue geometry; focal abnormal district contrasts with surrounding tissue; avoid generic intestine-like visuals. Style and finish locks: action-packed whimsical comic mystery; high clarity; panel composition optimized for later lettering. Leave clean space for later lettering and do not render any visible text in the image.",
+          "prompt": "Create a premium cinematic 3D animated felt-toy finished comic-book panel illustration. Scene and background: adjacent to suspicious liver region at tissue scale. Subject and action: They hover near a district of cells whose architecture breaks the surrounding pattern. Key medical details: Suggest autonomous abnormal growth without naming the diagnosis. Story purpose: first major clue. Camera and composition: medium shot with focal push-in, slightly canted, Contrast the suspicious region against more orderly surrounding tissue. Lighting and atmosphere: ominous discovery. Continuity anchors: case tablet hologram; jet pack glow; distorted tissue geometry. Character locks: Detective Cyto Kine is the felt lead investigator with HUD visor and evidence vial; Deputy Pip is the felt field deputy with micro-scanner and learner questions. Anatomy and mechanism locks: liver-inspired tissue geometry; focal abnormal district contrasts with surrounding tissue; avoid generic intestine-like visuals. Style and finish locks: premium cinematic 3D animated felt-toy rendering; warm feature-animation lighting with soft tactile fibers; expressive eyes and stable silhouettes; panel composition optimized for later lettering. Leave clean space for later lettering and do not render any visible text in the image. Use approved visual reference item ids: vref.style.series-felt-cinematic, vref.character.cyto-kine, vref.prop.hud-visor, vref.prop.evidence-vial, vref.prop.agency-badge, vref.character.pip, vref.prop.micro-scanner.",
         "negativePrompt": "no speech bubbles, no captions, no labels, no medical chart overlays, no gore, no photoreal pathology slide, no extra detectives, no duplicate limbs, no illegible background text",
-        "styleLocks": [
-          "action-packed whimsical comic mystery",
-          "high clarity",
+          "styleLocks": [
+          "premium cinematic 3D animated felt-toy rendering",
+          "warm feature-animation lighting with soft tactile fibers",
+          "expressive eyes and stable silhouettes",
           "panel composition optimized for later lettering"
         ],
         "characterLocks": [

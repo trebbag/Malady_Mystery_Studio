@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/rendered-panel-qa-decision.schema.json",
+  "title": "RenderedPanelQaDecision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "renderedAssetManifestId",
+    "decision",
+    "checklist",
+    "reviewerId",
+    "reviewerRoles",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "renderedAssetManifestId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "renderJobId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "decision": { "type": "string", "enum": ["approved", "changes-requested", "rejected", "structural-only"] },
+    "checklist": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cytoConsistency",
+        "pipConsistency",
+        "styleConsistency",
+        "anatomyFidelity",
+        "setPieceContinuity",
+        "letteringSeparation",
+        "noVisibleText",
+        "panelOrder",
+        "guideProvenance"
+      ],
+      "properties": {
+        "cytoConsistency": { "type": "boolean" },
+        "pipConsistency": { "type": "boolean" },
+        "styleConsistency": { "type": "boolean" },
+        "anatomyFidelity": { "type": "boolean" },
+        "setPieceContinuity": { "type": "boolean" },
+        "letteringSeparation": { "type": "boolean" },
+        "noVisibleText": { "type": "boolean" },
+        "panelOrder": { "type": "boolean" },
+        "guideProvenance": { "type": "boolean" }
+      }
+    },
+    "notes": { "type": "string" },
+    "reviewerId": { "type": "string" },
+    "reviewerRoles": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

@@ -169,8 +169,96 @@
     "attachedRenderedAssetCount": 0,
     "attachmentMode": "guide-only"
   },
+  "visualReferencePack": {
+    "schemaVersion": "1.0.0",
+    "id": "vrp.hcc.001",
+    "tenantId": "tenant.local",
+    "workflowRunId": "run.hcc.001",
+    "renderingGuideId": "rgd.hcc.001",
+    "generatedAt": "2026-04-23T15:00:00Z",
+    "approvalStatus": "approved",
+    "requiredBeforeRender": true,
+    "items": [
+      {
+        "schemaVersion": "1.0.0",
+        "id": "vref.character.cyto-kine",
+        "tenantId": "tenant.local",
+        "workflowRunId": "run.hcc.001",
+        "renderingGuideId": "rgd.hcc.001",
+        "itemType": "character",
+        "canonicalName": "Detective Cyto Kine",
+        "description": "Stable felt detective silhouette with visor, badge, and evidence vial.",
+        "source": "local-canon",
+        "approvalStatus": "approved",
+        "usagePanelIds": ["pnl.hcc.004.03"],
+        "imageReferenceLocations": [],
+        "textLocks": ["felt lead investigator", "HUD visor", "evidence vial"],
+        "personalityLocks": ["calm", "precise", "dryly funny", "protective of Pip"],
+        "continuityLocks": ["same face, fiber texture, proportions, visor, badge, and evidence vial whenever present"],
+        "styleLocks": ["premium cinematic 3D animated felt-toy rendering", "warm feature-animation lighting with soft tactile fibers"],
+        "negativeLocks": ["do not change Cyto into a human or robot"],
+        "createdAt": "2026-04-23T15:00:00Z"
+      },
+      {
+        "schemaVersion": "1.0.0",
+        "id": "vref.character.pip",
+        "tenantId": "tenant.local",
+        "workflowRunId": "run.hcc.001",
+        "renderingGuideId": "rgd.hcc.001",
+        "itemType": "character",
+        "canonicalName": "Deputy Pip",
+        "description": "Stable felt assistant silhouette with badge and micro-scanner.",
+        "source": "local-canon",
+        "approvalStatus": "approved",
+        "usagePanelIds": ["pnl.hcc.004.03"],
+        "imageReferenceLocations": [],
+        "textLocks": ["felt field deputy", "handheld micro-scanner", "action-forward learner posture"],
+        "personalityLocks": ["earnest", "loyal", "curious", "theatrical in a noir way", "competent"],
+        "continuityLocks": ["same face, fiber texture, proportions, badge, and micro-scanner whenever present"],
+        "styleLocks": ["premium cinematic 3D animated felt-toy rendering", "warm feature-animation lighting with soft tactile fibers"],
+        "negativeLocks": ["do not portray Pip as incompetent"],
+        "createdAt": "2026-04-23T15:00:00Z"
+      }
+    ],
+    "panelReferenceMap": [
+      {
+        "panelId": "pnl.hcc.004.03",
+        "visualReferenceItemIds": ["vref.character.cyto-kine", "vref.character.pip"]
+      }
+    ],
+    "coverageSummary": {
+      "panelCount": 1,
+      "panelsWithReferenceItems": 1,
+      "missingPanelReferenceCount": 0,
+      "requiredCharacterItems": 2,
+      "presentCharacterItems": 2,
+      "recurringItemCount": 2,
+      "warnings": []
+    }
+  },
+  "reviewDecision": {
+    "schemaVersion": "1.0.0",
+    "id": "rgd-review.hcc.001",
+    "tenantId": "tenant.local",
+    "workflowRunId": "run.hcc.001",
+    "renderingGuideId": "rgd.hcc.001",
+    "visualReferencePackId": "vrp.hcc.001",
+    "decision": "approved",
+    "reviewerId": "local-operator",
+    "reviewerRoles": ["Local Operator"],
+    "comment": "Approved for local rendered-panel execution.",
+    "createdAt": "2026-04-23T15:05:00Z"
+  },
+  "gateStatus": "approved",
+  "renderDisabledReason": "",
+  "guideWarnings": [],
   "availableActions": [
     "regenerate-rendering-guide",
+    "regenerate-visual-reference-pack",
+    "approve-rendering-guide",
+    "request-rendering-guide-changes",
+    "reject-rendering-guide",
+    "queue-panel-rendering",
     "copy-rendering-guide-markdown",
     "download-rendering-guide-markdown",
     "attach-rendered-assets"

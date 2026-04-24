@@ -54,6 +54,22 @@
       "checksum": "demo-not-computed"
     },
     {
+      "artifactType": "visual-reference-pack",
+      "artifactId": "vrp.hcc.001",
+      "location": "examples/sample_visual_reference_pack.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
+    },
+    {
+      "artifactType": "render-guide-review-decision",
+      "artifactId": "rgd-review.hcc.001",
+      "location": "examples/sample_render_guide_review_decision.json",
+      "contentType": "application/json",
+      "retentionClass": "approved-artifact",
+      "checksum": "demo-not-computed"
+    },
+    {
       "artifactType": "rendered-asset-manifest",
       "artifactId": "rman.hcc.001",
       "location": "examples/sample_rendered_asset_manifest.json",
@@ -118,7 +134,17 @@
     {
       "name": "rendered-output",
       "status": "passed",
-      "details": "A rendered asset manifest is attached for final panel delivery."
+      "details": "Rendered asset manifest rman.hcc.001 covers every required panel."
+    },
+    {
+      "name": "rendering-guide-approval",
+      "status": "passed",
+      "details": "Rendering guide rgd.hcc.001 and visual reference pack vrp.hcc.001 were approved before rendering."
+    },
+    {
+      "name": "rendered-output-provenance",
+      "status": "passed",
+      "details": "Rendered assets were generated from the latest approved rendering guide and visual reference pack."
     },
     {
       "name": "source-governance",
@@ -129,11 +155,6 @@
       "name": "evaluation-status",
       "status": "passed",
       "details": "Eval run evr.hcc.001 passed all applicable thresholds."
-    },
-    {
-      "name": "rendering-guide-secondary",
-      "status": "passed",
-      "details": "A rendering guide is attached as a secondary retry and QA artifact."
     }
   ],
   "approvals": [
@@ -188,6 +209,8 @@
   ],
   "renderingGuideId": "rgd.hcc.001",
   "renderingGuideLocation": "examples/sample_rendering_guide.json",
+  "visualReferencePackId": "vrp.hcc.001",
+  "renderGuideReviewDecisionId": "rgd-review.hcc.001",
   "renderingGuideMarkdownDocumentId": "rgd.hcc.001",
   "renderingGuideMarkdownLocation": "tenant.local/rendering-guide-markdown/rgd.hcc.001.md",
   "renderedAssetManifestId": "rman.hcc.001",

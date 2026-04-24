@@ -4,6 +4,7 @@ import { createId } from '../../../packages/shared-config/src/ids.mjs';
 const DEFAULT_SLA_HOURS = Object.freeze({
   'run-review:clinical-governance-blocked': 4,
   'run-review:clinical-governance-review-required': 4,
+  'run-review:render-guide-review-required': 4,
   'run-review:export-blocker': 24,
   'render-retry:default': 8,
   'source-refresh:default': 120,
@@ -56,6 +57,141 @@ function median(values) {
   }
 
   return Number(sorted[middle].toFixed(2));
+}
+
+/**
+ * @param {any[]} rows
+ * @param {(row: any) => string} getKey
+ * @param {string} labelName
+ * @returns {Array<Record<string, string | number>>}
+ */
+function countRows(rows, getKey, labelName) {
+  return Object.entries(rows.reduce((totals, row) => {
+    const key = getKey(row) || 'unknown';
+    totals[key] = (totals[key] ?? 0) + 1;
+    return totals;
+  }, /** @type {Record<string, number>} */ ({}))).map(([key, count]) => ({
+    [labelName]: key,
+    count,
+  }));
+}
+
+/**
+ * @param {any[]} workItems
+ * @param {string} referenceTimestamp
+ * @returns {Array<{ bucket: string, count: number }>}
+ */
+function buildOverdueAgingBuckets(workItems, referenceTimestamp) {
+  const buckets = [
+    { bucket: 'not-overdue', count: 0 },
+    { bucket: '0-24h-overdue', count: 0 },
+    { bucket: '24-48h-overdue', count: 0 },
+    { bucket: '48-120h-overdue', count: 0 },
+    { bucket: '120h-plus-overdue', count: 0 },
+  ];
+
+  for (const workItem of workItems) {
+    if (!isWorkItemOverdue(workItem, referenceTimestamp)) {
+      buckets[0].count += 1;
+      continue;
+    }
+
+    const overdueHours = Math.max(0, (new Date(referenceTimestamp).getTime() - new Date(workItem.dueAt).getTime()) / (1000 * 60 * 60));
+
+    if (overdueHours <= 24) {
+      buckets[1].count += 1;
+    } else if (overdueHours <= 48) {
+      buckets[2].count += 1;
+    } else if (overdueHours <= 120) {
+      buckets[3].count += 1;
+    } else {
+      buckets[4].count += 1;
+    }
+  }
+
+  return buckets;
+}
+
+/**
+ * @param {any[]} workItems
+ * @param {string} referenceTimestamp
+ * @returns {Array<{ bucket: string, count: number }>}
+ */
+function buildSlaBuckets(workItems, referenceTimestamp) {
+  const buckets = [
+    { bucket: 'completed', count: 0 },
+    { bucket: 'on-track', count: 0 },
+    { bucket: 'reminder-due', count: 0 },
+    { bucket: 'overdue', count: 0 },
+    { bucket: 'escalated', count: 0 },
+  ];
+
+  for (const workItem of workItems) {
+    if (workItem.status === 'completed') {
+      buckets[0].count += 1;
+    } else if (workItem.status === 'escalated') {
+      buckets[4].count += 1;
+    } else if (isWorkItemOverdue(workItem, referenceTimestamp)) {
+      buckets[3].count += 1;
+    } else if (isWorkItemReminderDue(workItem, referenceTimestamp)) {
+      buckets[2].count += 1;
+    } else {
+      buckets[1].count += 1;
+    }
+  }
+
+  return buckets;
+}
+
+/**
+ * @param {any[]} workItems
+ * @returns {Array<{ canonicalDiseaseName: string, ownerRole: string, openCount: number, overdueCount: number }>}
+ */
+function buildSourceRefreshBurden(workItems) {
+  const sourceRefreshItems = workItems.filter((workItem) => workItem.workType === 'source-refresh');
+  /** @type {Record<string, { canonicalDiseaseName: string, ownerRole: string, openCount: number, overdueCount: number }>} */
+  const burdenByKey = {};
+
+  for (const workItem of sourceRefreshItems) {
+    const canonicalDiseaseName = String(workItem.metadata?.canonicalDiseaseName ?? 'Unknown disease');
+    const ownerRole = workItem.assignedActorRoles?.[0] ?? workItem.assignedActorDisplayName ?? 'Unassigned';
+    const key = `${canonicalDiseaseName}::${ownerRole}`;
+    const row = burdenByKey[key] ?? {
+      canonicalDiseaseName,
+      ownerRole,
+      openCount: 0,
+      overdueCount: 0,
+    };
+
+    if (workItem.status !== 'completed' && workItem.status !== 'cancelled') {
+      row.openCount += 1;
+    }
+
+    if (isWorkItemOverdue(workItem)) {
+      row.overdueCount += 1;
+    }
+
+    burdenByKey[key] = row;
+  }
+
+  return Object.values(burdenByKey)
+    .sort((left, right) => right.openCount - left.openCount || left.canonicalDiseaseName.localeCompare(right.canonicalDiseaseName));
+}
+
+/**
+ * @param {any[]} threads
+ * @returns {{ openThreadCount: number, resolvedThreadCount: number, medianResolutionHours: number }}
+ */
+function buildThreadResolutionSummary(threads) {
+  const resolvedDurations = threads
+    .filter((thread) => thread.status === 'resolved' && thread.createdAt && thread.resolvedAt)
+    .map((thread) => Math.max(0, (new Date(thread.resolvedAt).getTime() - new Date(thread.createdAt).getTime()) / (1000 * 60 * 60)));
+
+  return {
+    openThreadCount: threads.filter((thread) => thread.status === 'open').length,
+    resolvedThreadCount: threads.filter((thread) => thread.status === 'resolved').length,
+    medianResolutionHours: median(resolvedDurations),
+  };
 }
 
 /**
@@ -361,8 +497,11 @@ export function buildReviewQueueView(store, workflowRuns, projectsById, searchPa
  * @returns {any}
  */
 export function buildReviewQueueAnalyticsView(store, workflowRuns) {
-  const allWorkItems = store.listArtifactsByType('work-item', { tenantId: workflowRuns[0]?.tenantId ?? 'tenant.local' });
-  const notifications = store.listArtifactsByType('notification', { tenantId: workflowRuns[0]?.tenantId ?? 'tenant.local' });
+  const referenceTimestamp = new Date().toISOString();
+  const tenantId = workflowRuns[0]?.tenantId ?? 'tenant.local';
+  const allWorkItems = store.listArtifactsByType('work-item', { tenantId });
+  const notifications = store.listArtifactsByType('notification', { tenantId });
+  const threads = store.listArtifactsByType('review-thread', { tenantId });
   const ageHours = allWorkItems.map((workItem) => (
     Math.max(0, (Date.now() - new Date(workItem.createdAt).getTime()) / (1000 * 60 * 60))
   ));
@@ -372,23 +511,23 @@ export function buildReviewQueueAnalyticsView(store, workflowRuns) {
   const completedItemCount = allWorkItems.filter((workItem) => workItem.status === 'completed').length;
   const fallbackQueueItemCount = allWorkItems.filter((workItem) => workItem.status === 'escalated' && workItem.fallbackQueueName).length;
   const unreadNotificationCount = notifications.filter((notification) => notification.status === 'unread').length;
-  const countsByWorkType = Object.entries(allWorkItems.reduce((totals, workItem) => {
-    totals[workItem.workType] = (totals[workItem.workType] ?? 0) + 1;
-    return totals;
-  }, /** @type {Record<string, number>} */ ({}))).map(([workType, count]) => ({ workType, count }));
-  const countsByStatus = Object.entries(allWorkItems.reduce((totals, workItem) => {
-    totals[workItem.status] = (totals[workItem.status] ?? 0) + 1;
-    return totals;
-  }, /** @type {Record<string, number>} */ ({}))).map(([status, count]) => ({ status, count }));
-  const countsByPriority = Object.entries(allWorkItems.reduce((totals, workItem) => {
-    totals[workItem.priority] = (totals[workItem.priority] ?? 0) + 1;
-    return totals;
-  }, /** @type {Record<string, number>} */ ({}))).map(([priority, count]) => ({ priority, count }));
-  const assigneeLoad = Object.entries(allWorkItems.reduce((totals, workItem) => {
-    const assignee = String(workItem.assignedActorDisplayName ?? 'Unassigned');
-    totals[assignee] = (totals[assignee] ?? 0) + 1;
-    return totals;
-  }, /** @type {Record<string, number>} */ ({}))).map(([assignee, count]) => ({ assignee, count }));
+  const unresolvedMentionCount = notifications.filter((notification) => (
+    notification.status === 'unread' && notification.notificationType === 'mention'
+  )).length;
+  const sourceRefreshOpenCount = allWorkItems.filter((workItem) => (
+    workItem.workType === 'source-refresh' && workItem.status !== 'completed' && workItem.status !== 'cancelled'
+  )).length;
+  const renderRetryOpenCount = allWorkItems.filter((workItem) => (
+    workItem.workType === 'render-retry' && workItem.status !== 'completed' && workItem.status !== 'cancelled'
+  )).length;
+  const opsDrillOpenCount = allWorkItems.filter((workItem) => (
+    workItem.workType === 'ops-drill' && workItem.status !== 'completed' && workItem.status !== 'cancelled'
+  )).length;
+  const threadResolution = buildThreadResolutionSummary(threads);
+  const countsByWorkType = countRows(allWorkItems, (workItem) => workItem.workType, 'workType');
+  const countsByStatus = countRows(allWorkItems, (workItem) => workItem.status, 'status');
+  const countsByPriority = countRows(allWorkItems, (workItem) => workItem.priority, 'priority');
+  const assigneeLoad = countRows(allWorkItems, (workItem) => String(workItem.assignedActorDisplayName ?? 'Unassigned'), 'assignee');
   const runBlockersByStage = Object.entries(workflowRuns.reduce((totals, workflowRun) => {
     if (workflowRun.pauseReason) {
       totals[workflowRun.currentStage] = (totals[workflowRun.currentStage] ?? 0) + 1;
@@ -409,12 +548,44 @@ export function buildReviewQueueAnalyticsView(store, workflowRuns) {
       completedItemCount,
       fallbackQueueItemCount,
       unreadNotificationCount,
+      unresolvedMentionCount,
+      sourceRefreshOpenCount,
+      renderRetryOpenCount,
+      opsDrillOpenCount,
+      medianThreadResolutionHours: threadResolution.medianResolutionHours,
     },
     countsByWorkType,
     countsByStatus,
     countsByPriority,
     assigneeLoad,
     runBlockersByStage,
+    overdueAgingBuckets: buildOverdueAgingBuckets(allWorkItems, referenceTimestamp),
+    slaBuckets: buildSlaBuckets(allWorkItems, referenceTimestamp),
+    sourceRefreshBurden: buildSourceRefreshBurden(allWorkItems),
+    threadResolution,
+  };
+}
+
+/**
+ * @param {{
+ *   tenantId: string,
+ *   analytics: any,
+ *   actor: any,
+ *   snapshotLabel?: string,
+ * }} options
+ * @returns {any}
+ */
+export function buildReviewQueueAnalyticsSnapshot(options) {
+  const timestamp = new Date().toISOString();
+
+  return {
+    schemaVersion: '1.0.0',
+    id: createId('qas'),
+    tenantId: options.tenantId,
+    snapshotLabel: options.snapshotLabel ?? `Local queue snapshot ${timestamp}`,
+    analytics: clone(options.analytics),
+    createdBy: options.actor.id,
+    createdAt: timestamp,
   };
 }
 

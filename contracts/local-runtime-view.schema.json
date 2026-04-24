@@ -174,57 +174,6 @@
         }
       }
     },
-    "managedRuntimeReadiness": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["status", "dryRunAvailable", "checks", "localOnlyCommands"],
-      "properties": {
-        "status": {
-          "type": "string",
-          "enum": [
-            "ready-locally",
-            "configured",
-            "blocked-awaiting-credentials",
-            "failed"
-          ]
-        },
-        "dryRunAvailable": {
-          "type": "boolean"
-        },
-        "checks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["name", "status", "current", "target", "requiredEnv"],
-            "properties": {
-              "name": { "type": "string" },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "ready-locally",
-                  "configured",
-                  "blocked-awaiting-credentials",
-                  "failed"
-                ]
-              },
-              "current": { "type": "string" },
-              "target": { "type": "string" },
-              "requiredEnv": {
-                "type": "array",
-                "items": { "type": "string" }
-              }
-            }
-          }
-        },
-        "localOnlyCommands": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "externalElements": {
       "type": "object",
       "additionalProperties": false,

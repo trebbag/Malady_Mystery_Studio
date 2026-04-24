@@ -1,125 +1,153 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-
-import { Client } from 'pg';
 
 import { loadDotEnv } from '../packages/shared-config/src/env.mjs';
 import { findRepoRoot } from '../packages/shared-config/src/repo-paths.mjs';
-import { AzureBlobObjectStorage } from '../services/intake-api/src/azure-object-storage.mjs';
+import { backupLocalStorage, getLocalStoragePaths } from './local_storage_tools.mjs';
 
 loadDotEnv({ moduleUrl: import.meta.url });
 
 const rootDir = findRepoRoot(import.meta.url);
-const outputDir = path.join(rootDir, 'var', 'ops', 'restore-smoke');
 const timestamp = new Date().toISOString();
-const outputPath = path.join(outputDir, `${timestamp.replaceAll(':', '-')}.json`);
+const timestampSlug = timestamp.replaceAll(':', '-').replaceAll('.', '-');
+const outputDir = path.join(rootDir, 'var', 'ops', 'restore-smoke');
+const outputPath = path.join(outputDir, `${timestampSlug}.json`);
 const dryRun = process.argv.includes('--dry-run') || process.env.RESTORE_SMOKE_DRY_RUN === '1';
 
 /**
- * @param {string} name
- * @returns {string}
+ * @param {string} targetPath
+ * @returns {Promise<boolean>}
  */
-function requireEnv(name) {
-  const value = process.env[name];
-
-  if (!value) {
-    throw new Error(`${name} is required to run the restore smoke.`);
+async function exists(targetPath) {
+  try {
+    await access(targetPath);
+    return true;
+  } catch {
+    return false;
   }
-
-  return value;
 }
 
-/** @type {Record<string, unknown>} */
-const report = {
-  startedAt: timestamp,
-  metadataStore: 'postgres',
-  objectStore: 'azure-blob',
-  checks: [],
-};
+/**
+ * @param {string} directoryPath
+ * @returns {Promise<{ objectCount: number, byteLength: number }>}
+ */
+async function directoryStats(directoryPath) {
+  if (!(await exists(directoryPath))) {
+    return {
+      objectCount: 0,
+      byteLength: 0,
+    };
+  }
+
+  let objectCount = 0;
+  let byteLength = 0;
+  const entries = await readdir(directoryPath, {
+    withFileTypes: true,
+  });
+
+  for (const entry of entries) {
+    const entryPath = path.join(directoryPath, entry.name);
+
+    if (entry.isDirectory()) {
+      const childStats = await directoryStats(entryPath);
+      objectCount += childStats.objectCount;
+      byteLength += childStats.byteLength;
+      continue;
+    }
+
+    if (entry.isFile()) {
+      const fileStats = await stat(entryPath);
+      objectCount += 1;
+      byteLength += fileStats.size;
+    }
+  }
+
+  return {
+    objectCount,
+    byteLength,
+  };
+}
 
 await mkdir(outputDir, { recursive: true });
 
-if (dryRun) {
-  const missingCredentials = [
-    'MANAGED_POSTGRES_URL',
-    'AZURE_BLOB_CONNECTION_STRING',
-  ].filter((name) => !process.env[name]);
+const paths = getLocalStoragePaths({ rootDir });
+const scratchDir = path.join(outputDir, `scratch-${timestampSlug}`);
+/** @type {Record<string, unknown>} */
+const report = {
+  startedAt: timestamp,
+  mode: dryRun ? 'local-filesystem-dry-run' : 'local-filesystem',
+  metadataStore: 'sqlite',
+  objectStore: 'filesystem',
+  dbFilePath: paths.dbFilePath,
+  objectStoreDir: paths.objectStoreDir,
+  scratchDir,
+  checks: [],
+};
 
+if (dryRun) {
+  report.status = 'ready-locally';
+  report.backupDir = path.join(paths.backupRootDir, `<timestamp>`);
   /** @type {Array<Record<string, unknown>>} */ (report.checks).push(
     {
-      name: 'postgres-connectivity',
-      status: process.env.MANAGED_POSTGRES_URL ? 'configured' : 'blocked-awaiting-credentials',
+      name: 'sqlite-path',
+      status: await exists(paths.dbFilePath) ? 'ready-locally' : 'not-created-yet',
+      path: paths.dbFilePath,
     },
     {
-      name: 'blob-roundtrip',
-      status: process.env.AZURE_BLOB_CONNECTION_STRING ? 'configured' : 'blocked-awaiting-credentials',
+      name: 'object-store-path',
+      status: await exists(paths.objectStoreDir) ? 'ready-locally' : 'not-created-yet',
+      path: paths.objectStoreDir,
     },
     {
-      name: 'backup-policy',
-      status: 'manual-followup',
-      note: 'Dry run cannot verify Azure backup policy, Blob soft-delete, or scratch restore execution.',
+      name: 'scratch-restore',
+      status: 'planned',
+      path: scratchDir,
     },
   );
-  report.status = missingCredentials.length === 0 ? 'configured' : 'blocked-awaiting-credentials';
-  report.mode = 'dry-run';
-  report.missingCredentials = missingCredentials;
   report.completedAt = new Date().toISOString();
   await writeFile(outputPath, JSON.stringify(report, null, 2));
   console.log(outputPath);
   process.exit(0);
 }
 
-const postgres = new Client({
-  connectionString: requireEnv('MANAGED_POSTGRES_URL'),
+await rm(scratchDir, { recursive: true, force: true });
+await mkdir(scratchDir, { recursive: true });
+
+const backupDir = await backupLocalStorage({ rootDir });
+report.backupDir = backupDir;
+/** @type {Array<Record<string, unknown>>} */ (report.checks).push({
+  name: 'local-backup',
+  status: 'passed',
+  path: backupDir,
 });
-const blobStorage = new AzureBlobObjectStorage({
-  connectionString: requireEnv('AZURE_BLOB_CONNECTION_STRING'),
-  containerName: process.env.AZURE_BLOB_CONTAINER_NAME ?? 'dcp-artifacts',
-  prefix: process.env.AZURE_BLOB_PREFIX ?? 'restore-smoke',
+
+await cp(backupDir, scratchDir, { recursive: true });
+/** @type {Array<Record<string, unknown>>} */ (report.checks).push({
+  name: 'scratch-copy',
+  status: 'passed',
+  path: scratchDir,
 });
 
-try {
-  await postgres.connect();
-  await postgres.query('SELECT 1');
-  /** @type {Array<Record<string, unknown>>} */ (report.checks).push({
-    name: 'postgres-connectivity',
-    status: 'passed',
-  });
+const restoredDbPath = path.join(scratchDir, 'db', path.basename(paths.dbFilePath));
+const restoredDbPresent = await exists(restoredDbPath);
+/** @type {Array<Record<string, unknown>>} */ (report.checks).push({
+  name: 'restored-sqlite-present',
+  status: restoredDbPresent ? 'passed' : 'failed',
+  path: restoredDbPath,
+});
 
-  const scratchLocation = await blobStorage.putObject(
-    'tenant.local',
-    'ops-drill',
-    `restore-smoke-${Date.now()}`,
-    JSON.stringify({ timestamp }, null, 2),
-    { extension: 'json', contentType: 'application/json' },
-  );
-  await blobStorage.getJson(scratchLocation.location);
-  /** @type {Array<Record<string, unknown>>} */ (report.checks).push({
-    name: 'blob-roundtrip',
-    status: 'passed',
-    location: scratchLocation.location,
-  });
+const restoredObjectStats = await directoryStats(path.join(scratchDir, 'object-store'));
+report.stats = {
+  dbFileCopied: restoredDbPresent,
+  objectCount: restoredObjectStats.objectCount,
+  byteLength: restoredObjectStats.byteLength,
+};
+report.status = restoredDbPresent ? 'passed' : 'failed';
+report.completedAt = new Date().toISOString();
 
-  /** @type {Array<Record<string, unknown>>} */ (report.checks).push({
-    name: 'backup-policy',
-    status: 'manual-followup',
-    note: 'Managed Postgres backup policy and Blob soft-delete/versioning must still be confirmed in Azure after deployment.',
-  });
-  report.status = 'passed';
-  report.completedAt = new Date().toISOString();
-} catch (error) {
-  /** @type {Array<Record<string, unknown>>} */ (report.checks).push({
-    name: 'restore-smoke',
-    status: 'failed',
-    error: error instanceof Error ? error.message : String(error),
-  });
-  report.status = 'failed';
-  report.completedAt = new Date().toISOString();
-  await writeFile(outputPath, JSON.stringify(report, null, 2));
-  throw error;
-} finally {
-  await writeFile(outputPath, JSON.stringify(report, null, 2));
-  await postgres.end().catch(() => {});
-}
-
+await writeFile(outputPath, JSON.stringify(report, null, 2));
 console.log(outputPath);
+
+if (!restoredDbPresent) {
+  process.exitCode = 1;
+}

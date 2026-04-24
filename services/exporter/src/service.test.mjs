@@ -105,26 +105,65 @@ function createEvaluationSummary() {
   };
 }
 
-test('exporter assembles a release bundle from an approved run', () => {
-  const exporter = createExporterService();
-  const artifactManifest = [
+function createReleaseArtifactManifest() {
+  const renderingGuideId = 'rgd.demo.001';
+  const visualReferencePackId = 'vrp.demo.001';
+  const reviewDecisionId = 'rgd-review.demo.001';
+  const manifestId = 'rman.demo.001';
+  /** @type {Record<string, any>} */
+  const payloads = {
+    'rendering-guide': {
+      id: renderingGuideId,
+      visualReferencePackId,
+      reviewStatus: 'approved',
+    },
+    'visual-reference-pack': {
+      id: visualReferencePackId,
+      renderingGuideId,
+      approvalStatus: 'approved',
+    },
+    'render-guide-review-decision': {
+      id: reviewDecisionId,
+      renderingGuideId,
+      visualReferencePackId,
+      decision: 'approved',
+    },
+    'rendered-asset-manifest': {
+      id: manifestId,
+      renderingGuideId,
+      visualReferencePackId,
+      allPanelsRendered: true,
+      renderMode: 'stub-placeholder',
+      nonFinalPlaceholder: true,
+    },
+  };
+
+  return [
     'disease-packet',
     'story-workbook',
     'scene-card',
     'panel-plan',
     'render-prompt',
     'rendering-guide',
+    'visual-reference-pack',
+    'render-guide-review-decision',
     'lettering-map',
     'qa-report',
     'rendered-asset-manifest',
   ].map((artifactType, index) => ({
     artifactType,
-    artifactId: `${artifactType}.${index}`,
+    artifactId: payloads[artifactType]?.id ?? `${artifactType}.${index}`,
     location: `tenant.demo/${artifactType}/${index}.json`,
     checksum: `checksum-${index}`,
     contentType: 'application/json',
     retentionClass: 'approved-artifact',
+    ...(payloads[artifactType] ? { payload: payloads[artifactType] } : {}),
   }));
+}
+
+test('exporter assembles a release bundle from an approved run', () => {
+  const exporter = createExporterService();
+  const artifactManifest = createReleaseArtifactManifest();
 
   const assembled = exporter.assembleRelease({
     workflowRun: createApprovedRun(),
@@ -181,24 +220,7 @@ test('exporter blocks release when required artifacts are missing', () => {
 
 test('exporter requires rendered output and records the manifest in the bundle', () => {
   const exporter = createExporterService();
-  const artifactManifest = [
-    'disease-packet',
-    'story-workbook',
-    'scene-card',
-    'panel-plan',
-    'render-prompt',
-    'rendering-guide',
-    'lettering-map',
-    'qa-report',
-    'rendered-asset-manifest',
-  ].map((artifactType, index) => ({
-    artifactType,
-    artifactId: `${artifactType}.${index}`,
-    location: `tenant.demo/${artifactType}/${index}.json`,
-    checksum: `checksum-${index}`,
-    contentType: 'application/json',
-    retentionClass: 'approved-artifact',
-  }));
+  const artifactManifest = createReleaseArtifactManifest();
 
   const assembled = exporter.assembleRelease({
     workflowRun: createApprovedRun(),

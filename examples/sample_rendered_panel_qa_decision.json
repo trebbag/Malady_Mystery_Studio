@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "rpq.local.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.local.001",
+  "renderedAssetManifestId": "rman.local.001",
+  "renderJobId": "rjob.local.001",
+  "decision": "structural-only",
+  "checklist": {
+    "cytoConsistency": true,
+    "pipConsistency": true,
+    "styleConsistency": true,
+    "anatomyFidelity": true,
+    "setPieceContinuity": true,
+    "letteringSeparation": true,
+    "noVisibleText": true,
+    "panelOrder": true,
+    "guideProvenance": true
+  },
+  "notes": "Stub assets validate structure only; live image quality still requires reviewer approval after gpt-image-2 rendering.",
+  "reviewerId": "local-operator",
+  "reviewerRoles": ["Local Operator"],
+  "createdAt": "2026-04-24T12:00:00Z"
+}

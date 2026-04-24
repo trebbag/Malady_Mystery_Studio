@@ -11,6 +11,7 @@ import {
   listContractFiles,
 } from '../packages/shared-config/src/schema-registry.mjs';
 import { findRepoRoot } from '../packages/shared-config/src/repo-paths.mjs';
+import { createSeedDiseaseLibrary } from '../services/clinical-retrieval/src/disease-library.mjs';
 
 const REQUIRED_FILES = [
   '.github/workflows/ci.yml',
@@ -205,6 +206,113 @@ async function validateWorkflowSpec(rootDir) {
 }
 
 /**
+ * @param {any} knowledgePack
+ * @returns {string[]}
+ */
+function validatePromotedKnowledgePackSemantics(knowledgePack) {
+  const failures = [];
+  const label = knowledgePack.canonicalDiseaseName ?? knowledgePack.id ?? 'unknown knowledge pack';
+  const sources = Array.isArray(knowledgePack.sourceCatalog) ? knowledgePack.sourceCatalog : [];
+  const claims = Array.isArray(knowledgePack.evidence) ? knowledgePack.evidence : [];
+  const claimIds = new Set(claims.map((/** @type {any} */ claim) => claim.claimId).filter(Boolean));
+  const sourceIds = new Set(sources.map((/** @type {any} */ source) => source.id).filter(Boolean));
+  const evidenceSourceIds = new Set(claims.map((/** @type {any} */ claim) => claim.sourceId).filter(Boolean));
+
+  if (sources.length === 0) {
+    failures.push(`${label}: promoted packs require at least one governed source record.`);
+  }
+
+  for (const source of sources) {
+    if (source.defaultApprovalStatus !== 'approved' && evidenceSourceIds.has(source.id)) {
+      failures.push(`${label}: source ${source.id ?? 'unknown'} must be approved before it can support promoted-pack claims.`);
+    }
+
+    if (source.defaultApprovalStatus === 'suspended' && evidenceSourceIds.has(source.id)) {
+      failures.push(`${label}: suspended source ${source.id ?? 'unknown'} cannot support promoted-pack claims.`);
+    }
+
+    if (!source.primaryOwnerRole || !source.backupOwnerRole) {
+      failures.push(`${label}: source ${source.id ?? 'unknown'} must declare primary and backup owner roles.`);
+    }
+
+    if (!Number.isInteger(source.refreshCadenceDays) || source.refreshCadenceDays <= 0) {
+      failures.push(`${label}: source ${source.id ?? 'unknown'} must declare a positive refresh cadence.`);
+    }
+
+    if (!source.nextReviewDueAt) {
+      failures.push(`${label}: source ${source.id ?? 'unknown'} must declare nextReviewDueAt.`);
+    }
+  }
+
+  if (claims.length === 0) {
+    failures.push(`${label}: promoted packs require claim-level evidence.`);
+  }
+
+  for (const claim of claims) {
+    if (!claim.claimId || !claim.claimText || !claim.sourceId) {
+      failures.push(`${label}: every evidence claim must include claimId, claimText, and sourceId.`);
+      continue;
+    }
+
+    if (!sourceIds.has(claim.sourceId)) {
+      failures.push(`${label}: evidence claim ${claim.claimId} references missing source ${claim.sourceId}.`);
+    }
+  }
+
+  for (const sectionName of ['pathophysiology', 'clinicalTeachingPoints', 'visualAnchors']) {
+    const section = Array.isArray(knowledgePack[sectionName]) ? knowledgePack[sectionName] : [];
+
+    for (const item of section) {
+      const linkedClaimIds = Array.isArray(item.linkedClaimIds) ? item.linkedClaimIds : [];
+
+      if (linkedClaimIds.length === 0) {
+        failures.push(`${label}: ${sectionName} item ${item.title ?? item.event ?? item.anchorId ?? 'unknown'} must link to evidence claims.`);
+      }
+
+      for (const linkedClaimId of linkedClaimIds) {
+        if (!claimIds.has(linkedClaimId)) {
+          failures.push(`${label}: ${sectionName} item references missing claim ${linkedClaimId}.`);
+        }
+      }
+    }
+  }
+
+  return failures;
+}
+
+/**
+ * @param {string} rootDir
+ * @param {Awaited<ReturnType<typeof createSchemaRegistry>>} schemaRegistry
+ * @returns {{ failures: string[], validatedKnowledgePacks: number, promotedKnowledgePacks: number }}
+ */
+function validateKnowledgePacks(rootDir, schemaRegistry) {
+  const failures = [];
+  const diseaseLibrary = createSeedDiseaseLibrary(rootDir);
+  const knowledgePacks = Object.values(diseaseLibrary);
+  let promotedKnowledgePacks = 0;
+
+  for (const knowledgePack of knowledgePacks) {
+    const result = schemaRegistry.validateBySchemaId('contracts/disease-knowledge-pack.schema.json', knowledgePack);
+
+    if (!result.valid) {
+      failures.push(`Knowledge pack validation failed for ${knowledgePack.canonicalDiseaseName ?? knowledgePack.id}\n${formatValidationErrors(result.errors)}`);
+      continue;
+    }
+
+    if (knowledgePack.packStatus === 'promoted') {
+      promotedKnowledgePacks += 1;
+      failures.push(...validatePromotedKnowledgePackSemantics(knowledgePack));
+    }
+  }
+
+  return {
+    failures,
+    validatedKnowledgePacks: knowledgePacks.length,
+    promotedKnowledgePacks,
+  };
+}
+
+/**
  * @param {string} rootDir
  * @returns {Promise<{ failures: string[], stats: Record<string, number> }>}
  */
@@ -252,6 +360,9 @@ export async function validateRepoPack(rootDir = findRepoRoot(import.meta.url)) 
     }
   }
 
+  const knowledgePackValidation = validateKnowledgePacks(rootDir, schemaRegistry);
+  failures.push(...knowledgePackValidation.failures);
+
   const evaluationSchemaId = 'contracts/evaluation-case.schema.json';
   let datasetRows = 0;
 
@@ -285,6 +396,8 @@ export async function validateRepoPack(rootDir = findRepoRoot(import.meta.url)) 
     stats: {
       datasetsValidated: JSONL_DATASETS.length,
       exampleArtifactsValidated: validatedExamples,
+      knowledgePacksValidated: knowledgePackValidation.validatedKnowledgePacks,
+      promotedKnowledgePacksValidated: knowledgePackValidation.promotedKnowledgePacks,
       schemaFilesLoaded: schemaRegistry.schemaIds.length,
       workflowConfigsParsed: YAML_FILES.length,
       workflowRowsValidated: datasetRows,
@@ -308,6 +421,7 @@ async function main() {
   console.log('VALIDATION PASSED');
   console.log(`Loaded ${stats.schemaFilesLoaded} contract schemas.`);
   console.log(`Validated ${stats.exampleArtifactsValidated} example artifacts.`);
+  console.log(`Validated ${stats.knowledgePacksValidated} governed knowledge packs (${stats.promotedKnowledgePacksValidated} promoted).`);
   console.log(`Validated ${stats.workflowRowsValidated} eval dataset rows.`);
   console.log(`Parsed ${stats.workflowConfigsParsed} YAML configs.`);
 }

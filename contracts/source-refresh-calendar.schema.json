@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/source-refresh-calendar.schema.json",
+  "title": "SourceRefreshCalendar",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "tenantId",
+    "generatedAt",
+    "summary",
+    "items"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["totalSourceCount", "dueSoonCount", "overdueCount", "ownerlessCount", "openRefreshWorkCount"],
+      "properties": {
+        "totalSourceCount": { "type": "integer", "minimum": 0 },
+        "dueSoonCount": { "type": "integer", "minimum": 0 },
+        "overdueCount": { "type": "integer", "minimum": 0 },
+        "ownerlessCount": { "type": "integer", "minimum": 0 },
+        "openRefreshWorkCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceId",
+          "sourceLabel",
+          "canonicalDiseaseName",
+          "primaryOwnerRole",
+          "backupOwnerRole",
+          "freshnessState",
+          "nextReviewDueAt",
+          "daysUntilDue",
+          "bucket",
+          "openRefreshWorkItemIds"
+        ],
+        "properties": {
+          "sourceId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "sourceLabel": { "type": "string" },
+          "canonicalDiseaseName": { "type": "string" },
+          "primaryOwnerRole": { "type": "string" },
+          "backupOwnerRole": { "type": "string" },
+          "freshnessState": { "type": "string" },
+          "nextReviewDueAt": { "type": "string", "format": "date-time" },
+          "daysUntilDue": { "type": "integer" },
+          "bucket": { "type": "string", "enum": ["overdue", "due-30-days", "due-90-days", "future", "ownerless", "blocked"] },
+          "openRefreshWorkItemIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -76,8 +76,10 @@
         "workflow-run",
         "artifact",
         "disease-knowledge-pack",
+        "visual-reference-pack",
         "source-record",
         "render-job",
+        "restore-smoke-result",
         "ops-drill"
       ]
     },

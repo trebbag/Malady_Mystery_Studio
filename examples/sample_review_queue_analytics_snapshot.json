@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "qas.local.001",
+  "tenantId": "tenant.local",
+  "snapshotLabel": "pilot-rehearsal-day-1",
+  "analytics": {
+    "schemaVersion": "1.0.0",
+    "summary": {
+      "totalItemCount": 5,
+      "overdueItemCount": 1,
+      "escalatedItemCount": 1,
+      "overdueRate": 0.2,
+      "escalationRate": 0.2,
+      "medianAgeHours": 6,
+      "dueSoonItemCount": 2,
+      "completedItemCount": 1,
+      "fallbackQueueItemCount": 1,
+      "unreadNotificationCount": 2,
+      "unresolvedMentionCount": 1,
+      "sourceRefreshOpenCount": 1,
+      "renderRetryOpenCount": 1,
+      "opsDrillOpenCount": 1,
+      "medianThreadResolutionHours": 4
+    },
+    "countsByWorkType": [{ "workType": "run-review", "count": 2 }],
+    "countsByStatus": [{ "status": "queued", "count": 3 }],
+    "countsByPriority": [{ "priority": "high", "count": 2 }],
+    "assigneeLoad": [{ "assignee": "Local Operator", "count": 5 }],
+    "runBlockersByStage": [{ "stage": "render-prep", "count": 1 }],
+    "overdueAgingBuckets": [{ "bucket": "0-24h-overdue", "count": 1 }],
+    "slaBuckets": [{ "bucket": "on-track", "count": 4 }],
+    "sourceRefreshBurden": [{ "canonicalDiseaseName": "Community-acquired pneumonia", "ownerRole": "Clinical Reviewer", "openCount": 1, "overdueCount": 0 }],
+    "threadResolution": {
+      "openThreadCount": 2,
+      "resolvedThreadCount": 1,
+      "medianResolutionHours": 4
+    }
+  },
+  "createdBy": "local-operator",
+  "createdAt": "2026-04-24T12:00:00Z"
+}

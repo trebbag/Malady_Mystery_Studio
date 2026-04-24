@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/restore-smoke-result.schema.json",
+  "title": "RestoreSmokeResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "status",
+    "mode",
+    "backupDir",
+    "scratchDir",
+    "checks",
+    "stats",
+    "createdBy",
+    "startedAt",
+    "completedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "status": { "type": "string", "enum": ["passed", "failed"] },
+    "mode": { "type": "string", "enum": ["local-filesystem"] },
+    "backupDir": { "type": "string" },
+    "scratchDir": { "type": "string" },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "status"],
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "type": "string", "enum": ["passed", "failed", "warning"] },
+          "details": { "type": "string" }
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dbFileCopied",
+        "objectCount",
+        "byteLength",
+        "releaseBundleCount",
+        "renderedManifestCount",
+        "schemaValidatedArtifactCount",
+        "schemaValidationFailureCount",
+        "objectReferenceCount",
+        "missingObjectReferenceCount",
+        "deliveryVerificationCount",
+        "failedDeliveryVerificationCount"
+      ],
+      "properties": {
+        "dbFileCopied": { "type": "boolean" },
+        "objectCount": { "type": "integer", "minimum": 0 },
+        "byteLength": { "type": "integer", "minimum": 0 },
+        "releaseBundleCount": { "type": "integer", "minimum": 0 },
+        "renderedManifestCount": { "type": "integer", "minimum": 0 },
+        "schemaValidatedArtifactCount": { "type": "integer", "minimum": 0 },
+        "schemaValidationFailureCount": { "type": "integer", "minimum": 0 },
+        "objectReferenceCount": { "type": "integer", "minimum": 0 },
+        "missingObjectReferenceCount": { "type": "integer", "minimum": 0 },
+        "deliveryVerificationCount": { "type": "integer", "minimum": 0 },
+        "failedDeliveryVerificationCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "createdBy": { "type": "string" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" }
+  }
+}

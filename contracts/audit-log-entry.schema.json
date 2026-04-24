@@ -47,6 +47,8 @@
         "session",
         "source-record",
         "evidence-record",
+        "rendered-asset-manifest",
+        "restore-smoke-result",
         "release-bundle"
       ]
     },

@@ -25,6 +25,7 @@ import {
   fetchRenderingGuideView,
   fetchReviewRunView,
   fetchWorkflowArtifacts,
+  markAllNotificationsRead,
   promoteKnowledgePack,
   regenerateKnowledgePack,
   regenerateRenderingGuide,
@@ -282,6 +283,14 @@ export function ReviewPage() {
                   <CardDescription>In-app reviewer notifications track mentions, assignments, and promotion-ready pack events.</CardDescription>
                 </div>
                 <p className="rounded-full bg-shell-950 px-3 py-1 text-xs font-semibold text-white">{unreadNotifications.length} unread</p>
+                {unreadNotifications.length > 0 ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => void markAllNotificationsRead().then(() => refreshRun())}
+                  >
+                    Mark all read
+                  </Button>
+                ) : null}
               </div>
               <div className="mt-4 space-y-3">
                 {unreadNotifications.map((notification) => (

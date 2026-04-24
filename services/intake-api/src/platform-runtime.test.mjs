@@ -65,7 +65,7 @@ test('local storage is the default runtime unless explicitly disabled', () => {
   }
 });
 
-test('managed adapters require an explicit LOCAL_STORAGE_ONLY opt-out', () => {
+test('managed adapter env vars are ignored during the local-only product phase', () => {
   const previous = {
     LOCAL_STORAGE_ONLY: process.env.LOCAL_STORAGE_ONLY,
     METADATA_STORE_BACKEND: process.env.METADATA_STORE_BACKEND,
@@ -84,9 +84,10 @@ test('managed adapters require an explicit LOCAL_STORAGE_ONLY opt-out', () => {
       },
     });
 
-    assert.equal(runtime.runtimeMode, 'managed');
-    assert.equal(runtime.metadataStoreKind, 'postgres');
+    assert.equal(runtime.runtimeMode, 'local');
+    assert.equal(runtime.metadataStoreKind, 'sqlite');
     assert.equal(runtime.objectStorageKind, 'filesystem');
+    assert.equal(runtime.queueBackend, 'in-process');
   } finally {
     for (const [name, value] of Object.entries(previous)) {
       if (value === undefined) {

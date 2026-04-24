@@ -6,6 +6,9 @@ const REQUIRED_RELEASE_ARTIFACT_TYPES = [
   'scene-card',
   'panel-plan',
   'render-prompt',
+  'rendering-guide',
+  'visual-reference-pack',
+  'render-guide-review-decision',
   'rendered-asset-manifest',
   'lettering-map',
   'qa-report',
@@ -37,7 +40,7 @@ function selectPrimaryQaReport(qaReports) {
  * @param {any[]} qaReports
  * @param {any} diseasePacket
  * @param {any | undefined} evaluationSummary
- * @param {Array<{ artifactType: string, artifactId?: string }>} artifactManifest
+ * @param {Array<{ artifactType: string, artifactId?: string, payload?: any }>} artifactManifest
  * @returns {{ medicalAccuracy: number, evidenceTraceability: number, mysteryIntegrity: number, educationalSequencing: number, panelization: number, renderReadiness: number, renderingGuideQuality: number, renderOutputQuality: number, sourceFreshness: number, contradictionStatus: string, releaseVerdict: string }}
  */
 function buildQualitySummary(qaReports, diseasePacket, evaluationSummary, artifactManifest) {
@@ -85,7 +88,7 @@ function releaseUsesStubRenderedOutput(artifactManifest) {
 
 /**
  * @param {any} workflowRun
- * @param {Array<{ artifactType: string, artifactId?: string }>} artifactManifest
+ * @param {Array<{ artifactType: string, artifactId?: string, payload?: any }>} artifactManifest
  * @param {any[]} qaReports
  * @param {any} diseasePacket
  * @returns {Array<{ name: string, status: string, details: string }>}
@@ -102,8 +105,31 @@ function buildReleaseGateChecks(workflowRun, artifactManifest, qaReports, diseas
   const noQaFailures = qaReports.every((qaReport) => qaReport.verdict !== 'fail');
   const noBlockingContradictions = diseasePacket.evidenceSummary.blockingContradictions === 0;
   const hasRenderedManifest = artifactManifest.some((artifact) => artifact.artifactType === 'rendered-asset-manifest');
-  const hasRenderingGuide = artifactManifest.some((artifact) => artifact.artifactType === 'rendering-guide');
-  const renderedManifestArtifact = artifactManifest.find((artifact) => artifact.artifactType === 'rendered-asset-manifest');
+  const renderingGuideArtifact = artifactManifest.filter((artifact) => artifact.artifactType === 'rendering-guide').at(-1);
+  const visualReferencePackArtifact = artifactManifest.filter((artifact) => artifact.artifactType === 'visual-reference-pack').at(-1);
+  const reviewDecisionArtifact = artifactManifest.filter((artifact) => artifact.artifactType === 'render-guide-review-decision').at(-1);
+  const renderedManifestArtifact = artifactManifest.filter((artifact) => artifact.artifactType === 'rendered-asset-manifest').at(-1);
+  const renderingGuide = renderingGuideArtifact?.payload;
+  const visualReferencePack = visualReferencePackArtifact?.payload;
+  const reviewDecision = reviewDecisionArtifact?.payload;
+  const renderedManifest = renderedManifestArtifact?.payload;
+  const guideApprovalCurrent = Boolean(
+    renderingGuide
+    && visualReferencePack
+    && reviewDecision
+    && renderingGuide.reviewStatus === 'approved'
+    && visualReferencePack.approvalStatus === 'approved'
+    && reviewDecision.decision === 'approved'
+    && renderingGuide.visualReferencePackId === visualReferencePack.id
+    && reviewDecision.renderingGuideId === renderingGuide.id
+    && reviewDecision.visualReferencePackId === visualReferencePack.id,
+  );
+  const renderedManifestCurrent = Boolean(
+    renderedManifest
+    && renderedManifest.allPanelsRendered
+    && renderedManifest.renderingGuideId === renderingGuide?.id
+    && renderedManifest.visualReferencePackId === visualReferencePack?.id,
+  );
 
   const gateChecks = [
     {
@@ -129,10 +155,24 @@ function buildReleaseGateChecks(workflowRun, artifactManifest, qaReports, diseas
     },
     {
       name: 'rendered-output',
-      status: hasRenderedManifest ? 'passed' : 'failed',
+      status: hasRenderedManifest && renderedManifest?.allPanelsRendered ? 'passed' : 'failed',
       details: hasRenderedManifest
-        ? `A rendered asset manifest (${renderedManifestArtifact?.artifactId ?? 'manifest'}) is present for panel delivery.`
+        ? `Rendered asset manifest ${renderedManifestArtifact?.artifactId ?? 'manifest'} ${renderedManifest?.allPanelsRendered ? 'covers every required panel' : 'does not cover every required panel'}.`
         : 'Export requires a rendered asset manifest because panel images are now the default end product.',
+    },
+    {
+      name: 'rendering-guide-approval',
+      status: guideApprovalCurrent ? 'passed' : 'failed',
+      details: guideApprovalCurrent
+        ? `Rendering guide ${renderingGuide.id} and visual reference pack ${visualReferencePack.id} were approved before rendering.`
+        : 'The latest rendering guide and visual reference pack must have a current approved review decision before export.',
+    },
+    {
+      name: 'rendered-output-provenance',
+      status: renderedManifestCurrent ? 'passed' : 'failed',
+      details: renderedManifestCurrent
+        ? 'Rendered assets were generated from the latest approved rendering guide and visual reference pack.'
+        : 'Rendered assets must reference the latest approved rendering guide and visual reference pack.',
     },
     {
       name: 'source-governance',
@@ -142,14 +182,6 @@ function buildReleaseGateChecks(workflowRun, artifactManifest, qaReports, diseas
         : 'Blocking evidence contradictions must be resolved before export.',
     },
   ];
-
-  if (hasRenderingGuide) {
-    gateChecks.push({
-      name: 'rendering-guide-secondary',
-      status: 'passed',
-      details: 'A rendering guide is attached as a secondary prompt/reference artifact.',
-    });
-  }
 
   return gateChecks;
 }
@@ -170,6 +202,8 @@ export function renderReleaseBundleIndex(releaseBundle, workflowRun, projectTitl
 - Exported at: ${releaseBundle.exportedAt}
 - Release verdict: ${releaseBundle.qualitySummary.releaseVerdict}
 - Rendering guide: ${releaseBundle.renderingGuideId ?? 'not-attached'}
+- Visual reference pack: ${releaseBundle.visualReferencePackId ?? 'not-attached'}
+- Render guide review decision: ${releaseBundle.renderGuideReviewDecisionId ?? 'not-attached'}
 - Rendered asset manifest: ${releaseBundle.renderedAssetManifestId ?? 'not-attached'}
 ${releaseBundle.evaluationSummary ? `- Eval run: ${releaseBundle.evaluationSummary.evalRunId}
 - Eval status: ${releaseBundle.evaluationSummary.allThresholdsMet ? 'passed' : 'failed'}
@@ -290,6 +324,8 @@ export class ExporterService {
       sourceEvidencePackLocation: '',
       renderingGuideId: options.artifactManifest.find((artifact) => artifact.artifactType === 'rendering-guide')?.artifactId,
       renderingGuideLocation: options.artifactManifest.find((artifact) => artifact.artifactType === 'rendering-guide')?.location,
+      visualReferencePackId: options.artifactManifest.find((artifact) => artifact.artifactType === 'visual-reference-pack')?.artifactId,
+      renderGuideReviewDecisionId: options.artifactManifest.find((artifact) => artifact.artifactType === 'render-guide-review-decision')?.artifactId,
       renderingGuideMarkdownDocumentId: undefined,
       renderingGuideMarkdownLocation: undefined,
       renderedAssetManifestId: options.artifactManifest.find((artifact) => artifact.artifactType === 'rendered-asset-manifest')?.artifactId,

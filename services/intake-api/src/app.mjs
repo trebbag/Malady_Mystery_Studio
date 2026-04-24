@@ -1,5 +1,7 @@
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { createId } from '../../../packages/shared-config/src/ids.mjs';
@@ -28,6 +30,10 @@ import {
   normalizeRenderingGuide,
   renderRenderingGuideMarkdown,
 } from '../../exporter/src/rendering-guide.mjs';
+import {
+  applyVisualReferencePackToRenderingGuide,
+  buildVisualReferencePack,
+} from '../../exporter/src/visual-reference-pack.mjs';
 import { createExporterService } from '../../exporter/src/service.mjs';
 import {
   applyWorkflowEvent,
@@ -75,6 +81,7 @@ import {
 import {
   buildReviewMessage,
   buildReviewQueueAnalyticsView,
+  buildReviewQueueAnalyticsSnapshot,
   buildReviewQueueView,
   buildReviewThread,
   buildWorkItem,
@@ -92,59 +99,57 @@ const SCHEMA_VERSION = '1.0.0';
 const WEB_ROUTE_ARTIFACT_GROUPS = Object.freeze({
   workbooks: ['story-workbook', 'narrative-review-trace', 'qa-report'],
   scenes: ['scene-card'],
-  panels: ['panel-plan', 'render-prompt', 'render-job', 'render-attempt', 'rendered-asset', 'rendered-asset-manifest', 'rendering-guide', 'lettering-map', 'qa-report'],
+  panels: ['panel-plan', 'render-prompt', 'render-job', 'render-attempt', 'rendered-asset', 'rendered-asset-manifest', 'rendering-guide', 'visual-reference-pack', 'render-guide-review-decision', 'lettering-map', 'qa-report'],
 });
 const MANUAL_RENDER_TARGET_PROFILE_ID = 'rtp.external-manual';
 const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
   areas: [
     {
       label: 'Foundation and local runtime',
-      percentComplete: 99,
+      percentComplete: 100,
     },
     {
       label: 'Local storage, backup, restore, and artifact retention',
-      percentComplete: 97,
+      percentComplete: 100,
     },
     {
       label: 'Open disease intake and research assembly',
-      percentComplete: 90,
+      percentComplete: 94,
     },
     {
       label: 'Clinical truth layer and governance',
-      percentComplete: 96,
+      percentComplete: 98,
     },
     {
       label: 'Workbook and guardrails',
-      percentComplete: 79,
+      percentComplete: 80,
     },
     {
       label: 'Scene, panel, and rendered-output flow',
-      percentComplete: 96,
+      percentComplete: 98,
     },
     {
       label: 'Review, eval, export, and queue operations',
-      percentComplete: 99,
+      percentComplete: 100,
     },
     {
       label: 'Frontend UX',
-      percentComplete: 97,
+      percentComplete: 99,
     },
     {
-      label: 'Optional managed deployment',
-      percentComplete: 20,
+      label: 'Local operations proof',
+      percentComplete: 98,
     },
   ],
   overall: {
-    localMvpReadiness: 98,
-    pilotReadiness: 76,
+    localMvpReadiness: 100,
+    pilotReadiness: 92,
   },
   remainingWork: [
-    'Run a deliberate real ChatGPT Image 2.0 / gpt-image-2 smoke with the configured local .env key; stub assets validate structure only.',
-    'Keep active app persistence on local SQLite plus filesystem object storage; managed database/blob cutover is deferred and optional.',
-    'Exercise local backup, reset, restore, and retention drills against realistic run volume before pilot use.',
-    'Broaden promoted governed source coverage and owner workflows beyond fixture-backed provisional packs.',
-    'Integrate external auth at the frontend or gateway layer when the app moves beyond local-open mode.',
-    'Add optional downstream publishing and distribution integrations after the rendered-panel export path is stable.',
+    'Run sustained full-story ChatGPT Image 2.0 / gpt-image-2 panel completion after billing limits are cleared; stub assets validate structure only.',
+    'Repeat pilot rehearsal with realistic run volume to prove queue trends, restore-smoke, local mirror verification, and rendered-panel QA under load.',
+    'Continue broadening governed source ownership workflows as reviewer volume and disease coverage grow.',
+    'Add downstream delivery integrations only after local mirrored bundles remain stable in repeated rehearsals.',
   ],
 });
 const CONTENT_TYPES = new Map([
@@ -273,6 +278,33 @@ function matchWorkflowRunRenderingGuidePath(pathname) {
  */
 function matchWorkflowRunRenderingGuideRegeneratePath(pathname) {
   const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/rendering-guide\/regenerate$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunRenderingGuideReviewPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/rendering-guide-review$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunRenderingGuideReviewDecisionPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/rendering-guide\/review-decisions$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunVisualReferencePackRegeneratePath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/visual-reference-pack\/regenerate$/);
   return match ? { runId: decodeURIComponent(match[1]) } : null;
 }
 
@@ -466,6 +498,30 @@ function isReviewQueueAnalyticsPath(pathname) {
  * @param {string} pathname
  * @returns {boolean}
  */
+function isReviewQueueAnalyticsHistoryPath(pathname) {
+  return pathname === '/api/v1/review-queue/analytics/history';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isReviewQueueAnalyticsSnapshotPath(pathname) {
+  return pathname === '/api/v1/review-queue/analytics/snapshots';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isReviewQueueProofScenarioPath(pathname) {
+  return pathname === '/api/v1/review-queue/proof-scenario';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
 function isLocalRuntimeViewPath(pathname) {
   return pathname === '/api/v1/local-runtime-view';
 }
@@ -474,8 +530,40 @@ function isLocalRuntimeViewPath(pathname) {
  * @param {string} pathname
  * @returns {boolean}
  */
+function isLocalOpsStatusPath(pathname) {
+  return pathname === '/api/v1/local-ops/status';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isLocalOpsRestoreSmokePath(pathname) {
+  return pathname === '/api/v1/local-ops/restore-smoke';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
 function isSourceCatalogPath(pathname) {
   return pathname === '/api/v1/source-catalog';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isSourceOpsPath(pathname) {
+  return pathname === '/api/v1/source-ops';
+}
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isSourceOpsCalendarPath(pathname) {
+  return pathname === '/api/v1/source-ops/calendar';
 }
 
 /**
@@ -601,56 +689,6 @@ function getReadinessSnapshot() {
 }
 
 /**
- * @param {any} platformRuntime
- * @returns {any}
- */
-function getManagedRuntimeReadiness(platformRuntime) {
-  const checks = [
-    {
-      name: 'metadata-store',
-      status: process.env.MANAGED_POSTGRES_URL ? 'configured' : 'blocked-awaiting-credentials',
-      current: platformRuntime.metadataStoreKind,
-      target: 'postgres',
-      requiredEnv: ['MANAGED_POSTGRES_URL'],
-    },
-    {
-      name: 'object-store',
-      status: process.env.AZURE_BLOB_CONNECTION_STRING ? 'configured' : 'blocked-awaiting-credentials',
-      current: platformRuntime.objectStorageKind,
-      target: 'azure-blob',
-      requiredEnv: ['AZURE_BLOB_CONNECTION_STRING'],
-    },
-    {
-      name: 'async-queue',
-      status: process.env.AZURE_SERVICE_BUS_CONNECTION_STRING ? 'configured' : 'blocked-awaiting-credentials',
-      current: platformRuntime.queueBackend,
-      target: 'azure-service-bus',
-      requiredEnv: ['AZURE_SERVICE_BUS_CONNECTION_STRING'],
-    },
-    {
-      name: 'restore-smoke',
-      status: process.env.MANAGED_POSTGRES_URL && process.env.AZURE_BLOB_CONNECTION_STRING
-        ? 'configured'
-        : 'blocked-awaiting-credentials',
-      current: 'dry-run-available',
-      target: 'managed-restore-smoke',
-      requiredEnv: ['MANAGED_POSTGRES_URL', 'AZURE_BLOB_CONNECTION_STRING'],
-    },
-  ];
-  const blockedCount = checks.filter((check) => check.status === 'blocked-awaiting-credentials').length;
-
-  return {
-    status: blockedCount === 0 ? 'configured' : 'ready-locally',
-    dryRunAvailable: true,
-    checks,
-    localOnlyCommands: [
-      'pnpm migrate:managed -- --dry-run',
-      'pnpm ops:restore-smoke -- --dry-run',
-    ],
-  };
-}
-
-/**
  * @param {{ dbFilePath: string, objectStoreDir: string }} storage
  * @returns {any}
  */
@@ -673,6 +711,182 @@ function getLocalStoragePolicy(storage) {
       'Generated artifacts, rendered panels, release bundles, evidence packs, and attachments stay in the filesystem object store.',
       'Postgres is not required for the active local app path and must not store binary files or large artifact payloads.',
     ],
+  };
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function safePathSegment(value) {
+  return value.replace(/[^A-Za-z0-9._-]+/g, '-');
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function timestampPathSegment(value) {
+  return safePathSegment(value.replace(/[:.]/g, '-'));
+}
+
+/**
+ * @param {string} rootDir
+ * @returns {{ scenarios: any[] }}
+ */
+function loadPilotProofScenarioManifest(rootDir) {
+  return JSON.parse(readFileSync(path.join(rootDir, 'data', 'pilot-proof-scenarios.json'), 'utf8'));
+}
+
+/**
+ * @param {string} filePath
+ * @returns {Promise<boolean>}
+ */
+async function pathExists(filePath) {
+  try {
+    await stat(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @param {string} directoryPath
+ * @returns {Promise<{ objectCount: number, byteLength: number }>}
+ */
+async function collectDirectoryStats(directoryPath) {
+  if (!(await pathExists(directoryPath))) {
+    return {
+      objectCount: 0,
+      byteLength: 0,
+    };
+  }
+
+  let objectCount = 0;
+  let byteLength = 0;
+  const entries = await readdir(directoryPath, {
+    withFileTypes: true,
+  });
+
+  for (const entry of entries) {
+    const entryPath = path.join(directoryPath, entry.name);
+
+    if (entry.isDirectory()) {
+      const childStats = await collectDirectoryStats(entryPath);
+      objectCount += childStats.objectCount;
+      byteLength += childStats.byteLength;
+      continue;
+    }
+
+    if (entry.isFile()) {
+      const fileStats = await stat(entryPath);
+      objectCount += 1;
+      byteLength += fileStats.size;
+    }
+  }
+
+  return {
+    objectCount,
+    byteLength,
+  };
+}
+
+/**
+ * @param {string} rootDir
+ * @param {PlatformStore} store
+ * @param {string} leafName
+ * @param {string} envName
+ * @returns {string}
+ */
+function resolveLocalOpsDirectory(rootDir, store, leafName, envName) {
+  const explicitPath = readNonEmptyEnv(process.env[envName]);
+
+  if (explicitPath) {
+    return path.isAbsolute(explicitPath) ? explicitPath : path.join(rootDir, explicitPath);
+  }
+
+  if (store.dbFilePath.startsWith(path.join(rootDir, 'var'))) {
+    return path.join(rootDir, 'var', leafName);
+  }
+
+  return path.join(path.dirname(store.dbFilePath), leafName);
+}
+
+/**
+ * @param {string} directoryPath
+ * @returns {Promise<{ path: string, createdAt: string } | null>}
+ */
+async function getLatestDirectoryEntry(directoryPath) {
+  if (!(await pathExists(directoryPath))) {
+    return null;
+  }
+
+  const entries = await readdir(directoryPath, {
+    withFileTypes: true,
+  });
+  const directories = await Promise.all(entries
+    .filter((entry) => entry.isDirectory())
+    .map(async (entry) => {
+      const entryPath = path.join(directoryPath, entry.name);
+      const entryStats = await stat(entryPath);
+
+      return {
+        path: entryPath,
+        createdAt: entryStats.mtime.toISOString(),
+        mtimeMs: entryStats.mtimeMs,
+      };
+    }));
+  directories.sort((left, right) => right.mtimeMs - left.mtimeMs);
+  const latest = directories.at(0);
+
+  return latest ? {
+    path: latest.path,
+    createdAt: latest.createdAt,
+  } : null;
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {string} tenantId
+ * @param {string} artifactType
+ * @returns {any | null}
+ */
+function getLatestTenantArtifact(store, tenantId, artifactType) {
+  return store.listArtifactsByType(artifactType, { tenantId }).at(0) ?? null;
+}
+
+/**
+ * @param {string} contents
+ * @returns {string}
+ */
+function sha256Hex(contents) {
+  return createHash('sha256').update(contents).digest('hex');
+}
+
+/**
+ * @param {Buffer} contents
+ * @returns {string}
+ */
+function sha256Buffer(contents) {
+  return createHash('sha256').update(contents).digest('hex');
+}
+
+/**
+ * @param {string} sourcePath
+ * @param {string} targetPath
+ * @returns {Promise<{ checksum: string, byteLength: number }>}
+ */
+async function copyFileWithChecksum(sourcePath, targetPath) {
+  const contents = await readFile(sourcePath);
+  await mkdir(path.dirname(targetPath), {
+    recursive: true,
+  });
+  await writeFile(targetPath, contents);
+
+  return {
+    checksum: createHash('sha256').update(contents).digest('hex'),
+    byteLength: contents.byteLength,
   };
 }
 
@@ -968,6 +1182,33 @@ function matchReleaseEvidencePackPath(pathname) {
 function matchReleaseBundleRenderingGuidePath(pathname) {
   const match = pathname.match(/^\/api\/v1\/release-bundles\/([^/]+)\/rendering-guide$/);
   return match ? { releaseId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ releaseId: string } | null}
+ */
+function matchReleaseBundleMirrorLocalPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/release-bundles\/([^/]+)\/mirror-local$/);
+  return match ? { releaseId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ releaseId: string } | null}
+ */
+function matchReleaseBundleVerifyLocalMirrorPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/release-bundles\/([^/]+)\/verify-local-mirror$/);
+  return match ? { releaseId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ manifestId: string } | null}
+ */
+function matchRenderedAssetManifestQaDecisionPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/rendered-asset-manifests\/([^/]+)\/qa-decisions$/);
+  return match ? { manifestId: decodeURIComponent(match[1]) } : null;
 }
 
 /**
@@ -1475,14 +1716,15 @@ function collectArtifactsForRun(store, workflowRun) {
  *   renderPrompts: any[],
  *   letteringMaps: any[],
  * }} options
- * @returns {{ workflowRun: any, renderingGuide: any, markdown: string }}
+ * @returns {{ workflowRun: any, renderingGuide: any, visualReferencePack: any, markdown: string }}
  */
 function generateAndPersistRenderingGuide(options) {
   if (!options.diseasePacket || !options.storyWorkbook || options.panelPlans.length === 0 || options.renderPrompts.length === 0 || options.letteringMaps.length === 0) {
     throw createHttpError(409, 'Rendering guide generation requires a disease packet, workbook, panel plans, render prompts, and lettering maps.');
   }
 
-  const renderingGuide = buildRenderingGuide({
+  const generatedAt = new Date().toISOString();
+  const draftRenderingGuide = buildRenderingGuide({
     workflowRun: options.workflowRun,
     project: options.project,
     diseasePacket: options.diseasePacket,
@@ -1491,8 +1733,18 @@ function generateAndPersistRenderingGuide(options) {
     panelPlans: options.panelPlans,
     renderPrompts: options.renderPrompts,
     letteringMaps: options.letteringMaps,
-    generatedAt: new Date().toISOString(),
+    generatedAt,
   });
+  const visualReferencePack = buildVisualReferencePack({
+    workflowRun: options.workflowRun,
+    renderingGuide: draftRenderingGuide,
+    generatedAt,
+  });
+  const renderingGuide = applyVisualReferencePackToRenderingGuide(
+    draftRenderingGuide,
+    visualReferencePack,
+    'not-reviewed',
+  );
   const markdown = renderRenderingGuideMarkdown(renderingGuide);
   const markdownDocument = options.store.saveDocument(
     'rendering-guide-markdown',
@@ -1508,16 +1760,27 @@ function generateAndPersistRenderingGuide(options) {
   renderingGuide.markdownDocumentId = renderingGuide.id;
   renderingGuide.markdownLocation = markdownDocument.location;
 
-  return {
-    workflowRun: persistArtifact(
-      options.store,
-      options.schemaRegistry,
-      options.workflowRun,
-      'rendering-guide',
-      'contracts/rendering-guide.schema.json',
-      renderingGuide,
-    ),
+  let workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    options.workflowRun,
+    'rendering-guide',
+    'contracts/rendering-guide.schema.json',
     renderingGuide,
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'visual-reference-pack',
+    'contracts/visual-reference-pack.schema.json',
+    visualReferencePack,
+  );
+
+  return {
+    workflowRun,
+    renderingGuide,
+    visualReferencePack,
     markdown,
   };
 }
@@ -1576,6 +1839,166 @@ function getLatestRenderedAssetManifest(store, workflowRun) {
 /**
  * @param {PlatformStore} store
  * @param {any} workflowRun
+ * @returns {any | null}
+ */
+function getLatestVisualReferencePack(store, workflowRun) {
+  return loadLatestArtifact(store, workflowRun, 'visual-reference-pack');
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {any | null}
+ */
+function getLatestRenderGuideReviewDecision(store, workflowRun) {
+  return loadLatestArtifact(store, workflowRun, 'render-guide-review-decision');
+}
+
+/**
+ * @param {any | null} renderingGuide
+ * @param {any | null} visualReferencePack
+ * @returns {string[]}
+ */
+function collectRenderingGuideWarnings(renderingGuide, visualReferencePack) {
+  const warnings = [
+    ...(visualReferencePack?.coverageSummary?.warnings ?? []),
+  ];
+
+  if (!renderingGuide) {
+    warnings.push('No rendering guide is available yet.');
+  }
+
+  if (!visualReferencePack) {
+    warnings.push('No visual reference pack is available yet.');
+  }
+
+  if (visualReferencePack?.coverageSummary?.presentCharacterItems < visualReferencePack?.coverageSummary?.requiredCharacterItems) {
+    warnings.push('Detective Cyto Kine and Deputy Pip must both have explicit visual reference items before rendering.');
+  }
+
+  if (visualReferencePack?.coverageSummary?.missingPanelReferenceCount > 0) {
+    warnings.push(`${visualReferencePack.coverageSummary.missingPanelReferenceCount} panel(s) are missing visual reference item coverage.`);
+  }
+
+  return [...new Set(warnings)];
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {{ approved: boolean, status: string, renderingGuide: any | null, visualReferencePack: any | null, reviewDecision: any | null, renderDisabledReason: string, guideWarnings: string[] }}
+ */
+function getRenderGuideGateState(store, workflowRun) {
+  const renderingGuide = loadLatestArtifact(store, workflowRun, 'rendering-guide');
+  const visualReferencePack = getLatestVisualReferencePack(store, workflowRun);
+  const reviewDecision = getLatestRenderGuideReviewDecision(store, workflowRun);
+  const guideWarnings = collectRenderingGuideWarnings(renderingGuide, visualReferencePack);
+
+  if (!renderingGuide) {
+    return {
+      approved: false,
+      status: 'missing-guide',
+      renderingGuide,
+      visualReferencePack,
+      reviewDecision,
+      renderDisabledReason: 'Rendering is disabled until the rendering guide is generated.',
+      guideWarnings,
+    };
+  }
+
+  if (!visualReferencePack) {
+    return {
+      approved: false,
+      status: 'missing-reference-pack',
+      renderingGuide,
+      visualReferencePack,
+      reviewDecision,
+      renderDisabledReason: 'Rendering is disabled until the visual reference pack is generated.',
+      guideWarnings,
+    };
+  }
+
+  if (!reviewDecision) {
+    return {
+      approved: false,
+      status: 'not-reviewed',
+      renderingGuide,
+      visualReferencePack,
+      reviewDecision,
+      renderDisabledReason: 'Rendering is disabled until the full guide and visual reference pack are reviewed and approved.',
+      guideWarnings,
+    };
+  }
+
+  const decisionMatchesLatest = reviewDecision.renderingGuideId === renderingGuide.id
+    && reviewDecision.visualReferencePackId === visualReferencePack.id
+    && renderingGuide.visualReferencePackId === visualReferencePack.id
+    && visualReferencePack.renderingGuideId === renderingGuide.id;
+
+  if (!decisionMatchesLatest || renderingGuide.reviewStatus === 'stale' || visualReferencePack.approvalStatus === 'stale') {
+    return {
+      approved: false,
+      status: 'stale',
+      renderingGuide,
+      visualReferencePack,
+      reviewDecision,
+      renderDisabledReason: 'Rendering is disabled because the latest guide or visual reference pack changed after approval.',
+      guideWarnings,
+    };
+  }
+
+  if (reviewDecision.decision !== 'approved') {
+    return {
+      approved: false,
+      status: reviewDecision.decision,
+      renderingGuide,
+      visualReferencePack,
+      reviewDecision,
+      renderDisabledReason: `Rendering is disabled because the latest guide review decision is ${reviewDecision.decision}.`,
+      guideWarnings,
+    };
+  }
+
+  const approved = renderingGuide.reviewStatus === 'approved' && visualReferencePack.approvalStatus === 'approved';
+
+  return {
+    approved,
+    status: approved ? 'approved' : 'stale',
+    renderingGuide,
+    visualReferencePack,
+    reviewDecision,
+    renderDisabledReason: approved
+      ? ''
+      : 'Rendering is disabled because the guide and visual reference pack approval state is not current.',
+    guideWarnings,
+  };
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {{ renderingGuide: any, visualReferencePack: any, reviewDecision: any }}
+ */
+function assertRenderGuideApprovedForRender(store, workflowRun) {
+  const gateState = getRenderGuideGateState(store, workflowRun);
+
+  if (!gateState.approved) {
+    throw createHttpError(409, gateState.renderDisabledReason, {
+      gateStatus: gateState.status,
+      guideWarnings: gateState.guideWarnings,
+    });
+  }
+
+  return {
+    renderingGuide: gateState.renderingGuide,
+    visualReferencePack: gateState.visualReferencePack,
+    reviewDecision: gateState.reviewDecision,
+  };
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
  * @returns {number}
  */
 function getActiveWorkItemCount(store, workflowRun) {
@@ -1626,7 +2049,7 @@ function collectReleaseArtifactManifest(store, workflowRun) {
         checksum: artifactMetadata.checksum,
         contentType: artifactMetadata.contentType,
         retentionClass: artifactMetadata.retentionClass,
-        ...(artifactReference.artifactType === 'rendered-asset-manifest'
+        ...(['rendered-asset-manifest', 'rendering-guide', 'visual-reference-pack', 'render-guide-review-decision'].includes(artifactReference.artifactType)
           ? { payload: store.getArtifact(artifactReference.artifactType, artifactReference.artifactId) }
           : {}),
       };
@@ -1666,6 +2089,200 @@ function regenerateRenderingGuideForRun(options) {
     renderPrompts,
     letteringMaps,
   });
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any }} options
+ * @returns {{ workflowRun: any, renderingGuide: any, visualReferencePack: any, markdown: string }}
+ */
+function regenerateVisualReferencePackForRun(options) {
+  const guidePayload = loadRenderingGuidePayload({
+    store: options.store,
+    workflowRun: options.workflowRun,
+  });
+
+  if (!guidePayload) {
+    throw createHttpError(409, 'A rendering guide must exist before the visual reference pack can be regenerated.');
+  }
+
+  const generatedAt = new Date().toISOString();
+  const visualReferencePack = buildVisualReferencePack({
+    workflowRun: options.workflowRun,
+    renderingGuide: guidePayload.renderingGuide,
+    generatedAt,
+  });
+  const renderingGuide = applyVisualReferencePackToRenderingGuide(
+    {
+      ...guidePayload.renderingGuide,
+      reviewStatus: 'not-reviewed',
+    },
+    visualReferencePack,
+    'not-reviewed',
+  );
+  const markdown = renderRenderingGuideMarkdown(renderingGuide);
+  const markdownDocument = options.store.saveDocument(
+    'rendering-guide-markdown',
+    renderingGuide.markdownDocumentId ?? renderingGuide.id,
+    markdown,
+    {
+      tenantId: options.workflowRun.tenantId,
+      contentType: 'text/markdown',
+      extension: 'md',
+      retentionClass: 'approved-artifact',
+    },
+  );
+  renderingGuide.markdownDocumentId = renderingGuide.markdownDocumentId ?? renderingGuide.id;
+  renderingGuide.markdownLocation = markdownDocument.location;
+  assertSchema(options.schemaRegistry, 'contracts/rendering-guide.schema.json', renderingGuide);
+  options.store.saveArtifact('rendering-guide', renderingGuide.id, renderingGuide, {
+    tenantId: options.workflowRun.tenantId,
+  });
+  let workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    options.workflowRun,
+    'visual-reference-pack',
+    'contracts/visual-reference-pack.schema.json',
+    visualReferencePack,
+  );
+  workflowRun = ensureRenderGuideReviewWorkItem({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowRun: saveWorkflowRunRecord(
+      options.store,
+      options.schemaRegistry,
+      withPauseReason(workflowRun, 'render-guide-review-required'),
+    ),
+  });
+
+  return {
+    workflowRun,
+    renderingGuide,
+    visualReferencePack,
+    markdown,
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, actor: any, payload: any }} options
+ * @returns {{ workflowRun: any, decision: any, renderingGuide: any, visualReferencePack: any }}
+ */
+function submitRenderGuideReviewDecision(options) {
+  if (!isRecord(options.payload)) {
+    throw createHttpError(400, 'Render guide review decision payload must be an object.');
+  }
+
+  if (!['approved', 'changes-requested', 'rejected'].includes(String(options.payload.decision))) {
+    throw createHttpError(400, 'Render guide review decision must be approved, changes-requested, or rejected.');
+  }
+
+  const gateState = getRenderGuideGateState(options.store, options.workflowRun);
+
+  if (!gateState.renderingGuide || !gateState.visualReferencePack) {
+    throw createHttpError(409, 'A rendering guide and visual reference pack are required before review decisions can be recorded.');
+  }
+
+  const decisionValue = /** @type {'approved' | 'changes-requested' | 'rejected'} */ (options.payload.decision);
+  const timestamp = new Date().toISOString();
+  const decision = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('rgd'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    renderingGuideId: gateState.renderingGuide.id,
+    visualReferencePackId: gateState.visualReferencePack.id,
+    decision: decisionValue,
+    reviewerId: options.actor.id,
+    reviewerRoles: options.actor.roles ?? [],
+    ...(typeof options.payload.comment === 'string' && options.payload.comment.trim()
+      ? { comment: options.payload.comment.trim() }
+      : {}),
+    ...(Array.isArray(options.payload.requiredChanges)
+      ? { requiredChanges: options.payload.requiredChanges.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()) }
+      : {}),
+    createdAt: timestamp,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/render-guide-review-decision.schema.json', decision);
+  const reviewStatus = decisionValue;
+  const renderingGuide = {
+    ...gateState.renderingGuide,
+    reviewStatus,
+  };
+  const markdown = renderRenderingGuideMarkdown(renderingGuide);
+  const markdownDocument = options.store.saveDocument(
+    'rendering-guide-markdown',
+    renderingGuide.markdownDocumentId ?? renderingGuide.id,
+    markdown,
+    {
+      tenantId: options.workflowRun.tenantId,
+      contentType: 'text/markdown',
+      extension: 'md',
+      retentionClass: 'approved-artifact',
+    },
+  );
+  renderingGuide.markdownDocumentId = renderingGuide.markdownDocumentId ?? renderingGuide.id;
+  renderingGuide.markdownLocation = markdownDocument.location;
+  const visualReferencePack = {
+    ...gateState.visualReferencePack,
+    approvalStatus: reviewStatus,
+    items: (gateState.visualReferencePack.items ?? []).map((/** @type {any} */ item) => ({
+      ...item,
+      approvalStatus: decisionValue === 'approved' ? 'approved' : decisionValue,
+    })),
+  };
+  assertSchema(options.schemaRegistry, 'contracts/rendering-guide.schema.json', renderingGuide);
+  assertSchema(options.schemaRegistry, 'contracts/visual-reference-pack.schema.json', visualReferencePack);
+  options.store.saveArtifact('rendering-guide', renderingGuide.id, renderingGuide, {
+    tenantId: options.workflowRun.tenantId,
+  });
+  options.store.saveArtifact('visual-reference-pack', visualReferencePack.id, visualReferencePack, {
+    tenantId: options.workflowRun.tenantId,
+  });
+  let workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    options.workflowRun,
+    'render-guide-review-decision',
+    'contracts/render-guide-review-decision.schema.json',
+    decision,
+    decisionValue === 'approved' ? 'approved' : 'rejected',
+  );
+  if (decisionValue === 'approved') {
+    workflowRun = completeRenderGuideReviewWorkItems({
+      store: options.store,
+      schemaRegistry: options.schemaRegistry,
+      workflowRun,
+      visualReferencePackId: visualReferencePack.id,
+    });
+  }
+  workflowRun = saveWorkflowRunRecord(
+    options.store,
+    options.schemaRegistry,
+    withPauseReason(workflowRun, decisionValue === 'approved' ? undefined : 'render-guide-review-required'),
+  );
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'rendering-guide.review',
+    'workflow-run',
+    workflowRun.id,
+    'success',
+    `Rendering guide review decision recorded as ${decisionValue}.`,
+    {
+      renderingGuideId: renderingGuide.id,
+      visualReferencePackId: visualReferencePack.id,
+      decisionId: decision.id,
+      decision: decisionValue,
+    },
+  );
+
+  return {
+    workflowRun,
+    decision,
+    renderingGuide,
+    visualReferencePack,
+  };
 }
 
 /**
@@ -2069,7 +2686,7 @@ function persistClinicalArtifacts(options) {
 }
 
 /**
- * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, actor: any, canonicalDiseaseName: string, sourceId: string, decision: string, reason?: string, notes?: string[] }} options
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, actor: any, canonicalDiseaseName: string, sourceId: string, decision: string, reason?: string, notes?: string[], supersededBy?: string }} options
  * @returns {any}
  */
 function saveSourceGovernanceDecision(options) {
@@ -2091,6 +2708,10 @@ function saveSourceGovernanceDecision(options) {
 
   if (Array.isArray(options.notes) && options.notes.length > 0) {
     governanceDecision.notes = options.notes;
+  }
+
+  if (typeof options.supersededBy === 'string' && options.supersededBy) {
+    governanceDecision.supersededBy = options.supersededBy;
   }
 
   assertSchema(options.schemaRegistry, 'contracts/source-governance-decision.schema.json', governanceDecision);
@@ -2431,6 +3052,96 @@ function ensureKnowledgePackReviewWorkItem(options) {
       'provisional-knowledge-pack-review-required',
     ),
   );
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any }} options
+ * @returns {any}
+ */
+function ensureRenderGuideReviewWorkItem(options) {
+  const renderingGuide = loadLatestArtifact(options.store, options.workflowRun, 'rendering-guide');
+  const visualReferencePack = loadLatestArtifact(options.store, options.workflowRun, 'visual-reference-pack');
+
+  if (!renderingGuide || !visualReferencePack) {
+    return options.workflowRun;
+  }
+
+  const existingWorkItem = listWorkItemsForRun(options.store, options.workflowRun).find((workItem) => (
+    workItem.subjectType === 'visual-reference-pack'
+    && workItem.subjectId === visualReferencePack.id
+    && workItem.status !== 'completed'
+    && workItem.status !== 'cancelled'
+  ));
+  const workItem = buildWorkItem({
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    workType: 'run-review',
+    queueName: 'review-queue',
+    subjectType: 'visual-reference-pack',
+    subjectId: visualReferencePack.id,
+    reason: 'render-guide-review-required',
+    priority: 'high',
+    originType: 'rendering-guide',
+    originId: renderingGuide.id,
+    notes: [
+      'Rendering is blocked until the full rendering guide, Cyto/Pip locks, recurring references, panel prompts, lettering separation, and medical traceability are approved.',
+    ],
+    existingWorkItem,
+  });
+  assertSchema(options.schemaRegistry, 'contracts/work-item.schema.json', workItem);
+  options.store.saveArtifact('work-item', workItem.id, workItem, {
+    tenantId: options.workflowRun.tenantId,
+  });
+
+  return saveWorkflowRunRecord(
+    options.store,
+    options.schemaRegistry,
+    withPauseReason(
+      upsertArtifactReference(options.workflowRun, {
+        artifactType: 'work-item',
+        artifactId: workItem.id,
+        status: 'generated',
+      }),
+      'render-guide-review-required',
+    ),
+  );
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, visualReferencePackId: string }} options
+ * @returns {any}
+ */
+function completeRenderGuideReviewWorkItems(options) {
+  let workflowRun = options.workflowRun;
+  const timestamp = new Date().toISOString();
+
+  for (const workItem of listWorkItemsForRun(options.store, workflowRun)) {
+    if (workItem.subjectType !== 'visual-reference-pack' || workItem.subjectId !== options.visualReferencePackId) {
+      continue;
+    }
+
+    if (workItem.status === 'completed' || workItem.status === 'cancelled') {
+      continue;
+    }
+
+    const updatedWorkItem = {
+      ...workItem,
+      status: 'completed',
+      completedAt: timestamp,
+      updatedAt: timestamp,
+    };
+    assertSchema(options.schemaRegistry, 'contracts/work-item.schema.json', updatedWorkItem);
+    options.store.saveArtifact('work-item', updatedWorkItem.id, updatedWorkItem, {
+      tenantId: workflowRun.tenantId,
+    });
+    workflowRun = upsertArtifactReference(workflowRun, {
+      artifactType: 'work-item',
+      artifactId: updatedWorkItem.id,
+      status: 'generated',
+    });
+  }
+
+  return workflowRun;
 }
 
 /**
@@ -2807,13 +3518,13 @@ function continueStoryPipeline(options) {
     );
   }
 
-  return transitionWorkflow(
+  const reviewPausedRun = transitionWorkflow(
     options.store,
     options.schemaRegistry,
     options.workflowSpec,
     workflowRun,
     {
-      eventType: 'STAGE_PASSED',
+      eventType: 'REQUEST_REVIEW',
       actor: {
         type: 'system',
         id: 'render-prep-stage',
@@ -2822,10 +3533,20 @@ function continueStoryPipeline(options) {
         renderPromptIds: visualPlanningPackage.renderPrompts.map((/** @type {{ id: string }} */ renderPrompt) => renderPrompt.id),
         letteringMapIds: visualPlanningPackage.letteringMaps.map((/** @type {{ id: string }} */ letteringMap) => letteringMap.id),
         qaReportId: visualPlanningPackage.qaReport.id,
+        pauseReason: 'render-guide-review-required',
       },
-      notes: `Generated ${visualPlanningPackage.renderPrompts.length} render prompts with separate lettering maps and queued the run for panel rendering.`,
+      notes: `Generated ${visualPlanningPackage.renderPrompts.length} render prompts with separate lettering maps. Rendering is paused until the full rendering guide and visual reference pack are reviewed and approved.`,
     },
   );
+  return ensureRenderGuideReviewWorkItem({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowRun: saveWorkflowRunRecord(
+      options.store,
+      options.schemaRegistry,
+      withPauseReason(reviewPausedRun, 'render-guide-review-required'),
+    ),
+  });
 }
 
 /**
@@ -3851,6 +4572,7 @@ function buildRenderingGuideViewPayload(options) {
   const renderedAssets = listTenantArtifactsByType(options.store, 'rendered-asset', options.workflowRun.tenantId)
     .filter((renderedAsset) => renderedAsset.workflowRunId === options.workflowRun.id);
   const latestRenderedAssetManifest = loadLatestArtifact(options.store, options.workflowRun, 'rendered-asset-manifest');
+  const gateState = getRenderGuideGateState(options.store, options.workflowRun);
 
   return createRenderingGuideView({
     runId: options.workflowRun.id,
@@ -3861,6 +4583,11 @@ function buildRenderingGuideViewPayload(options) {
       latestRenderedAssetManifestId: latestRenderedAssetManifest?.id,
       attachmentMode: renderedAssets.length > 0 ? 'external-art-attached' : 'guide-only',
     },
+    visualReferencePack: gateState.visualReferencePack,
+    reviewDecision: gateState.reviewDecision,
+    gateStatus: gateState.status,
+    renderDisabledReason: gateState.renderDisabledReason,
+    guideWarnings: gateState.guideWarnings,
   });
 }
 
@@ -4311,7 +5038,9 @@ function ensureClinicalGovernanceTasks(options) {
       || sourceRecord.approvalStatus === 'suspended'
       || sourceRecord.contradictionStatus === 'blocking'
       || sourceRecord.contradictionStatus === 'monitor'
-      || typeof sourceRecord.supersededBy === 'string';
+      || typeof sourceRecord.supersededBy === 'string'
+      || !sourceRecord.primaryOwnerRole
+      || !sourceRecord.backupOwnerRole;
 
     if (!requiresRefresh) {
       continue;
@@ -4333,9 +5062,11 @@ function ensureClinicalGovernanceTasks(options) {
         ? 'Source is suspended and blocks release.'
         : (typeof sourceRecord.supersededBy === 'string'
           ? `Source has been superseded by ${sourceRecord.supersededBy}.`
-          : (sourceRecord.contradictionStatus === 'blocking' || sourceRecord.contradictionStatus === 'monitor'
-            ? `Source has contradiction status ${sourceRecord.contradictionStatus}.`
-            : `Source freshness state is ${sourceRecord.freshnessState}.`)),
+          : (!sourceRecord.primaryOwnerRole || !sourceRecord.backupOwnerRole
+            ? 'Source ownership is incomplete.'
+            : (sourceRecord.contradictionStatus === 'blocking' || sourceRecord.contradictionStatus === 'monitor'
+              ? `Source has contradiction status ${sourceRecord.contradictionStatus}.`
+              : `Source freshness state is ${sourceRecord.freshnessState}.`))),
     });
   }
 }
@@ -4397,6 +5128,861 @@ function buildSourceCatalogPayload(store, clinicalService, tenantId) {
 }
 
 /**
+ * @param {{ store: PlatformStore, clinicalService: any, tenantId: string, searchParams?: URLSearchParams }} options
+ * @returns {any}
+ */
+function buildSourceOpsView(options) {
+  const filters = {
+    disease: options.searchParams?.get('disease') ?? '',
+    freshnessState: options.searchParams?.get('freshnessState') ?? '',
+    approvalStatus: options.searchParams?.get('approvalStatus') ?? '',
+    ownerRole: options.searchParams?.get('ownerRole') ?? '',
+    openRefreshOnly: options.searchParams?.get('openRefreshOnly') === 'true',
+  };
+  const allSourceRecords = buildSourceCatalogPayload(options.store, options.clinicalService, options.tenantId);
+  const refreshTasks = listTenantArtifactsByType(options.store, 'source-refresh-task', options.tenantId);
+  const workItems = listTenantArtifactsByType(options.store, 'work-item', options.tenantId)
+    .filter((workItem) => workItem.workType === 'source-refresh');
+  const sourceHasOpenRefresh = new Set(refreshTasks
+    .filter((task) => task.status !== 'completed' && task.status !== 'cancelled')
+    .map((task) => task.sourceId));
+  const visibleSourceRecords = allSourceRecords.filter((sourceRecord) => {
+    if (filters.disease && String(sourceRecord.canonicalDiseaseName ?? '').toLowerCase() !== filters.disease.toLowerCase()) {
+      return false;
+    }
+
+    if (filters.freshnessState && sourceRecord.freshnessState !== filters.freshnessState) {
+      return false;
+    }
+
+    if (filters.approvalStatus && sourceRecord.approvalStatus !== filters.approvalStatus) {
+      return false;
+    }
+
+    if (filters.ownerRole) {
+      const ownerNeedle = filters.ownerRole.toLowerCase();
+      const primaryOwnerRole = String(sourceRecord.primaryOwnerRole ?? '').toLowerCase();
+      const backupOwnerRole = String(sourceRecord.backupOwnerRole ?? '').toLowerCase();
+
+      if (!primaryOwnerRole.includes(ownerNeedle) && !backupOwnerRole.includes(ownerNeedle)) {
+        return false;
+      }
+    }
+
+    if (filters.openRefreshOnly && !sourceHasOpenRefresh.has(sourceRecord.id)) {
+      return false;
+    }
+
+    return true;
+  });
+  const visibleSourceIds = new Set(visibleSourceRecords.map((sourceRecord) => sourceRecord.id));
+  const visibleRefreshTasks = refreshTasks.filter((task) => visibleSourceIds.has(task.sourceId));
+  const visibleWorkItems = workItems.filter((workItem) => visibleSourceIds.has(workItem.subjectId));
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    filters,
+    summary: {
+      visibleSourceCount: visibleSourceRecords.length,
+      staleSourceCount: visibleSourceRecords.filter((sourceRecord) => sourceRecord.freshnessState === 'stale').length,
+      blockedSourceCount: visibleSourceRecords.filter((sourceRecord) => sourceRecord.freshnessState === 'blocked' || sourceRecord.contradictionStatus === 'blocking').length,
+      suspendedSourceCount: visibleSourceRecords.filter((sourceRecord) => sourceRecord.approvalStatus === 'suspended').length,
+      ownerlessSourceCount: visibleSourceRecords.filter((sourceRecord) => !sourceRecord.primaryOwnerRole || !sourceRecord.backupOwnerRole).length,
+      openRefreshTaskCount: visibleRefreshTasks.filter((task) => task.status !== 'completed' && task.status !== 'cancelled').length,
+      impactedRunCount: visibleSourceRecords.reduce((total, sourceRecord) => total + Number(sourceRecord.impactedRunCount ?? 0), 0),
+      promotedDiseaseCount: new Set(Object.values(options.clinicalService.library ?? {})
+        .filter((knowledgePack) => knowledgePack.packStatus === 'promoted')
+        .map((knowledgePack) => knowledgePack.canonicalDiseaseName)).size,
+    },
+    sourceRecords: visibleSourceRecords,
+    refreshTasks: visibleRefreshTasks,
+    workItems: visibleWorkItems,
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, clinicalService: any, tenantId: string }} options
+ * @returns {any}
+ */
+function buildSourceRefreshCalendar(options) {
+  const generatedAt = new Date().toISOString();
+  const allSourceRecords = buildSourceCatalogPayload(options.store, options.clinicalService, options.tenantId);
+  const workItems = listTenantArtifactsByType(options.store, 'work-item', options.tenantId)
+    .filter((workItem) => workItem.workType === 'source-refresh' && workItem.status !== 'completed' && workItem.status !== 'cancelled');
+  const referenceTime = new Date(generatedAt).getTime();
+  const items = allSourceRecords.map((sourceRecord) => {
+    const nextReviewDueAt = sourceRecord.nextReviewDueAt ?? generatedAt;
+    const daysUntilDue = Math.ceil((new Date(nextReviewDueAt).getTime() - referenceTime) / (1000 * 60 * 60 * 24));
+    const openRefreshWorkItemIds = workItems
+      .filter((workItem) => workItem.subjectId === sourceRecord.id)
+      .map((workItem) => workItem.id);
+    const ownerless = !sourceRecord.primaryOwnerRole || !sourceRecord.backupOwnerRole;
+    const bucket = ownerless
+      ? 'ownerless'
+      : (sourceRecord.freshnessState === 'blocked' || sourceRecord.approvalStatus === 'suspended'
+        ? 'blocked'
+        : (daysUntilDue < 0
+          ? 'overdue'
+          : (daysUntilDue <= 30
+            ? 'due-30-days'
+            : (daysUntilDue <= 90 ? 'due-90-days' : 'future'))));
+
+    return {
+      sourceId: sourceRecord.id,
+      sourceLabel: sourceRecord.sourceLabel,
+      canonicalDiseaseName: sourceRecord.canonicalDiseaseName,
+      primaryOwnerRole: sourceRecord.primaryOwnerRole ?? '',
+      backupOwnerRole: sourceRecord.backupOwnerRole ?? '',
+      freshnessState: sourceRecord.freshnessState,
+      nextReviewDueAt,
+      daysUntilDue,
+      bucket,
+      openRefreshWorkItemIds,
+    };
+  }).sort((left, right) => left.daysUntilDue - right.daysUntilDue || left.canonicalDiseaseName.localeCompare(right.canonicalDiseaseName));
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    tenantId: options.tenantId,
+    generatedAt,
+    summary: {
+      totalSourceCount: items.length,
+      dueSoonCount: items.filter((item) => item.bucket === 'due-30-days' || item.bucket === 'due-90-days').length,
+      overdueCount: items.filter((item) => item.bucket === 'overdue').length,
+      ownerlessCount: items.filter((item) => item.bucket === 'ownerless').length,
+      openRefreshWorkCount: items.reduce((total, item) => total + item.openRefreshWorkItemIds.length, 0),
+    },
+    items,
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, clinicalService: any, actor: any, rootDir: string }} options
+ * @returns {{ workItems: any[], thread: any, message: any, notifications: any[], scenarioCases: any[] }}
+ */
+function createQueueProofScenario(options) {
+  const workflowRun = options.store.listWorkflowRuns()
+    .find((candidate) => getTenantId(candidate) === options.actor.tenantId);
+
+  if (!workflowRun) {
+    throw createHttpError(409, 'Create at least one workflow run before seeding a queue proof scenario.');
+  }
+
+  const clinicalPackage = loadClinicalPackageForRun({
+    store: options.store,
+    workflowRun,
+    clinicalService: options.clinicalService,
+  });
+  const sourceRecord = clinicalPackage?.sourceRecords?.[0] ?? {
+    id: `source.${workflowRun.id}`,
+    sourceLabel: 'Run source placeholder',
+    canonicalDiseaseName: workflowRun.input?.diseaseName ?? 'Unknown disease',
+    freshnessState: 'aging',
+  };
+  const evidenceRecord = clinicalPackage?.evidenceRecords?.[0] ?? {
+    claimId: `claim.${workflowRun.id}`,
+  };
+  const proofScenarioManifest = loadPilotProofScenarioManifest(options.rootDir);
+  const proofItems = proofScenarioManifest.scenarios.map((scenario) => ({
+    ...scenario,
+    subjectId: scenario.subjectType === 'source-record'
+      ? sourceRecord.id
+      : (scenario.subjectType === 'evidence-record' ? evidenceRecord.claimId : workflowRun.id),
+    notes: Array.isArray(scenario.notes)
+      ? scenario.notes
+      : [`Proof scenario: ${scenario.label ?? scenario.id}.`],
+  }));
+  const workItems = proofItems.map((item) => {
+    const workItem = buildWorkItem({
+      tenantId: workflowRun.tenantId,
+      workflowRunId: workflowRun.id,
+      assignedActorId: options.actor.id,
+      assignedActorDisplayName: options.actor.displayName,
+      assignedActorRoles: options.actor.roles,
+      metadata: {
+        canonicalDiseaseName: clinicalPackage?.diseasePacket?.canonicalDiseaseName ?? workflowRun.input?.diseaseName,
+        proofScenario: true,
+        proofScenarioId: item.id,
+        proofScenarioLabel: item.label,
+      },
+      ...item,
+    });
+    assertSchema(options.schemaRegistry, 'contracts/work-item.schema.json', workItem);
+    options.store.saveArtifact('work-item', workItem.id, workItem, {
+      tenantId: workflowRun.tenantId,
+    });
+    return workItem;
+  });
+  const thread = buildReviewThread({
+    tenantId: workflowRun.tenantId,
+    workflowRunId: workflowRun.id,
+    scopeType: 'run',
+    scopeId: workflowRun.id,
+    title: 'Local queue proof thread',
+    actor: options.actor,
+  });
+  assertSchema(options.schemaRegistry, 'contracts/review-thread.schema.json', thread);
+  options.store.saveArtifact('review-thread', thread.id, thread, {
+    tenantId: workflowRun.tenantId,
+  });
+  const message = buildReviewMessage({
+    tenantId: workflowRun.tenantId,
+    workflowRunId: workflowRun.id,
+    threadId: thread.id,
+    body: '@local-operator Queue proof scenario seeded: promoted-pack review, provisional-pack promotion, source refresh, render retry, and local ops drill work are now visible.',
+    actor: options.actor,
+    mentions: ['local-operator'],
+  });
+  assertSchema(options.schemaRegistry, 'contracts/review-message.schema.json', message);
+  options.store.saveArtifact('review-message', message.id, message, {
+    tenantId: workflowRun.tenantId,
+  });
+  const notifications = createMentionNotifications({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
+    workflowRun,
+    actor: options.actor,
+    threadId: thread.id,
+    workItemId: workItems[0]?.id,
+    subjectType: 'workflow-run',
+    subjectId: workflowRun.id,
+    body: message.body,
+    mentions: ['local-operator'],
+  });
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'review-queue.proof-scenario',
+    'workflow-run',
+    workflowRun.id,
+    'success',
+    'Seeded local queue proof scenario.',
+    {
+      workItemIds: workItems.map((workItem) => workItem.id),
+      threadId: thread.id,
+      messageId: message.id,
+    },
+  );
+
+  return {
+    workItems,
+    thread,
+    message,
+    notifications,
+    scenarioCases: proofScenarioManifest.scenarios,
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, rootDir: string, tenantId: string }} options
+ * @returns {Promise<any>}
+ */
+async function buildLocalOpsStatus(options) {
+  const backupRootDir = resolveLocalOpsDirectory(options.rootDir, options.store, 'backups', 'LOCAL_BACKUP_DIR');
+  const deliveryRootDir = resolveLocalOpsDirectory(options.rootDir, options.store, 'delivery', 'LOCAL_DELIVERY_DIR');
+  const storageStats = await collectDirectoryStats(options.store.objectStoreDir);
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    tenantId: options.tenantId,
+    storage: {
+      mode: 'local-only',
+      dbFilePath: options.store.dbFilePath,
+      objectStoreDir: options.store.objectStoreDir,
+      backupRootDir,
+      deliveryRootDir,
+      objectCount: storageStats.objectCount,
+      byteLength: storageStats.byteLength,
+    },
+    latestBackup: await getLatestDirectoryEntry(backupRootDir),
+    latestRestoreSmoke: getLatestTenantArtifact(options.store, options.tenantId, 'restore-smoke-result'),
+    latestDeliveryMirror: getLatestTenantArtifact(options.store, options.tenantId, 'local-delivery-mirror'),
+    latestDeliveryVerification: getLatestTenantArtifact(options.store, options.tenantId, 'local-delivery-verification'),
+    opsDrillWorkItems: listTenantArtifactsByType(options.store, 'work-item', options.tenantId)
+      .filter((workItem) => workItem.workType === 'ops-drill'),
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, actor: any, rootDir: string }} options
+ * @returns {Promise<any>}
+ */
+async function runLocalRestoreSmoke(options) {
+  const startedAt = new Date().toISOString();
+  const slug = timestampPathSegment(startedAt);
+  const backupRootDir = resolveLocalOpsDirectory(options.rootDir, options.store, 'backups', 'LOCAL_BACKUP_DIR');
+  const opsRootDir = resolveLocalOpsDirectory(options.rootDir, options.store, 'ops', 'LOCAL_OPS_DIR');
+  const backupDir = path.join(backupRootDir, `restore-smoke-${slug}`);
+  const scratchDir = path.join(opsRootDir, 'restore-smoke', `restore-smoke-${slug}`);
+  const checks = [];
+
+  await rm(scratchDir, {
+    recursive: true,
+    force: true,
+  });
+  await mkdir(path.join(backupDir, 'db'), {
+    recursive: true,
+  });
+  await mkdir(scratchDir, {
+    recursive: true,
+  });
+
+  let dbFileCopied = false;
+
+  if (await pathExists(options.store.dbFilePath)) {
+    await cp(options.store.dbFilePath, path.join(backupDir, 'db', path.basename(options.store.dbFilePath)));
+    dbFileCopied = true;
+    checks.push({
+      name: 'sqlite-backup-copy',
+      status: 'passed',
+      details: `Copied ${options.store.dbFilePath}.`,
+    });
+  } else {
+    checks.push({
+      name: 'sqlite-backup-copy',
+      status: 'failed',
+      details: `SQLite database was not found at ${options.store.dbFilePath}.`,
+    });
+  }
+
+  for (const suffix of ['-wal', '-shm']) {
+    const sidecarPath = `${options.store.dbFilePath}${suffix}`;
+
+    if (await pathExists(sidecarPath)) {
+      await cp(sidecarPath, path.join(backupDir, 'db', path.basename(sidecarPath)));
+    }
+  }
+
+  if (await pathExists(options.store.objectStoreDir)) {
+    await cp(options.store.objectStoreDir, path.join(backupDir, 'object-store'), {
+      recursive: true,
+    });
+    checks.push({
+      name: 'object-store-backup-copy',
+      status: 'passed',
+      details: `Copied object store ${options.store.objectStoreDir}.`,
+    });
+  } else {
+    checks.push({
+      name: 'object-store-backup-copy',
+      status: 'warning',
+      details: 'Object store directory does not exist yet.',
+    });
+  }
+
+  await cp(backupDir, scratchDir, {
+    recursive: true,
+  });
+  checks.push({
+    name: 'scratch-restore-copy',
+    status: 'passed',
+    details: `Restored backup snapshot into ${scratchDir}.`,
+  });
+
+  const restoredDbPath = path.join(scratchDir, 'db', path.basename(options.store.dbFilePath));
+
+  checks.push({
+    name: 'restored-sqlite-present',
+    status: await pathExists(restoredDbPath) ? 'passed' : 'failed',
+    details: restoredDbPath,
+  });
+
+  const restoredStats = await collectDirectoryStats(path.join(scratchDir, 'object-store'));
+  const releaseBundleCount = options.store.listArtifactsByType('release-bundle', { tenantId: options.actor.tenantId }).length;
+  const renderedManifestCount = options.store.listArtifactsByType('rendered-asset-manifest', { tenantId: options.actor.tenantId }).length;
+  const artifactRows = options.store.db.prepare(`
+    SELECT artifact_type, artifact_id, location
+    FROM artifacts
+    WHERE tenant_id = ?
+  `).all(options.actor.tenantId);
+  let schemaValidatedArtifactCount = 0;
+  let schemaValidationFailureCount = 0;
+  let objectReferenceCount = 0;
+  let missingObjectReferenceCount = 0;
+
+  for (const row of artifactRows) {
+    const artifactType = String(row.artifact_type);
+    const artifactId = String(row.artifact_id);
+    const location = String(row.location);
+    objectReferenceCount += 1;
+
+    if (!(await pathExists(path.join(scratchDir, 'object-store', location)))) {
+      missingObjectReferenceCount += 1;
+    }
+
+    const schemaId = `contracts/${artifactType}.schema.json`;
+
+    if (!options.schemaRegistry.schemaIds.includes(schemaId)) {
+      continue;
+    }
+
+    const artifact = options.store.getArtifact(artifactType, artifactId);
+    const validationResult = options.schemaRegistry.validateBySchemaId(schemaId, artifact);
+
+    if (validationResult.valid) {
+      schemaValidatedArtifactCount += 1;
+    } else {
+      schemaValidationFailureCount += 1;
+    }
+  }
+
+  checks.push({
+    name: 'restored-object-references-present',
+    status: missingObjectReferenceCount === 0 ? 'passed' : 'failed',
+    details: `${objectReferenceCount - missingObjectReferenceCount}/${objectReferenceCount} artifact object references resolved in scratch restore.`,
+  });
+  checks.push({
+    name: 'stored-artifact-schema-validation',
+    status: schemaValidationFailureCount === 0 ? 'passed' : 'failed',
+    details: `${schemaValidatedArtifactCount} artifacts validated against registered contracts; ${schemaValidationFailureCount} failed.`,
+  });
+
+  const deliveryMirrors = listTenantArtifactsByType(options.store, 'local-delivery-mirror', options.actor.tenantId);
+  const deliveryVerifications = listTenantArtifactsByType(options.store, 'local-delivery-verification', options.actor.tenantId);
+  const failedDeliveryVerificationCount = deliveryVerifications.filter((verification) => verification.status === 'failed').length;
+  const unverifiedMirrorCount = deliveryMirrors.filter((mirror) => (
+    !deliveryVerifications.some((verification) => verification.localDeliveryMirrorId === mirror.id && verification.status === 'passed')
+  )).length;
+
+  checks.push({
+    name: 'delivery-mirror-verification',
+    status: unverifiedMirrorCount === 0 && failedDeliveryVerificationCount === 0 ? 'passed' : 'warning',
+    details: `${deliveryVerifications.length} delivery verifications recorded; ${unverifiedMirrorCount} mirrors lack a passing verification.`,
+  });
+
+  const completedAt = new Date().toISOString();
+  const status = checks.some((check) => check.status === 'failed') ? 'failed' : 'passed';
+  const restoreSmokeResult = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('rsm'),
+    tenantId: options.actor.tenantId,
+    status,
+    mode: 'local-filesystem',
+    backupDir,
+    scratchDir,
+    checks,
+    stats: {
+      dbFileCopied,
+      objectCount: restoredStats.objectCount,
+      byteLength: restoredStats.byteLength,
+      releaseBundleCount,
+      renderedManifestCount,
+      schemaValidatedArtifactCount,
+      schemaValidationFailureCount,
+      objectReferenceCount,
+      missingObjectReferenceCount,
+      deliveryVerificationCount: deliveryVerifications.length,
+      failedDeliveryVerificationCount,
+    },
+    createdBy: options.actor.id,
+    startedAt,
+    completedAt,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/restore-smoke-result.schema.json', restoreSmokeResult);
+  options.store.saveArtifact('restore-smoke-result', restoreSmokeResult.id, restoreSmokeResult, {
+    tenantId: options.actor.tenantId,
+    retentionClass: 'audit-log',
+  });
+
+  const workItem = {
+    ...buildWorkItem({
+      tenantId: options.actor.tenantId,
+      workType: 'ops-drill',
+      queueName: 'local-ops',
+      subjectType: 'restore-smoke-result',
+      subjectId: restoreSmokeResult.id,
+      reason: 'default',
+      priority: status === 'passed' ? 'medium' : 'high',
+      assignedActorId: options.actor.id,
+      assignedActorDisplayName: options.actor.displayName,
+      assignedActorRoles: options.actor.roles,
+      originType: 'restore-smoke-result',
+      originId: restoreSmokeResult.id,
+      notes: [`Local restore smoke ${status}. Backup: ${backupDir}. Scratch: ${scratchDir}.`],
+    }),
+    status: status === 'passed' ? 'completed' : 'queued',
+    completedAt: status === 'passed' ? completedAt : undefined,
+    updatedAt: completedAt,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/work-item.schema.json', workItem);
+  options.store.saveArtifact('work-item', workItem.id, workItem, {
+    tenantId: options.actor.tenantId,
+  });
+
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'local-ops.restore-smoke',
+    'restore-smoke-result',
+    restoreSmokeResult.id,
+    status === 'passed' ? 'success' : 'error',
+    `Local restore smoke ${status}.`,
+    {
+      backupDir,
+      scratchDir,
+      workItemId: workItem.id,
+    },
+  );
+
+  return restoreSmokeResult;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, actor: any, releaseBundle: any, rootDir: string }} options
+ * @returns {Promise<any>}
+ */
+async function mirrorReleaseBundleLocally(options) {
+  const createdAt = new Date().toISOString();
+  const deliveryRootDir = resolveLocalOpsDirectory(options.rootDir, options.store, 'delivery', 'LOCAL_DELIVERY_DIR');
+  const deliveryDir = path.join(deliveryRootDir, safePathSegment(options.releaseBundle.releaseId));
+  /** @type {Array<{ label: string, path: string, checksum: string, byteLength: number }>} */
+  const files = [];
+  /** @type {string[]} */
+  const warnings = [];
+
+  await rm(deliveryDir, {
+    recursive: true,
+    force: true,
+  });
+  await mkdir(deliveryDir, {
+    recursive: true,
+  });
+
+  /**
+   * @param {string} label
+   * @param {string} relativeTargetPath
+   * @param {string} contents
+   * @returns {Promise<void>}
+   */
+  const addTextFile = async (label, relativeTargetPath, contents) => {
+    const targetPath = path.join(deliveryDir, relativeTargetPath);
+    await mkdir(path.dirname(targetPath), {
+      recursive: true,
+    });
+    await writeFile(targetPath, contents);
+    files.push({
+      label,
+      path: targetPath,
+      checksum: sha256Hex(contents),
+      byteLength: Buffer.byteLength(contents),
+    });
+  };
+  /**
+   * @param {string} label
+   * @param {string} location
+   * @param {string} relativeTargetPath
+   * @returns {Promise<void>}
+   */
+  const addObjectFile = async (label, location, relativeTargetPath) => {
+    const sourcePath = path.join(options.store.objectStoreDir, location);
+
+    if (!(await pathExists(sourcePath))) {
+      warnings.push(`Missing ${label} source object at ${location}.`);
+      return;
+    }
+
+    const targetPath = path.join(deliveryDir, relativeTargetPath);
+    const copied = await copyFileWithChecksum(sourcePath, targetPath);
+    files.push({
+      label,
+      path: targetPath,
+      checksum: copied.checksum,
+      byteLength: copied.byteLength,
+    });
+  };
+
+  await addTextFile('release-bundle', 'release-bundle.json', JSON.stringify(options.releaseBundle, null, 2));
+
+  const bundleIndex = options.store.getDocument('release-index', options.releaseBundle.releaseId);
+
+  if (bundleIndex) {
+    await addTextFile('bundle-index', 'bundle-index.md', bundleIndex);
+  } else {
+    warnings.push('Release bundle index document was not found.');
+  }
+
+  const sourceEvidencePack = options.store.getDocument('source-evidence-pack', options.releaseBundle.releaseId);
+
+  if (sourceEvidencePack) {
+    await addTextFile('source-evidence-pack', 'source-evidence-pack.json', sourceEvidencePack);
+  } else {
+    warnings.push('Source evidence pack document was not found.');
+  }
+
+  if (options.releaseBundle.renderingGuideMarkdownDocumentId) {
+    const renderingGuideMarkdown = options.store.getDocument('rendering-guide-markdown', options.releaseBundle.renderingGuideMarkdownDocumentId);
+
+    if (renderingGuideMarkdown) {
+      await addTextFile('rendering-guide', 'rendering-guide.md', renderingGuideMarkdown);
+    } else {
+      warnings.push('Rendering guide markdown document was not found.');
+    }
+  }
+
+  for (const artifact of options.releaseBundle.artifactManifest ?? []) {
+    if (artifact.location) {
+      await addObjectFile(
+        `artifact:${artifact.artifactType}`,
+        artifact.location,
+        path.join('artifacts', `${safePathSegment(artifact.artifactType)}-${safePathSegment(artifact.artifactId)}.json`),
+      );
+    }
+  }
+
+  const renderedManifest = options.releaseBundle.renderedAssetManifestId
+    ? options.store.getArtifact('rendered-asset-manifest', options.releaseBundle.renderedAssetManifestId)
+    : null;
+
+  if (renderedManifest) {
+    for (const renderedAsset of renderedManifest.renderedAssets ?? []) {
+      if (renderedAsset.location) {
+        await addObjectFile(
+          `rendered-panel:${renderedAsset.panelId ?? renderedAsset.id}`,
+          renderedAsset.location,
+          path.join('rendered-panels', path.basename(renderedAsset.location)),
+        );
+      }
+    }
+  }
+
+  const checksums = {
+    schemaVersion: SCHEMA_VERSION,
+    releaseId: options.releaseBundle.releaseId,
+    generatedAt: createdAt,
+    files: files.map((file) => ({
+      label: file.label,
+      path: path.relative(deliveryDir, file.path),
+      checksum: file.checksum,
+      byteLength: file.byteLength,
+    })),
+  };
+  const checksumManifestPath = path.join(deliveryDir, 'checksums.json');
+  await writeFile(checksumManifestPath, JSON.stringify(checksums, null, 2));
+  const checksumManifestContents = await readFile(checksumManifestPath);
+  files.push({
+    label: 'checksums',
+    path: checksumManifestPath,
+    checksum: createHash('sha256').update(checksumManifestContents).digest('hex'),
+    byteLength: checksumManifestContents.byteLength,
+  });
+
+  const deliveryMirror = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('ldm'),
+    tenantId: options.releaseBundle.tenantId,
+    releaseId: options.releaseBundle.releaseId,
+    workflowRunId: options.releaseBundle.workflowRunId,
+    status: warnings.length === 0 ? 'mirrored' : 'partial',
+    deliveryDir,
+    files,
+    ...(warnings.length > 0 ? { warnings } : {}),
+    checksumManifestLocation: checksumManifestPath,
+    createdBy: options.actor.id,
+    createdAt,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/local-delivery-mirror.schema.json', deliveryMirror);
+  options.store.saveArtifact('local-delivery-mirror', deliveryMirror.id, deliveryMirror, {
+    tenantId: deliveryMirror.tenantId,
+    retentionClass: 'release-bundle',
+  });
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'release-bundle.mirror-local',
+    'release-bundle',
+    options.releaseBundle.releaseId,
+    'success',
+    `Mirrored release bundle ${options.releaseBundle.releaseId} to local delivery directory.`,
+    {
+      deliveryDir,
+      deliveryMirrorId: deliveryMirror.id,
+      warningCount: warnings.length,
+    },
+  );
+
+  return deliveryMirror;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, actor: any, releaseBundle: any }} options
+ * @returns {Promise<any>}
+ */
+async function verifyLocalDeliveryMirror(options) {
+  const createdAt = new Date().toISOString();
+  const deliveryMirror = listTenantArtifactsByType(options.store, 'local-delivery-mirror', options.releaseBundle.tenantId)
+    .filter((candidate) => candidate.releaseId === options.releaseBundle.releaseId)
+    .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))
+    .at(0);
+
+  if (!deliveryMirror) {
+    throw createHttpError(409, 'Release bundle has not been mirrored locally yet.');
+  }
+
+  /** @type {Array<{ name: string, status: 'passed' | 'failed' | 'warning', details?: string }>} */
+  const checks = [];
+  let verifiedFileCount = 0;
+  let failedFileCount = 0;
+
+  for (const file of deliveryMirror.files ?? []) {
+    if (!(await pathExists(file.path))) {
+      failedFileCount += 1;
+      checks.push({
+        name: file.label,
+        status: 'failed',
+        details: `Missing mirrored file at ${file.path}.`,
+      });
+      continue;
+    }
+
+    const contents = await readFile(file.path);
+    const checksum = sha256Buffer(contents);
+
+    if (checksum === file.checksum) {
+      verifiedFileCount += 1;
+      checks.push({
+        name: file.label,
+        status: 'passed',
+        details: 'Checksum matched.',
+      });
+      continue;
+    }
+
+    failedFileCount += 1;
+    checks.push({
+      name: file.label,
+      status: 'failed',
+      details: `Checksum mismatch. Expected ${file.checksum}, received ${checksum}.`,
+    });
+  }
+
+  if (await pathExists(deliveryMirror.checksumManifestLocation)) {
+    checks.push({
+      name: 'checksum-manifest-present',
+      status: 'passed',
+      details: deliveryMirror.checksumManifestLocation,
+    });
+  } else {
+    failedFileCount += 1;
+    checks.push({
+      name: 'checksum-manifest-present',
+      status: 'failed',
+      details: `Missing checksum manifest at ${deliveryMirror.checksumManifestLocation}.`,
+    });
+  }
+
+  const deliveryVerification = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('ldv'),
+    tenantId: deliveryMirror.tenantId,
+    releaseId: deliveryMirror.releaseId,
+    workflowRunId: deliveryMirror.workflowRunId,
+    localDeliveryMirrorId: deliveryMirror.id,
+    status: failedFileCount === 0 ? 'passed' : 'failed',
+    deliveryDir: deliveryMirror.deliveryDir,
+    checks,
+    verifiedFileCount,
+    failedFileCount,
+    checksumManifestLocation: deliveryMirror.checksumManifestLocation,
+    createdBy: options.actor.id,
+    createdAt,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/local-delivery-verification.schema.json', deliveryVerification);
+  options.store.saveArtifact('local-delivery-verification', deliveryVerification.id, deliveryVerification, {
+    tenantId: deliveryVerification.tenantId,
+    retentionClass: 'release-bundle',
+  });
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'release-bundle.verify-local-mirror',
+    'release-bundle',
+    options.releaseBundle.releaseId,
+    deliveryVerification.status === 'passed' ? 'success' : 'error',
+    `Local delivery mirror verification ${deliveryVerification.status}.`,
+    {
+      deliveryVerificationId: deliveryVerification.id,
+      localDeliveryMirrorId: deliveryMirror.id,
+      failedFileCount,
+    },
+  );
+
+  return deliveryVerification;
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, actor: any, renderedAssetManifest: any, body: any }} options
+ * @returns {any}
+ */
+function recordRenderedPanelQaDecision(options) {
+  const timestamp = new Date().toISOString();
+  const manifest = options.renderedAssetManifest;
+  const checklist = {
+    cytoConsistency: Boolean(options.body?.checklist?.cytoConsistency ?? true),
+    pipConsistency: Boolean(options.body?.checklist?.pipConsistency ?? true),
+    styleConsistency: Boolean(options.body?.checklist?.styleConsistency ?? true),
+    anatomyFidelity: Boolean(options.body?.checklist?.anatomyFidelity ?? true),
+    setPieceContinuity: Boolean(options.body?.checklist?.setPieceContinuity ?? true),
+    letteringSeparation: Boolean(options.body?.checklist?.letteringSeparation ?? true),
+    noVisibleText: Boolean(options.body?.checklist?.noVisibleText ?? true),
+    panelOrder: Boolean(options.body?.checklist?.panelOrder ?? true),
+    guideProvenance: Boolean(options.body?.checklist?.guideProvenance ?? true),
+  };
+  const decision = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('rpq'),
+    tenantId: manifest.tenantId,
+    workflowRunId: manifest.workflowRunId,
+    renderedAssetManifestId: manifest.id,
+    ...(typeof manifest.renderJobId === 'string' ? { renderJobId: manifest.renderJobId } : {}),
+    decision: typeof options.body?.decision === 'string'
+      ? options.body.decision
+      : (manifest.renderMode === 'stub-placeholder' ? 'structural-only' : 'approved'),
+    checklist,
+    ...(typeof options.body?.notes === 'string' ? { notes: options.body.notes } : {}),
+    reviewerId: options.actor.id,
+    reviewerRoles: options.actor.roles,
+    createdAt: timestamp,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/rendered-panel-qa-decision.schema.json', decision);
+  options.store.saveArtifact('rendered-panel-qa-decision', decision.id, decision, {
+    tenantId: decision.tenantId,
+    retentionClass: 'audit-log',
+  });
+  const workflowRun = options.store.getWorkflowRun(manifest.workflowRunId);
+
+  if (workflowRun) {
+    const updatedWorkflowRun = upsertArtifactReference(workflowRun, {
+      artifactType: 'rendered-panel-qa-decision',
+      artifactId: decision.id,
+      status: decision.decision === 'approved' || decision.decision === 'structural-only' ? 'approved' : 'rejected',
+    });
+    saveWorkflowRunRecord(options.store, options.schemaRegistry, updatedWorkflowRun);
+  }
+
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'rendered-panel-qa-decision.create',
+    'rendered-asset-manifest',
+    manifest.id,
+    decision.decision === 'rejected' ? 'error' : 'success',
+    `Recorded rendered-panel QA decision ${decision.decision}.`,
+    {
+      renderedPanelQaDecisionId: decision.id,
+      workflowRunId: manifest.workflowRunId,
+    },
+  );
+
+  return decision;
+}
+
+/**
  * @param {{ renderPrompts: any[], attachment: any }} options
  * @returns {any}
  */
@@ -4437,6 +6023,7 @@ function attachExternalRenderedAssets(options) {
     throw createHttpError(400, 'At least one external rendered asset must be provided.');
   }
 
+  const renderGate = assertRenderGuideApprovedForRender(options.store, options.workflowRun);
   const renderPrompts = collectArtifactsForRun(options.store, options.workflowRun)
     .filter((entry) => entry.artifactType === 'render-prompt')
     .map((entry) => entry.artifact);
@@ -4454,6 +6041,7 @@ function attachExternalRenderedAssets(options) {
     }),
   }));
   const renderPromptIds = uniqueStrings(attachmentPlans.map((plan) => plan.renderPrompt.id));
+  const requiredRenderPromptIds = renderPrompts.map((renderPrompt) => renderPrompt.id);
 
   if (renderPromptIds.length !== attachmentPlans.length) {
     throw createHttpError(400, 'Each attachment must target a unique panel or render prompt.');
@@ -4471,6 +6059,8 @@ function attachExternalRenderedAssets(options) {
     provider: 'external-manual',
     model: 'external-handoff',
     renderTargetProfileId: MANUAL_RENDER_TARGET_PROFILE_ID,
+    renderingGuideId: renderGate.renderingGuide.id,
+    visualReferencePackId: renderGate.visualReferencePack.id,
     renderPromptIds,
     attemptIds: [],
     createdBy: options.actor.id,
@@ -4563,7 +6153,9 @@ function attachExternalRenderedAssets(options) {
     workflowRunId: workflowRun.id,
     renderJobId: initialRenderJob.id,
     renderTargetProfileId: MANUAL_RENDER_TARGET_PROFILE_ID,
-    allPanelsRendered: renderedAssets.length === renderPromptIds.length,
+    renderingGuideId: renderGate.renderingGuide.id,
+    visualReferencePackId: renderGate.visualReferencePack.id,
+    allPanelsRendered: requiredRenderPromptIds.every((renderPromptId) => renderPromptIds.includes(renderPromptId)),
     renderedAssets: renderedAssets.map((renderedAsset) => ({
       renderedAssetId: renderedAsset.id,
       renderPromptId: renderedAsset.renderPromptId,
@@ -4586,6 +6178,7 @@ function attachExternalRenderedAssets(options) {
 
   const completedRenderJob = {
     ...initialRenderJob,
+    approvalStatus: renderedAssetManifest.allPanelsRendered ? 'approved' : 'pending',
     attemptIds: [renderAttempt.id],
     renderedAssetManifestId: renderedAssetManifest.id,
   };
@@ -4625,6 +6218,7 @@ function attachExternalRenderedAssets(options) {
  * @returns {{ workflowRun: any, renderJob: any }}
  */
 function enqueueRenderJob(options) {
+  const renderGate = assertRenderGuideApprovedForRender(options.store, options.workflowRun);
   const renderPrompts = collectArtifactsForRun(options.store, options.workflowRun)
     .filter((entry) => entry.artifactType === 'render-prompt')
     .map((entry) => entry.artifact)
@@ -4639,6 +6233,8 @@ function enqueueRenderJob(options) {
     workflowRun,
     actor: options.actor,
     renderPromptIds: renderPrompts.map((renderPrompt) => renderPrompt.id),
+    renderingGuideId: renderGate.renderingGuide.id,
+    visualReferencePackId: renderGate.visualReferencePack.id,
   });
 
   workflowRun = persistArtifact(
@@ -4704,6 +6300,8 @@ async function dispatchRenderExecution(options) {
  * @returns {any}
  */
 function prepareWorkflowRunForManualRenderExecution(options) {
+  assertRenderGuideApprovedForRender(options.store, options.workflowRun);
+
   if (options.workflowRun.state === 'running' && options.workflowRun.currentStage === 'render-execution') {
     return options.workflowRun;
   }
@@ -4772,6 +6370,7 @@ function prepareWorkflowRunForManualRenderExecution(options) {
  */
 export async function processRenderJob(options) {
   let workflowRun = options.workflowRun;
+  assertRenderGuideApprovedForRender(options.store, workflowRun);
   const now = new Date().toISOString();
   let renderJob = {
     ...options.renderJob,
@@ -4797,6 +6396,8 @@ export async function processRenderJob(options) {
     .map((entry) => entry.artifact.id);
   /** @type {any[]} */
   let renderedAssets = [];
+  /** @type {any[]} */
+  let bestRenderedAssets = [];
   let lastError = null;
 
   for (const [attemptIndex, strategy] of options.renderExecutionService.renderTargetProfile.fallbackStrategies.entries()) {
@@ -4842,6 +6443,9 @@ export async function processRenderJob(options) {
           status: 'generated',
         });
         renderedAssets.push(renderedAsset);
+        if (renderedAssets.length > bestRenderedAssets.length) {
+          bestRenderedAssets = [...renderedAssets];
+        }
         renderJob = {
           ...renderJob,
           completedRenderPromptIds: renderedAssets.map((asset) => asset.renderPromptId),
@@ -4949,6 +6553,9 @@ export async function processRenderJob(options) {
       return renderJob;
     } catch (error) {
       lastError = error;
+      if (renderedAssets.length > bestRenderedAssets.length) {
+        bestRenderedAssets = [...renderedAssets];
+      }
       const renderAttempt = options.renderExecutionService.buildRenderAttempt({
         workflowRun,
         renderJobId: renderJob.id,
@@ -4982,6 +6589,9 @@ export async function processRenderJob(options) {
   renderJob = {
     ...renderJob,
     status: 'retry-required',
+    completedRenderPromptIds: bestRenderedAssets.map((asset) => asset.renderPromptId),
+    completedRenderCount: bestRenderedAssets.length,
+    totalRenderCount: requiredRenderPromptIds.length || renderPrompts.length,
     updatedAt: new Date().toISOString(),
     lastError: lastError instanceof Error ? lastError.message : String(lastError),
   };
@@ -5048,6 +6658,34 @@ export async function processRenderJob(options) {
 async function resumeRenderExecutionIfReady(options) {
   if (options.workflowRun.currentStage !== 'render-execution' || options.workflowRun.state !== 'running') {
     return options.workflowRun;
+  }
+
+  const gateState = getRenderGuideGateState(options.store, options.workflowRun);
+
+  if (!gateState.approved) {
+    const pausedWorkflowRun = transitionWorkflow(
+      options.store,
+      options.schemaRegistry,
+      options.workflowSpec,
+      options.workflowRun,
+      {
+        eventType: 'REQUEST_REVIEW',
+        actor: {
+          type: 'system',
+          id: 'render-guide-review-gate',
+        },
+        payload: {
+          gateStatus: gateState.status,
+          pauseReason: 'render-guide-review-required',
+        },
+        notes: gateState.renderDisabledReason,
+      },
+    );
+    return saveWorkflowRunRecord(
+      options.store,
+      options.schemaRegistry,
+      withPauseReason(pausedWorkflowRun, 'render-guide-review-required'),
+    );
   }
 
   const existingRenderableJob = listRenderJobsForRun(options.store, options.workflowRun)
@@ -5785,6 +7423,7 @@ export async function createApp(options = {}) {
           decision: body.decision,
           reason: body.reason,
           notes: body.reason ? [body.reason] : [],
+          supersededBy: body.supersededBy || undefined,
         });
         const rebuiltRun = rebuildClinicalPackageForRun({
           store,
@@ -5946,6 +7585,68 @@ export async function createApp(options = {}) {
         return;
       }
 
+      if (method === 'GET' && isReviewQueueAnalyticsHistoryPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot read queue analytics history.');
+        }
+
+        const snapshots = listTenantArtifactsByType(store, 'review-queue-analytics-snapshot', actor.tenantId)
+          .slice(0, 12);
+        snapshots.forEach((snapshot) => assertSchema(schemaRegistry, 'contracts/review-queue-analytics-snapshot.schema.json', snapshot));
+        sendJson(response, 200, snapshots);
+        return;
+      }
+
+      if (method === 'POST' && isReviewQueueAnalyticsSnapshotPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot capture queue analytics snapshots.');
+        }
+
+        const body = await readJsonBody(request).catch(() => ({}));
+        escalateOverdueWorkItems(store, actor.tenantId);
+        const accessibleWorkflowRuns = store.listWorkflowRuns().filter((workflowRun) => canAccessTenant(actor, getTenantId(workflowRun)));
+        const queueAnalyticsView = buildReviewQueueAnalyticsView(store, accessibleWorkflowRuns);
+        const snapshot = buildReviewQueueAnalyticsSnapshot({
+          tenantId: actor.tenantId,
+          analytics: queueAnalyticsView,
+          actor,
+          snapshotLabel: isRecord(body) && typeof body.snapshotLabel === 'string' ? body.snapshotLabel : undefined,
+        });
+        assertSchema(schemaRegistry, 'contracts/review-queue-analytics-snapshot.schema.json', snapshot);
+        store.saveArtifact('review-queue-analytics-snapshot', snapshot.id, snapshot, {
+          tenantId: actor.tenantId,
+          retentionClass: 'audit-log',
+        });
+        appendAuditLog(
+          store,
+          schemaRegistry,
+          actor,
+          'review-queue.analytics-snapshot',
+          'artifact',
+          snapshot.id,
+          'success',
+          `Captured queue analytics snapshot ${snapshot.snapshotLabel}.`,
+        );
+        sendJson(response, 201, snapshot);
+        return;
+      }
+
+      if (method === 'POST' && isReviewQueueProofScenarioPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot seed queue proof data.');
+        }
+
+        const proofScenario = createQueueProofScenario({
+          store,
+          schemaRegistry,
+          clinicalService,
+          actor,
+          rootDir,
+        });
+        sendJson(response, 201, proofScenario);
+        return;
+      }
+
       if (method === 'GET' && isNotificationsPath(pathname)) {
         if (!canViewTenantData(actor)) {
           throw createHttpError(403, 'Actor cannot read notifications.');
@@ -5956,6 +7657,38 @@ export async function createApp(options = {}) {
           actor,
         });
         notifications.forEach((notification) => assertSchema(schemaRegistry, 'contracts/notification.schema.json', notification));
+        sendJson(response, 200, notifications);
+        return;
+      }
+
+      if (method === 'PATCH' && isNotificationsPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot update notifications.');
+        }
+
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body) || body.status !== 'read') {
+          throw createHttpError(400, 'Bulk notification updates currently support status=read only.');
+        }
+
+        const timestamp = new Date().toISOString();
+        const notifications = listNotificationsForActor({
+          store,
+          actor,
+        }).map((notification) => ({
+          ...notification,
+          status: notification.status === 'archived' ? notification.status : 'read',
+          readAt: notification.readAt ?? timestamp,
+          updatedAt: timestamp,
+        }));
+
+        notifications.forEach((notification) => {
+          assertSchema(schemaRegistry, 'contracts/notification.schema.json', notification);
+          store.saveArtifact('notification', notification.id, notification, {
+            tenantId: notification.tenantId,
+          });
+        });
         sendJson(response, 200, notifications);
         return;
       }
@@ -5993,6 +7726,9 @@ export async function createApp(options = {}) {
       const workflowRunReviewViewPath = matchWorkflowRunReviewViewPath(pathname);
       const workflowRunRenderingGuidePath = matchWorkflowRunRenderingGuidePath(pathname);
       const workflowRunRenderingGuideRegeneratePath = matchWorkflowRunRenderingGuideRegeneratePath(pathname);
+      const workflowRunRenderingGuideReviewPath = matchWorkflowRunRenderingGuideReviewPath(pathname);
+      const workflowRunRenderingGuideReviewDecisionPath = matchWorkflowRunRenderingGuideReviewDecisionPath(pathname);
+      const workflowRunVisualReferencePackRegeneratePath = matchWorkflowRunVisualReferencePackRegeneratePath(pathname);
       const workflowRunResearchBriefPath = matchWorkflowRunResearchBriefPath(pathname);
       const workflowRunKnowledgePackBuildReportPath = matchWorkflowRunKnowledgePackBuildReportPath(pathname);
       const workflowRunKnowledgePackRegeneratePath = matchWorkflowRunKnowledgePackRegeneratePath(pathname);
@@ -6216,6 +7952,23 @@ export async function createApp(options = {}) {
         return;
       }
 
+      if (method === 'GET' && workflowRunRenderingGuideReviewPath) {
+        const workflowRun = store.getWorkflowRun(workflowRunRenderingGuideReviewPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'rendering-guide.review.view', 'workflow-run', workflowRun.id);
+        const renderingGuideView = buildRenderingGuideViewPayload({
+          store,
+          workflowRun,
+        });
+        assertSchema(schemaRegistry, 'contracts/rendering-guide-view.schema.json', renderingGuideView);
+        sendJson(response, 200, renderingGuideView);
+        return;
+      }
+
       if (method === 'POST' && workflowRunRenderingGuideRegeneratePath) {
         let workflowRun = store.getWorkflowRun(workflowRunRenderingGuideRegeneratePath.runId);
 
@@ -6229,12 +7982,64 @@ export async function createApp(options = {}) {
           schemaRegistry,
           workflowRun,
         }).workflowRun;
+        workflowRun = ensureRenderGuideReviewWorkItem({
+          store,
+          schemaRegistry,
+          workflowRun: withPauseReason(workflowRun, 'render-guide-review-required'),
+        });
         const renderingGuideView = buildRenderingGuideViewPayload({
           store,
           workflowRun,
         });
         assertSchema(schemaRegistry, 'contracts/rendering-guide-view.schema.json', renderingGuideView);
         sendJson(response, 200, renderingGuideView);
+        return;
+      }
+
+      if (method === 'POST' && workflowRunVisualReferencePackRegeneratePath) {
+        let workflowRun = store.getWorkflowRun(workflowRunVisualReferencePackRegeneratePath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'visual-reference-pack.regenerate', 'workflow-run', workflowRun.id);
+        workflowRun = regenerateVisualReferencePackForRun({
+          store,
+          schemaRegistry,
+          workflowRun,
+        }).workflowRun;
+        const renderingGuideView = buildRenderingGuideViewPayload({
+          store,
+          workflowRun,
+        });
+        assertSchema(schemaRegistry, 'contracts/rendering-guide-view.schema.json', renderingGuideView);
+        sendJson(response, 200, renderingGuideView);
+        return;
+      }
+
+      if (method === 'POST' && workflowRunRenderingGuideReviewDecisionPath) {
+        let workflowRun = store.getWorkflowRun(workflowRunRenderingGuideReviewDecisionPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'rendering-guide.review', 'workflow-run', workflowRun.id);
+        const body = await readJsonBody(request);
+        workflowRun = submitRenderGuideReviewDecision({
+          store,
+          schemaRegistry,
+          workflowRun,
+          actor,
+          payload: body,
+        }).workflowRun;
+        const renderingGuideView = buildRenderingGuideViewPayload({
+          store,
+          workflowRun,
+        });
+        assertSchema(schemaRegistry, 'contracts/rendering-guide-view.schema.json', renderingGuideView);
+        sendJson(response, 201, renderingGuideView);
         return;
       }
 
@@ -6595,6 +8400,7 @@ export async function createApp(options = {}) {
 
       const workflowRunRenderJobsPath = matchWorkflowRunRenderJobsPath(pathname);
       const workflowRunRenderedAssetAttachmentPath = matchWorkflowRunRenderedAssetAttachmentPath(pathname);
+      const renderedAssetManifestQaDecisionPath = matchRenderedAssetManifestQaDecisionPath(pathname);
 
       if (workflowRunRenderedAssetAttachmentPath && method === 'POST') {
         let workflowRun = store.getWorkflowRun(workflowRunRenderedAssetAttachmentPath.runId);
@@ -6619,6 +8425,41 @@ export async function createApp(options = {}) {
         });
         assertSchema(schemaRegistry, 'contracts/rendering-guide-view.schema.json', renderingGuideView);
         sendJson(response, 201, renderingGuideView);
+        return;
+      }
+
+      if (renderedAssetManifestQaDecisionPath && method === 'GET') {
+        const renderedAssetManifest = store.getArtifact('rendered-asset-manifest', renderedAssetManifestQaDecisionPath.manifestId);
+
+        if (!renderedAssetManifest) {
+          throw createHttpError(404, 'Rendered asset manifest not found.');
+        }
+
+        assertTenantAccess(actor, renderedAssetManifest.tenantId, store, schemaRegistry, 'rendered-panel-qa-decision.view', 'workflow-run', renderedAssetManifest.workflowRunId);
+        const decisions = listTenantArtifactsByType(store, 'rendered-panel-qa-decision', renderedAssetManifest.tenantId)
+          .filter((decision) => decision.renderedAssetManifestId === renderedAssetManifest.id);
+        decisions.forEach((decision) => assertSchema(schemaRegistry, 'contracts/rendered-panel-qa-decision.schema.json', decision));
+        sendJson(response, 200, decisions);
+        return;
+      }
+
+      if (renderedAssetManifestQaDecisionPath && method === 'POST') {
+        const renderedAssetManifest = store.getArtifact('rendered-asset-manifest', renderedAssetManifestQaDecisionPath.manifestId);
+
+        if (!renderedAssetManifest) {
+          throw createHttpError(404, 'Rendered asset manifest not found.');
+        }
+
+        assertTenantAccess(actor, renderedAssetManifest.tenantId, store, schemaRegistry, 'rendered-panel-qa-decision.create', 'workflow-run', renderedAssetManifest.workflowRunId);
+        const body = await readJsonBody(request).catch(() => ({}));
+        const decision = recordRenderedPanelQaDecision({
+          store,
+          schemaRegistry,
+          actor,
+          renderedAssetManifest,
+          body,
+        });
+        sendJson(response, 201, decision);
         return;
       }
 
@@ -6814,16 +8655,44 @@ export async function createApp(options = {}) {
             'pnpm local:backup',
             'pnpm local:reset',
             'pnpm local:restore -- --path var/backups/<timestamp>',
-            'pnpm migrate:managed -- --dry-run',
-            'pnpm ops:restore-smoke -- --dry-run',
+            'pnpm ops:restore-smoke',
           ],
           readiness: getReadinessSnapshot(),
           localStoragePolicy: getLocalStoragePolicy(storage),
-          managedRuntimeReadiness: getManagedRuntimeReadiness(platformRuntime),
           externalElements: getExternalElementsSnapshot(rootDir, renderExecutionService),
         });
         assertSchema(schemaRegistry, 'contracts/local-runtime-view.schema.json', runtimeView);
         sendJson(response, 200, runtimeView);
+        return;
+      }
+
+      if (method === 'GET' && isLocalOpsStatusPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot read local ops status.');
+        }
+
+        const localOpsStatus = await buildLocalOpsStatus({
+          store,
+          rootDir,
+          tenantId: actor.tenantId,
+        });
+        assertSchema(schemaRegistry, 'contracts/local-ops-status.schema.json', localOpsStatus);
+        sendJson(response, 200, localOpsStatus);
+        return;
+      }
+
+      if (method === 'POST' && isLocalOpsRestoreSmokePath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot run local restore smoke.');
+        }
+
+        const restoreSmokeResult = await runLocalRestoreSmoke({
+          store,
+          schemaRegistry,
+          actor,
+          rootDir,
+        });
+        sendJson(response, 201, restoreSmokeResult);
         return;
       }
 
@@ -7584,6 +9453,7 @@ export async function createApp(options = {}) {
           decision: body.decision,
           reason: typeof body.reason === 'string' ? body.reason : undefined,
           notes: Array.isArray(body.notes) ? body.notes.filter((value) => typeof value === 'string') : [],
+          supersededBy: typeof body.supersededBy === 'string' ? body.supersededBy : undefined,
         });
 
         rebuildClinicalPackageForRun({
@@ -7623,6 +9493,37 @@ export async function createApp(options = {}) {
         const sourceCatalog = buildSourceCatalogPayload(store, clinicalService, actor.tenantId);
         sourceCatalog.forEach((sourceRecord) => assertSchema(schemaRegistry, 'contracts/source-record.schema.json', sourceRecord));
         sendJson(response, 200, sourceCatalog);
+        return;
+      }
+
+      if (method === 'GET' && isSourceOpsPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot read source ops data.');
+        }
+
+        const sourceOpsView = buildSourceOpsView({
+          store,
+          clinicalService,
+          tenantId: actor.tenantId,
+          searchParams: requestUrl.searchParams,
+        });
+        assertSchema(schemaRegistry, 'contracts/source-ops-view.schema.json', sourceOpsView);
+        sendJson(response, 200, sourceOpsView);
+        return;
+      }
+
+      if (method === 'GET' && isSourceOpsCalendarPath(pathname)) {
+        if (!canViewTenantData(actor)) {
+          throw createHttpError(403, 'Actor cannot read source refresh calendar.');
+        }
+
+        const sourceRefreshCalendar = buildSourceRefreshCalendar({
+          store,
+          clinicalService,
+          tenantId: actor.tenantId,
+        });
+        assertSchema(schemaRegistry, 'contracts/source-refresh-calendar.schema.json', sourceRefreshCalendar);
+        sendJson(response, 200, sourceRefreshCalendar);
         return;
       }
 
@@ -7739,6 +9640,8 @@ export async function createApp(options = {}) {
 
       const releaseBundlePath = matchReleaseBundlePath(pathname);
       const releaseBundleRenderingGuidePath = matchReleaseBundleRenderingGuidePath(pathname);
+      const releaseBundleMirrorPath = matchReleaseBundleMirrorLocalPath(pathname);
+      const releaseBundleVerifyMirrorPath = matchReleaseBundleVerifyLocalMirrorPath(pathname);
 
       if (method === 'GET' && releaseBundlePath) {
         const releaseBundle = store.getArtifact('release-bundle', releaseBundlePath.releaseId);
@@ -7750,6 +9653,43 @@ export async function createApp(options = {}) {
         assertTenantAccess(actor, releaseBundle.tenantId, store, schemaRegistry, 'release-bundle.view', 'workflow-run', releaseBundle.workflowRunId);
         assertSchema(schemaRegistry, 'contracts/release-bundle.schema.json', releaseBundle);
         sendJson(response, 200, releaseBundle);
+        return;
+      }
+
+      if (method === 'POST' && releaseBundleMirrorPath) {
+        const releaseBundle = store.getArtifact('release-bundle', releaseBundleMirrorPath.releaseId);
+
+        if (!releaseBundle) {
+          throw createHttpError(404, 'Release bundle not found.');
+        }
+
+        assertTenantAccess(actor, releaseBundle.tenantId, store, schemaRegistry, 'release-bundle.mirror-local', 'workflow-run', releaseBundle.workflowRunId);
+        const deliveryMirror = await mirrorReleaseBundleLocally({
+          store,
+          schemaRegistry,
+          actor,
+          releaseBundle,
+          rootDir,
+        });
+        sendJson(response, 201, deliveryMirror);
+        return;
+      }
+
+      if (method === 'POST' && releaseBundleVerifyMirrorPath) {
+        const releaseBundle = store.getArtifact('release-bundle', releaseBundleVerifyMirrorPath.releaseId);
+
+        if (!releaseBundle) {
+          throw createHttpError(404, 'Release bundle not found.');
+        }
+
+        assertTenantAccess(actor, releaseBundle.tenantId, store, schemaRegistry, 'release-bundle.verify-local-mirror', 'workflow-run', releaseBundle.workflowRunId);
+        const deliveryVerification = await verifyLocalDeliveryMirror({
+          store,
+          schemaRegistry,
+          actor,
+          releaseBundle,
+        });
+        sendJson(response, 201, deliveryVerification);
         return;
       }
 

@@ -62,7 +62,7 @@ export const DEFAULT_RENDER_TARGET_PROFILE = Object.freeze({
  */
 function strategyPrompt(renderPrompt, strategy) {
   const basePrompt = [
-    'Create a medically accurate, high-fidelity finished comic panel illustration.',
+    'Create a premium cinematic 3D animated felt-toy finished comic panel illustration with warm feature-animation lighting, soft tactile fibers, expressive eyes, stable silhouettes, and medically accurate anatomy environments.',
     renderPrompt.positivePrompt,
     renderPrompt.aspectRatio ? `Target aspect ratio: ${renderPrompt.aspectRatio}.` : '',
     renderPrompt.negativePrompt ? `Avoid the following problems: ${renderPrompt.negativePrompt}.` : '',
@@ -269,10 +269,10 @@ export function createRenderExecutionService(options = {}) {
       model: provider.model,
     },
     /**
-     * @param {{ workflowRun: any, actor: any, renderPromptIds: string[] }} options
+     * @param {{ workflowRun: any, actor: any, renderPromptIds: string[], renderingGuideId?: string, visualReferencePackId?: string }} options
      * @returns {any}
      */
-    createRenderJob({ workflowRun, actor, renderPromptIds }) {
+    createRenderJob({ workflowRun, actor, renderPromptIds, renderingGuideId, visualReferencePackId }) {
       const timestamp = new Date().toISOString();
 
       return {
@@ -286,6 +286,8 @@ export function createRenderExecutionService(options = {}) {
         provider: provider.provider,
         model: provider.model,
         renderTargetProfileId: DEFAULT_RENDER_TARGET_PROFILE.id,
+        ...(renderingGuideId ? { renderingGuideId } : {}),
+        ...(visualReferencePackId ? { visualReferencePackId } : {}),
         renderPromptIds,
         attemptIds: [],
         createdBy: actor.id,
@@ -384,6 +386,8 @@ export function createRenderExecutionService(options = {}) {
         workflowRunId: workflowRun.id,
         renderJobId: renderJob.id,
         renderTargetProfileId: DEFAULT_RENDER_TARGET_PROFILE.id,
+        ...(renderJob.renderingGuideId ? { renderingGuideId: renderJob.renderingGuideId } : {}),
+        ...(renderJob.visualReferencePackId ? { visualReferencePackId: renderJob.visualReferencePackId } : {}),
         renderMode,
         nonFinalPlaceholder,
         providerNotice: nonFinalPlaceholder

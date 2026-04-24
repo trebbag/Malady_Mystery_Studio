@@ -9,6 +9,8 @@
   "provider": "openai-image",
   "model": "gpt-image-2",
   "renderTargetProfileId": "rtp.openai-gpt-image-2-default",
+  "renderingGuideId": "rgd.hcc.001",
+  "visualReferencePackId": "vrp.hcc.001",
   "renderPromptIds": [
     "rpr.hcc.004.03"
   ],

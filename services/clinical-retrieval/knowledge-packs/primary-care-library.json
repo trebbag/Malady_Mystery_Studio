@@ -2,6 +2,8 @@
   {
     "schemaVersion": "1.0.0",
     "id": "dkp.type-2-diabetes-mellitus",
+    "packStatus": "promoted",
+    "packScope": "library",
     "canonicalDiseaseName": "Type 2 diabetes mellitus",
     "aliases": [
       "type 2 diabetes",
@@ -257,6 +259,8 @@
   {
     "schemaVersion": "1.0.0",
     "id": "dkp.essential-hypertension",
+    "packStatus": "promoted",
+    "packScope": "library",
     "canonicalDiseaseName": "Essential hypertension",
     "aliases": [
       "primary hypertension",
@@ -491,6 +495,8 @@
   {
     "schemaVersion": "1.0.0",
     "id": "dkp.chronic-kidney-disease",
+    "packStatus": "promoted",
+    "packScope": "library",
     "canonicalDiseaseName": "Chronic kidney disease",
     "aliases": [
       "ckd",
@@ -715,6 +721,8 @@
   {
     "schemaVersion": "1.0.0",
     "id": "dkp.hypothyroidism",
+    "packStatus": "promoted",
+    "packScope": "library",
     "canonicalDiseaseName": "Hypothyroidism",
     "aliases": [
       "underactive thyroid",
@@ -934,6 +942,8 @@
   {
     "schemaVersion": "1.0.0",
     "id": "dkp.iron-deficiency-anemia",
+    "packStatus": "promoted",
+    "packScope": "library",
     "canonicalDiseaseName": "Iron deficiency anemia",
     "aliases": [
       "iron deficiency anemia",
@@ -1153,6 +1163,8 @@
   {
     "schemaVersion": "1.0.0",
     "id": "dkp.migraine",
+    "packStatus": "promoted",
+    "packScope": "library",
     "canonicalDiseaseName": "Migraine",
     "aliases": [
       "migraine",

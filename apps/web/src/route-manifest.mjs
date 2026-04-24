@@ -43,9 +43,9 @@ export const webRouteManifest = [
     path: '/runs/:runId/rendering-guide',
     screen: 'RenderingGuidePage',
     viewContract: 'contracts/rendering-guide-view.schema.json',
-    sections: ['guide-overview', 'deck-bootstrap', 'markdown-preview', 'panel-prompt-preview', 'external-art-attachment'],
-    actions: ['regenerate-rendering-guide', 'copy-rendering-guide-markdown', 'download-rendering-guide-markdown', 'attach-rendered-assets'],
-    states: ['loading', 'support-artifact-ready', 'external-art-attached', 'error'],
+    sections: ['pre-render-gate', 'style-bible', 'character-locks', 'visual-reference-pack', 'panel-matrix', 'panel-review', 'markdown-preview', 'approval-history', 'render-controls'],
+    actions: ['regenerate-rendering-guide', 'regenerate-visual-reference-pack', 'approve-rendering-guide', 'request-rendering-guide-changes', 'reject-rendering-guide', 'queue-panel-rendering', 'copy-rendering-guide-markdown', 'download-rendering-guide-markdown', 'attach-rendered-assets'],
+    states: ['loading', 'not-reviewed', 'changes-requested', 'approved', 'stale', 'render-disabled', 'external-art-attached', 'error'],
   },
   {
     path: '/review/runs/:runId',

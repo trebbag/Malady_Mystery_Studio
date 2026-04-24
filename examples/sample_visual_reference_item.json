@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "vref.character.cyto-kine",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.hcc.001",
+  "renderingGuideId": "rgd.hcc.001",
+  "itemType": "character",
+  "canonicalName": "Detective Cyto Kine",
+  "description": "Stable felt detective silhouette with visor, badge, and evidence vial.",
+  "source": "local-canon",
+  "approvalStatus": "approved",
+  "usagePanelIds": ["pnl.hcc.004.03"],
+  "imageReferenceLocations": [],
+  "textLocks": ["felt lead investigator", "HUD visor", "evidence vial"],
+  "personalityLocks": ["calm", "precise", "dryly funny", "protective of Pip"],
+  "continuityLocks": ["same face, fiber texture, proportions, visor, badge, and evidence vial whenever present"],
+  "styleLocks": ["premium cinematic 3D animated felt-toy rendering", "warm feature-animation lighting with soft tactile fibers"],
+  "negativeLocks": ["do not change Cyto into a human or robot"],
+  "createdAt": "2026-04-23T15:00:00Z"
+}

@@ -2,14 +2,18 @@ import { ArtifactJsonCard } from '@/components/ArtifactJsonCard';
 import { PageHeader } from '@/components/PageHeader';
 import { SectionStack } from '@/components/StatePanel';
 import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
-import { fetchLocalRuntimeView } from '@/lib/api';
-import { useRefreshSignal } from '@/lib/refresh-context';
+import { fetchLocalOpsStatus, fetchLocalRuntimeView, runRestoreSmoke } from '@/lib/api';
+import { useRefreshContext, useRefreshSignal } from '@/lib/refresh-context';
 import { useRemoteData } from '@/lib/use-remote-data';
+import { formatDateTime } from '@/lib/utils';
 
 export function SettingsPage() {
+  const refreshContext = useRefreshContext();
   const refreshSignal = useRefreshSignal();
   const runtimeState = useRemoteData(() => fetchLocalRuntimeView(), [refreshSignal]);
+  const localOpsState = useRemoteData(() => fetchLocalOpsStatus(), [refreshSignal]);
 
   return (
     <SectionStack>
@@ -37,27 +41,47 @@ export function SettingsPage() {
           </Alert>
         </Card>
       ) : null}
-      {runtimeState.data?.managedRuntimeReadiness ? (
+      {localOpsState.data ? (
         <Card>
-          <CardTitle>Optional managed runtime dry-run readiness</CardTitle>
+          <CardTitle>Local operational proof</CardTitle>
           <CardDescription>
-            These checks are retained for future portability only. They are not required for the active local-storage product path.
+            Backup, restore-smoke, delivery mirror, and object-store stats are all local filesystem checks for this phase.
           </CardDescription>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {runtimeState.data.managedRuntimeReadiness.checks.map((check) => (
-              <div key={check.name} className="rounded-2xl border border-black/10 bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-shell-950">{check.name}</p>
-                <p className="text-xs text-slate-500">{check.current} → {check.target}</p>
-                <p className="mt-2 text-sm text-slate-700">{check.status}</p>
-                {check.status === 'blocked-awaiting-credentials' ? (
-                  <p className="mt-2 text-xs text-slate-500">Needs: {check.requiredEnv.join(', ')}</p>
-                ) : null}
-              </div>
-            ))}
+            <LocalOpsMetric label="Object-store files" value={String(localOpsState.data.storage.objectCount)} detail={`${localOpsState.data.storage.byteLength} bytes`} />
+            <LocalOpsMetric label="Backup root" value={localOpsState.data.storage.backupRootDir} detail={localOpsState.data.latestBackup ? `Latest: ${formatDateTime(localOpsState.data.latestBackup.createdAt)}` : 'No backup detected yet.'} />
+            <LocalOpsMetric label="Latest restore smoke" value={localOpsState.data.latestRestoreSmoke?.status ?? 'not-run'} detail={localOpsState.data.latestRestoreSmoke ? formatDateTime(localOpsState.data.latestRestoreSmoke.completedAt) : 'Run one before pilot rehearsal.'} />
+            <LocalOpsMetric label="Latest delivery mirror" value={localOpsState.data.latestDeliveryMirror?.status ?? 'not-run'} detail={localOpsState.data.latestDeliveryMirror?.deliveryDir ?? localOpsState.data.storage.deliveryRootDir} />
+            <LocalOpsMetric label="Mirror verification" value={localOpsState.data.latestDeliveryVerification?.status ?? 'not-run'} detail={localOpsState.data.latestDeliveryVerification ? `${localOpsState.data.latestDeliveryVerification.verifiedFileCount} files verified` : 'Verify a local mirror after export.'} />
           </div>
-          <Alert tone={['configured', 'ready-locally'].includes(runtimeState.data.managedRuntimeReadiness.status) ? 'success' : 'warning'}>
-            Optional managed status: {runtimeState.data.managedRuntimeReadiness.status}. Local storage remains the active runtime; dry runs remain available through {runtimeState.data.managedRuntimeReadiness.localOnlyCommands.join(' and ')}.
-          </Alert>
+          {localOpsState.data.latestRestoreSmoke ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <LocalOpsMetric
+                label="Schema validation"
+                value={`${localOpsState.data.latestRestoreSmoke.stats.schemaValidatedArtifactCount} checked`}
+                detail={`${localOpsState.data.latestRestoreSmoke.stats.schemaValidationFailureCount} failures`}
+              />
+              <LocalOpsMetric
+                label="Object references"
+                value={`${localOpsState.data.latestRestoreSmoke.stats.objectReferenceCount - localOpsState.data.latestRestoreSmoke.stats.missingObjectReferenceCount}/${localOpsState.data.latestRestoreSmoke.stats.objectReferenceCount}`}
+                detail="artifact files found in scratch restore"
+              />
+              <LocalOpsMetric
+                label="Delivery checks"
+                value={`${localOpsState.data.latestRestoreSmoke.stats.deliveryVerificationCount}`}
+                detail={`${localOpsState.data.latestRestoreSmoke.stats.failedDeliveryVerificationCount} failed verifications`}
+              />
+            </div>
+          ) : null}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button onClick={() => void runRestoreSmoke().then(() => refreshContext.refreshGlobal())}>Run restore smoke</Button>
+            <span className="text-sm text-slate-500">Creates a backup snapshot, restores into scratch storage, validates local integrity, and records an ops-drill work item.</span>
+          </div>
+          {localOpsState.data.opsDrillWorkItems.length > 0 ? (
+            <Alert tone="info">
+              Ops-drill work items: {localOpsState.data.opsDrillWorkItems.length}. Latest local proof generated at {formatDateTime(localOpsState.data.generatedAt)}.
+            </Alert>
+          ) : null}
         </Card>
       ) : null}
       {runtimeState.data?.externalElements ? (
@@ -101,6 +125,17 @@ export function SettingsPage() {
         </Card>
       ) : null}
       <ArtifactJsonCard title="Local runtime view" value={runtimeState.data ?? {}} />
+      <ArtifactJsonCard title="Local ops status" value={localOpsState.data ?? {}} />
     </SectionStack>
+  );
+}
+
+function LocalOpsMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-2xl border border-black/10 bg-slate-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="mt-2 break-words text-sm font-semibold text-shell-950">{value}</p>
+      <p className="mt-1 break-words text-xs text-slate-500">{detail}</p>
+    </div>
   );
 }

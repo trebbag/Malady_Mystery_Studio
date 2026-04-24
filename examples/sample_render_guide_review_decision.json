@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "rgd-review.hcc.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.hcc.001",
+  "renderingGuideId": "rgd.hcc.001",
+  "visualReferencePackId": "vrp.hcc.001",
+  "decision": "approved",
+  "reviewerId": "local-operator",
+  "reviewerRoles": ["Local Operator"],
+  "comment": "Approved for local rendered-panel execution after character, style, reference, lettering, and traceability review.",
+  "createdAt": "2026-04-23T15:05:00Z"
+}

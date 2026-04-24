@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/review-queue-analytics-snapshot.schema.json",
+  "title": "ReviewQueueAnalyticsSnapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "snapshotLabel",
+    "analytics",
+    "createdBy",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "snapshotLabel": { "type": "string" },
+    "analytics": { "$ref": "review-queue-analytics-view.schema.json" },
+    "createdBy": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

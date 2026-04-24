@@ -100,11 +100,12 @@ export const webPageShells = [
   },
   {
     path: '/runs/:runId/rendering-guide',
-    title: 'Rendering Guide',
-    purpose: 'Shows the compiled guide, provider-specific prompt blocks, and optional external art attachment actions.',
+    title: 'Rendering Guide Workbench',
+    purpose: 'Reviews the full pre-render guide, Cyto/Pip locks, visual reference pack, panel prompts, lettering separation, and gate approval before any rendering can run.',
     states: {
       loading: ['Loading rendering guide.', 'Loading panel prompt blocks.'],
-      guideOnly: ['Rendering guide is available for handoff.'],
+      guideOnly: ['Rendering guide is available but rendering remains disabled until approval.'],
+      approved: ['Rendering guide and visual references are approved; panel rendering controls are enabled.'],
       externalArtAttached: ['Externally rendered art has been attached to this run.'],
       error: ['Failed to load the rendering guide.'],
     },

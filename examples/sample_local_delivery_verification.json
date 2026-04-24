@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "ldv.local.001",
+  "tenantId": "tenant.local",
+  "releaseId": "rel.local.001",
+  "workflowRunId": "run.local.001",
+  "localDeliveryMirrorId": "ldm.local.001",
+  "status": "passed",
+  "deliveryDir": "var/delivery/rel.local.001",
+  "checks": [
+    {
+      "name": "release-bundle",
+      "status": "passed",
+      "details": "Checksum matched."
+    }
+  ],
+  "verifiedFileCount": 1,
+  "failedFileCount": 0,
+  "checksumManifestLocation": "var/delivery/rel.local.001/checksums.json",
+  "createdBy": "local-operator",
+  "createdAt": "2026-04-24T12:00:00Z"
+}

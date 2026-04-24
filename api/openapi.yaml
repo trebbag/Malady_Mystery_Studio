@@ -184,6 +184,52 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/review-queue-analytics-view.schema.json'
+  /api/v1/review-queue/analytics/history:
+    get:
+      summary: List persisted local queue analytics snapshots
+      operationId: listReviewQueueAnalyticsSnapshots
+      responses:
+        '200':
+          description: Queue analytics snapshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/review-queue-analytics-snapshot.schema.json'
+  /api/v1/review-queue/analytics/snapshots:
+    post:
+      summary: Persist the current queue analytics as a local pilot trend snapshot
+      operationId: createReviewQueueAnalyticsSnapshot
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                snapshotLabel:
+                  type: string
+      responses:
+        '201':
+          description: Queue analytics snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/review-queue-analytics-snapshot.schema.json'
+  /api/v1/review-queue/proof-scenario:
+    post:
+      summary: Seed a local queue proof scenario against an existing workflow run
+      operationId: seedReviewQueueProofScenario
+      responses:
+        '201':
+          description: Seeded proof work items, thread, message, and notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
   /api/v1/workflow-runs/{runId}/review-run-view:
     get:
       summary: Get the frontend review-run read model
@@ -308,7 +354,7 @@ paths:
                 $ref: '../contracts/workflow-run.schema.json'
   /api/v1/workflow-runs/{runId}/rendering-guide:
     get:
-      summary: Get the secondary rendering-guide read model for a workflow run
+      summary: Get the pre-render rendering-guide review workbench for a workflow run
       operationId: getWorkflowRunRenderingGuide
       parameters:
         - in: path
@@ -325,8 +371,77 @@ paths:
                 $ref: '../contracts/rendering-guide-view.schema.json'
   /api/v1/workflow-runs/{runId}/rendering-guide/regenerate:
     post:
-      summary: Regenerate the secondary rendering guide from the latest panel pipeline artifacts
+      summary: Regenerate the rendering guide and visual reference pack, invalidating guide approval
       operationId: regenerateWorkflowRunRenderingGuide
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rendering guide view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/rendering-guide-view.schema.json'
+  /api/v1/workflow-runs/{runId}/rendering-guide-review:
+    get:
+      summary: Get the pre-render guide review gate, visual references, and disabled render reason
+      operationId: getWorkflowRunRenderingGuideReview
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rendering guide review view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/rendering-guide-view.schema.json'
+  /api/v1/workflow-runs/{runId}/rendering-guide/review-decisions:
+    post:
+      summary: Record approval, requested changes, or rejection for the latest rendering guide and visual reference pack
+      operationId: createRenderingGuideReviewDecision
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [approved, changes-requested, rejected]
+                comment:
+                  type: string
+                requiredChanges:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Updated rendering guide view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/rendering-guide-view.schema.json'
+  /api/v1/workflow-runs/{runId}/visual-reference-pack/regenerate:
+    post:
+      summary: Regenerate the visual reference pack for the latest rendering guide, invalidating guide approval
+      operationId: regenerateWorkflowRunVisualReferencePack
       parameters:
         - in: path
           name: runId
@@ -711,6 +826,30 @@ paths:
                 type: array
                 items:
                   $ref: '../contracts/notification.schema.json'
+    patch:
+      summary: Mark current-operator notifications as read
+      operationId: markAllNotificationsRead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [read]
+      responses:
+        '200':
+          description: Updated notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/notification.schema.json'
   /api/v1/notifications/{notificationId}:
     patch:
       summary: Update a notification status
@@ -751,6 +890,28 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/local-runtime-view.schema.json'
+  /api/v1/local-ops/status:
+    get:
+      summary: Get local-only operational proof status
+      operationId: getLocalOpsStatus
+      responses:
+        '200':
+          description: Local ops status
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/local-ops-status.schema.json'
+  /api/v1/local-ops/restore-smoke:
+    post:
+      summary: Run a local SQLite and filesystem object-store restore smoke
+      operationId: runLocalRestoreSmoke
+      responses:
+        '201':
+          description: Restore smoke result
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/restore-smoke-result.schema.json'
   /api/v1/workflow-runs/{runId}/approvals:
     post:
       summary: Submit an approval decision
@@ -992,7 +1153,7 @@ paths:
                 $ref: '../contracts/eval-run.schema.json'
   /api/v1/workflow-runs/{runId}/render-jobs:
     post:
-      summary: Queue a legacy optional render job for a workflow run
+      summary: Queue approved panel rendering for a workflow run after the pre-render guide gate passes
       operationId: createRenderJob
       parameters:
         - in: path
@@ -1068,7 +1229,7 @@ paths:
                 $ref: '../contracts/render-job.schema.json'
   /api/v1/render-jobs/{jobId}/retry:
     post:
-      summary: Queue a retry render job using the prior prompt set
+      summary: Queue a retry render job using the prior prompt set after the pre-render guide gate passes
       operationId: retryRenderJob
       parameters:
         - in: path
@@ -1090,6 +1251,48 @@ paths:
                     $ref: '../contracts/workflow-run.schema.json'
                   renderJob:
                     $ref: '../contracts/render-job.schema.json'
+  /api/v1/rendered-asset-manifests/{manifestId}/qa-decisions:
+    get:
+      summary: List rendered-panel QA decisions for a rendered asset manifest
+      operationId: listRenderedPanelQaDecisions
+      parameters:
+        - in: path
+          name: manifestId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rendered panel QA decisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/rendered-panel-qa-decision.schema.json'
+    post:
+      summary: Record local rendered-panel QA checklist and decision
+      operationId: createRenderedPanelQaDecision
+      parameters:
+        - in: path
+          name: manifestId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '201':
+          description: Rendered panel QA decision
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/rendered-panel-qa-decision.schema.json'
   /api/v1/artifacts/{artifactType}/{artifactId}:
     get:
       summary: Get a generated artifact
@@ -1255,8 +1458,10 @@ paths:
                   type: string
                 decision:
                   type: string
-                  enum: [approved, conditional, suspended, refresh-review-date]
+                  enum: [approved, conditional, suspended, refresh-review-date, superseded]
                 reason:
+                  type: string
+                supersededBy:
                   type: string
                 notes:
                   type: array
@@ -1282,6 +1487,49 @@ paths:
                 type: array
                 items:
                   $ref: '../contracts/source-record.schema.json'
+  /api/v1/source-ops:
+    get:
+      summary: Get local source ownership, freshness, and refresh operations view
+      operationId: getSourceOps
+      parameters:
+        - in: query
+          name: disease
+          schema:
+            type: string
+        - in: query
+          name: freshnessState
+          schema:
+            type: string
+        - in: query
+          name: approvalStatus
+          schema:
+            type: string
+        - in: query
+          name: ownerRole
+          schema:
+            type: string
+        - in: query
+          name: openRefreshOnly
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Source ops view
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/source-ops-view.schema.json'
+  /api/v1/source-ops/calendar:
+    get:
+      summary: Get source owner refresh calendar and local due-date proof
+      operationId: getSourceRefreshCalendar
+      responses:
+        '200':
+          description: Source refresh calendar
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/source-refresh-calendar.schema.json'
   /api/v1/source-catalog/{sourceId}/refresh-tasks:
     post:
       summary: Create or reuse a source refresh task
@@ -1418,6 +1666,40 @@ paths:
             text/markdown:
               schema:
                 type: string
+  /api/v1/release-bundles/{releaseId}/mirror-local:
+    post:
+      summary: Mirror a release bundle and related assets to local delivery storage
+      operationId: mirrorReleaseBundleLocal
+      parameters:
+        - in: path
+          name: releaseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Local delivery mirror manifest
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/local-delivery-mirror.schema.json'
+  /api/v1/release-bundles/{releaseId}/verify-local-mirror:
+    post:
+      summary: Verify a local delivery mirror's checksums and required files
+      operationId: verifyReleaseBundleLocalMirror
+      parameters:
+        - in: path
+          name: releaseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Local delivery verification result
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/local-delivery-verification.schema.json'
   /api/v1/workflow-runs/{runId}/exports:
     get:
       summary: List export history entries for a workflow run

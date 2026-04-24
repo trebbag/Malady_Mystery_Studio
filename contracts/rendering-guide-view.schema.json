@@ -10,6 +10,11 @@
     "renderingGuide",
     "markdown",
     "attachmentSummary",
+    "visualReferencePack",
+    "reviewDecision",
+    "gateStatus",
+    "renderDisabledReason",
+    "guideWarnings",
     "availableActions"
   ],
   "properties": {
@@ -50,6 +55,37 @@
           ]
         }
       }
+    },
+    "visualReferencePack": {
+      "anyOf": [
+        { "$ref": "visual-reference-pack.schema.json" },
+        { "type": "null" }
+      ]
+    },
+    "reviewDecision": {
+      "anyOf": [
+        { "$ref": "render-guide-review-decision.schema.json" },
+        { "type": "null" }
+      ]
+    },
+    "gateStatus": {
+      "type": "string",
+      "enum": [
+        "not-reviewed",
+        "approved",
+        "changes-requested",
+        "rejected",
+        "stale",
+        "missing-guide",
+        "missing-reference-pack"
+      ]
+    },
+    "renderDisabledReason": {
+      "type": "string"
+    },
+    "guideWarnings": {
+      "type": "array",
+      "items": { "type": "string" }
     },
     "availableActions": {
       "type": "array",

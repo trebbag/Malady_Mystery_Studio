@@ -89,21 +89,33 @@ export function createExportHistoryView(options) {
 }
 
 /**
- * @param {{ runId: string, renderingGuide: any, markdown: string, attachmentSummary: any }} options
+ * @param {{ runId: string, renderingGuide: any, markdown: string, attachmentSummary: any, visualReferencePack?: any | null, reviewDecision?: any | null, gateStatus?: string, renderDisabledReason?: string, guideWarnings?: string[] }} options
  * @returns {any}
  */
 export function createRenderingGuideView(options) {
+  const gateStatus = options.gateStatus ?? 'not-reviewed';
+  const renderingApproved = gateStatus === 'approved';
+
   return {
     schemaVersion: SCHEMA_VERSION,
     runId: options.runId,
     renderingGuide: options.renderingGuide,
     markdown: options.markdown,
     attachmentSummary: options.attachmentSummary,
+    visualReferencePack: options.visualReferencePack ?? null,
+    reviewDecision: options.reviewDecision ?? null,
+    gateStatus,
+    renderDisabledReason: options.renderDisabledReason ?? '',
+    guideWarnings: options.guideWarnings ?? [],
     availableActions: [
       'regenerate-rendering-guide',
+      'regenerate-visual-reference-pack',
+      'approve-rendering-guide',
+      'request-rendering-guide-changes',
+      'reject-rendering-guide',
       'copy-rendering-guide-markdown',
       'download-rendering-guide-markdown',
-      'attach-rendered-assets',
+      ...(renderingApproved ? ['queue-panel-rendering', 'attach-rendered-assets'] : []),
     ],
   };
 }
@@ -123,7 +135,7 @@ export function createWorkflowArtifactListView(options) {
 }
 
 /**
- * @param {{ actor: any, tenantId: string, serverBaseUrl: string, storage: { dbFilePath: string, objectStoreDir: string }, platform: { runtimeMode: string, metadataStore: string, objectStore: string, queueBackend: string, telemetryBackend: string }, availableCommands: string[], readiness: any, localStoragePolicy?: any, managedRuntimeReadiness?: any, externalElements?: any }} options
+ * @param {{ actor: any, tenantId: string, serverBaseUrl: string, storage: { dbFilePath: string, objectStoreDir: string }, platform: { runtimeMode: string, metadataStore: string, objectStore: string, queueBackend: string, telemetryBackend: string }, availableCommands: string[], readiness: any, localStoragePolicy?: any, externalElements?: any }} options
  * @returns {any}
  */
 export function createLocalRuntimeView(options) {
@@ -141,7 +153,6 @@ export function createLocalRuntimeView(options) {
     availableCommands: options.availableCommands,
     readiness: options.readiness,
     ...(options.localStoragePolicy ? { localStoragePolicy: options.localStoragePolicy } : {}),
-    ...(options.managedRuntimeReadiness ? { managedRuntimeReadiness: options.managedRuntimeReadiness } : {}),
     ...(options.externalElements ? { externalElements: options.externalElements } : {}),
   };
 }

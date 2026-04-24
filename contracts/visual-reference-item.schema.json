@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/visual-reference-item.schema.json",
+  "title": "VisualReferenceItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "renderingGuideId",
+    "itemType",
+    "canonicalName",
+    "source",
+    "approvalStatus",
+    "usagePanelIds",
+    "textLocks",
+    "styleLocks",
+    "negativeLocks",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "tenantId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflowRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "renderingGuideId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "itemType": {
+      "type": "string",
+      "enum": [
+        "character",
+        "prop",
+        "set-piece",
+        "anatomy-environment",
+        "style-frame"
+      ]
+    },
+    "canonicalName": { "type": "string" },
+    "description": { "type": "string" },
+    "source": {
+      "type": "string",
+      "enum": [
+        "local-canon",
+        "run-artifact",
+        "kb-storage",
+        "attached-local",
+        "generated-after-approval"
+      ]
+    },
+    "approvalStatus": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "changes-requested",
+        "rejected",
+        "missing-reference"
+      ]
+    },
+    "usagePanelIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      }
+    },
+    "imageReferenceLocations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "textLocks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "personalityLocks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "continuityLocks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "styleLocks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "negativeLocks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

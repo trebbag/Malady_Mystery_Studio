@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/source-ops-view.schema.json",
+  "title": "SourceOpsView",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "filters",
+    "summary",
+    "sourceRecords",
+    "refreshTasks",
+    "workItems"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disease", "freshnessState", "approvalStatus", "ownerRole", "openRefreshOnly"],
+      "properties": {
+        "disease": { "type": "string" },
+        "freshnessState": { "type": "string" },
+        "approvalStatus": { "type": "string" },
+        "ownerRole": { "type": "string" },
+        "openRefreshOnly": { "type": "boolean" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visibleSourceCount",
+        "staleSourceCount",
+        "blockedSourceCount",
+        "suspendedSourceCount",
+        "ownerlessSourceCount",
+        "openRefreshTaskCount",
+        "impactedRunCount",
+        "promotedDiseaseCount"
+      ],
+      "properties": {
+        "visibleSourceCount": { "type": "integer", "minimum": 0 },
+        "staleSourceCount": { "type": "integer", "minimum": 0 },
+        "blockedSourceCount": { "type": "integer", "minimum": 0 },
+        "suspendedSourceCount": { "type": "integer", "minimum": 0 },
+        "ownerlessSourceCount": { "type": "integer", "minimum": 0 },
+        "openRefreshTaskCount": { "type": "integer", "minimum": 0 },
+        "impactedRunCount": { "type": "integer", "minimum": 0 },
+        "promotedDiseaseCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sourceRecords": {
+      "type": "array",
+      "items": { "$ref": "source-record.schema.json" }
+    },
+    "refreshTasks": {
+      "type": "array",
+      "items": { "$ref": "source-refresh-task.schema.json" }
+    },
+    "workItems": {
+      "type": "array",
+      "items": { "$ref": "work-item.schema.json" }
+    }
+  }
+}

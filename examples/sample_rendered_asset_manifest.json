@@ -5,6 +5,8 @@
   "workflowRunId": "run.hcc.001",
   "renderJobId": "rjob.hcc.001",
   "renderTargetProfileId": "rtp.openai-gpt-image-2-default",
+  "renderingGuideId": "rgd.hcc.001",
+  "visualReferencePackId": "vrp.hcc.001",
   "allPanelsRendered": true,
   "renderMode": "stub-placeholder",
   "nonFinalPlaceholder": true,

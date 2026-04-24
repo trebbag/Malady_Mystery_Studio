@@ -10,7 +10,12 @@
     "dueSoonItemCount": 2,
     "completedItemCount": 1,
     "fallbackQueueItemCount": 1,
-    "unreadNotificationCount": 3
+    "unreadNotificationCount": 3,
+    "unresolvedMentionCount": 1,
+    "sourceRefreshOpenCount": 2,
+    "renderRetryOpenCount": 1,
+    "opsDrillOpenCount": 0,
+    "medianThreadResolutionHours": 6
   },
   "countsByWorkType": [
     {
@@ -73,5 +78,62 @@
       "stage": "disease-packet",
       "count": 2
     }
-  ]
+  ],
+  "overdueAgingBuckets": [
+    {
+      "bucket": "not-overdue",
+      "count": 5
+    },
+    {
+      "bucket": "0-24h-overdue",
+      "count": 1
+    },
+    {
+      "bucket": "24-48h-overdue",
+      "count": 0
+    },
+    {
+      "bucket": "48-120h-overdue",
+      "count": 0
+    },
+    {
+      "bucket": "120h-plus-overdue",
+      "count": 0
+    }
+  ],
+  "slaBuckets": [
+    {
+      "bucket": "completed",
+      "count": 1
+    },
+    {
+      "bucket": "on-track",
+      "count": 2
+    },
+    {
+      "bucket": "reminder-due",
+      "count": 2
+    },
+    {
+      "bucket": "overdue",
+      "count": 0
+    },
+    {
+      "bucket": "escalated",
+      "count": 1
+    }
+  ],
+  "sourceRefreshBurden": [
+    {
+      "canonicalDiseaseName": "Chronic obstructive pulmonary disease",
+      "ownerRole": "Primary Care Clinical Reviewer",
+      "openCount": 2,
+      "overdueCount": 1
+    }
+  ],
+  "threadResolution": {
+    "openThreadCount": 4,
+    "resolvedThreadCount": 2,
+    "medianResolutionHours": 6
+  }
 }

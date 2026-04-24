@@ -33,22 +33,17 @@ pnpm eval:run -- --run-id <runId>
 pnpm local:backup
 pnpm local:reset
 pnpm local:restore -- --path var/backups/<timestamp>
+pnpm ops:restore-smoke
 ```
 
-Optional future portability checks are still available, but they are not required for the active local-storage app path:
-
-```bash
-pnpm migrate:managed -- --dry-run
-pnpm ops:restore-smoke -- --dry-run
-```
+The active product path is local-only. Managed/Postgres/Azure portability scripts may remain in the repo for archival comparison, but they are not part of the local-storage pilot workflow or Settings readiness surface.
 
 ## No-key local behavior
 
 - `RENDER_PROVIDER=stub-image` is the default. It creates deterministic rendered-asset manifests for every required panel, with prompt hashes, continuity locks, anatomy locks, lettering-separation status, retry strategy, and acceptance checks.
 - Stub rendered assets are explicitly marked as non-final placeholders. They validate local workflow structure, release wiring, traceability, and gates only; they do not certify final image quality.
 - Arbitrary typed diseases can compile locally without `OPENAI_API_KEY` through fixture-backed provisional research assembly. Those packs remain provisional and reviewer-gated until approved or promoted.
-- Local backup, reset, and restore operate on `var/db/platform.sqlite` plus `var/object-store/**`.
-- Managed migration and restore smoke commands are retained as optional dry-run portability checks only. Live Postgres/Azure cutover is deferred and not part of the local-storage product path.
+- Local backup, reset, restore, restore-smoke, and delivery mirroring operate on `var/db/platform.sqlite`, `var/object-store/**`, `var/backups/**`, and `var/delivery/**`.
 
 ## ClinicalEducation compatibility
 
@@ -87,26 +82,41 @@ The active render path remains OpenAI-targeted (`gpt-image-2`) or local `stub-im
   - `/debug/review`
   - `/debug/review/runs/:runId`
 
+## Governed local clinical library
+
+The promoted governed library now includes 18 local-storage packs: Type 2 diabetes mellitus, essential hypertension, chronic kidney disease, hypothyroidism, iron deficiency anemia, migraine, COPD, community-acquired pneumonia, urinary tract infection, GERD, hyperlipidemia, major depressive disorder, generalized anxiety disorder, osteoarthritis, low back pain with red-flag screening, allergic rhinitis, atopic dermatitis/eczema, and obesity/metabolic syndrome. Arbitrary typed diseases still compile through provisional run-scoped packs and must be approved or promoted before export.
+
+Source ops are available through `/runs/:runId/sources`, `/review/queue`, and `/api/v1/source-ops`. Reviewers can assign/transfer owner roles, mark sources refreshed, suspend or supersede sources, create/reopen refresh work, and resolve queue work locally.
+
+## Local operational proof
+
+- `/settings` shows local storage paths, object-store size, latest backup, latest restore smoke, latest delivery mirror, and ops-drill work items.
+- `pnpm ops:restore-smoke` creates a local backup snapshot, restores it into `var/ops/restore-smoke/**`, checks SQLite/object-store presence, and writes a JSON report.
+- The app restore-smoke endpoint additionally validates stored artifacts against contracts, checks object-store references in the scratch restore, and records delivery verification coverage.
+- Exported bundles can be mirrored through the Bundles page or `POST /api/v1/release-bundles/{releaseId}/mirror-local`; files land under `var/delivery/<releaseId>/` with checksums.
+- Local mirrors can be verified through the Bundles page or `POST /api/v1/release-bundles/{releaseId}/verify-local-mirror`.
+- `/review/queue` can seed the local proof scenarios in `data/pilot-proof-scenarios.json` and persist trend snapshots so promoted-pack review, provisional-pack promotion, source-refresh, render-retry, and ops-drill work can be inspected over time with real app data.
+- Rendered-panel QA decisions can be recorded against rendered asset manifests to distinguish structural stub validation from live `gpt-image-2` final-art review.
+
 ## Current local MVP status
 
-- Foundation and local runtime: `99%`
-- Local storage, backup, restore, and artifact retention: `97%`
-- Open disease intake and research assembly: `90%`
-- Clinical truth layer and governance: `96%`
-- Workbook and guardrails: `79%`
-- Scene, panel, and rendered-output flow: `96%` structurally, with real image quality still credential-blocked
-- Review, eval, export, and queue operations: `99%`
-- Frontend UX: `97%`
-- Optional managed deployment: `20%` deferred, not required for local storage
+- Foundation and local runtime: `100%`
+- Local storage, backup, restore, and artifact retention: `100%`
+- Open disease intake and research assembly: `94%`
+- Clinical truth layer and governance: `98%`
+- Workbook and guardrails: `80%`
+- Scene, panel, and rendered-output flow: `98%` structurally, with full-story live image quality still billing-limit blocked
+- Review, eval, export, and queue operations: `100%`
+- Frontend UX: `99%`
+- Local operations proof: `98%`
 
 Overall:
-- Local MVP readiness: `98%`
-- Local-storage pilot readiness: `76%`
+- Local MVP readiness: `100%`
+- Local-storage pilot readiness: `92%`
 
 ## What remains before MVP and pilot
 
-- Run a deliberate real ChatGPT Image 2.0 / `gpt-image-2` smoke with the configured local `.env` key; current stub images are structural placeholders only.
-- Keep active persistence local and run backup/reset/restore/retention drills on realistic run volume.
-- Broaden promoted governed source coverage and ownership workflows beyond fixture-backed provisional packs.
-- Integrate external auth and gateway identity when the product moves beyond local-open operator mode.
-- Add optional downstream publishing/export integrations after the rendered-panel export path is stable.
+- Run sustained real ChatGPT Image 2.0 / `gpt-image-2` full-story panel completion after billing limits are cleared; current stub images are structural placeholders only.
+- Repeat local backup, restore-smoke, delivery mirror verification, queue trend snapshots, rendered-panel QA, and bundle-integrity drills against realistic pilot run volume.
+- Broaden governed source ownership workflows beyond the current local primary-care tranche as reviewer volume grows.
+- Add richer downstream delivery integrations only after local mirrored bundles are stable.

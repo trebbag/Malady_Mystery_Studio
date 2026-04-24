@@ -39,6 +39,14 @@
       "type": "string",
       "pattern": "^[A-Za-z0-9._:-]+$"
     },
+    "renderingGuideId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "visualReferencePackId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
     "allPanelsRendered": {
       "type": "boolean"
     },

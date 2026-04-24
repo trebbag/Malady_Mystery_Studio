@@ -39,8 +39,13 @@
         "approved",
         "conditional",
         "suspended",
-        "refresh-review-date"
+        "refresh-review-date",
+        "superseded"
       ]
+    },
+    "supersededBy": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
     },
     "reason": {
       "type": "string"

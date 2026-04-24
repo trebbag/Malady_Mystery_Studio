@@ -24,10 +24,13 @@ Keep a first-class `rendering-guide` artifact, but make it a secondary QA and re
 
 Default release export now requires rendered panels plus fresh passing evals. The rendering guide remains attached as a secondary review artifact that can be copied, diffed, regenerated, and used for manual retries.
 
+The rendering guide is also the required pre-render review object. A generated guide must be paired with a generated `visual-reference-pack`, reviewed by the local operator, and approved through a `render-guide-review-decision` before any rendered panel assets can be created or attached.
+
 ## Consequences
 
 ### Positive
 - reviewers still get a single place to inspect prompts, continuity locks, and lettering overlays
+- reviewers can approve or request changes before any image generation spends real provider calls
 - retry guidance stays readable even when the render worker already produced panel art
 - lettering and medical traceability remain governed inside the repo rather than drifting into external tools
 - older guide-first and newer rendered-output runs remain readable under one support-artifact model

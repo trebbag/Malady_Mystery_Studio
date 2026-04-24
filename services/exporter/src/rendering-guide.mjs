@@ -82,7 +82,12 @@ function buildContinuityBible(renderPrompts) {
     continuityAnchors: uniqueStrings((renderPrompts ?? []).flatMap((/** @type {any} */ renderPrompt) => renderPrompt.continuityAnchors ?? [])),
     characterLocks: uniqueStrings((renderPrompts ?? []).flatMap((/** @type {any} */ renderPrompt) => renderPrompt.characterLocks ?? [])),
     anatomyLocks: uniqueStrings((renderPrompts ?? []).flatMap((/** @type {any} */ renderPrompt) => renderPrompt.anatomyLocks ?? [])),
-    styleLocks: uniqueStrings((renderPrompts ?? []).flatMap((/** @type {any} */ renderPrompt) => renderPrompt.styleLocks ?? [])),
+    styleLocks: uniqueStrings([
+      'premium cinematic 3D animated felt-toy rendering',
+      'warm feature-animation lighting with soft tactile fibers',
+      'stable character silhouettes, expressive eyes, subtle stitching, and consistent prop scale',
+      ...(renderPrompts ?? []).flatMap((/** @type {any} */ renderPrompt) => renderPrompt.styleLocks ?? []),
+    ]),
     letteringPolicy: 'Never request visible dialogue, captions, labels, or teaching copy inside the generated art. Apply all text from the separate lettering layer after image generation.',
   };
 }
@@ -153,11 +158,12 @@ function buildOpenAiImagePrompt(panel, renderPrompt) {
   const characterStatement = uniqueStrings(renderPrompt.characterLocks ?? []).join('; ');
   const anatomyStatement = uniqueStrings(renderPrompt.anatomyLocks ?? []).join('; ');
   const styleStatement = uniqueStrings(renderPrompt.styleLocks ?? []).join('; ');
+  const visualReferenceStatement = uniqueStrings(renderPrompt.visualReferenceItemIds ?? panel.visualReferenceItemIds ?? []).join(', ');
 
   return {
     aspectRatio: renderPrompt.aspectRatio,
     prompt: [
-      'Create a high-fidelity finished comic-book panel illustration.',
+      'Create a premium cinematic 3D animated felt-toy finished comic-book panel illustration.',
       `Scene and background: ${panel.location} at ${panel.bodyScale} scale.`,
       `Subject and action: ${panel.actionSummary}.`,
       `Key medical details: ${panel.medicalObjective}. Story purpose: ${panel.storyFunction}.`,
@@ -167,6 +173,7 @@ function buildOpenAiImagePrompt(panel, renderPrompt) {
       characterStatement ? `Character locks: ${characterStatement}.` : '',
       anatomyStatement ? `Anatomy and mechanism locks: ${anatomyStatement}.` : '',
       styleStatement ? `Style and finish locks: ${styleStatement}.` : '',
+      visualReferenceStatement ? `Approved visual reference item ids to preserve: ${visualReferenceStatement}.` : '',
       'Leave clean space for later lettering and do not render any visible text in the image.',
     ].filter(Boolean).join(' '),
     negativePrompt: renderPrompt.negativePrompt,
@@ -179,6 +186,7 @@ function buildOpenAiImagePrompt(panel, renderPrompt) {
       'Call out camera, lighting, and medical mechanism locks explicitly when fidelity is more important than stylistic variation.',
       'If anatomy becomes ambiguous, restate the medical objective and anatomy locks before changing style.',
       'Do not include speech bubbles, captions, labels, or teaching copy inside the generated art.',
+      'Do not generate final panel art until the latest rendering guide and visual reference pack are explicitly approved.',
     ],
   };
 }
@@ -220,6 +228,7 @@ function normalizeRenderingGuidePanel(panel) {
     ...rest,
     continuityAnchors: normalizeStringArray(rest.continuityAnchors),
     linkedClaimIds: normalizeStringArray(rest.linkedClaimIds),
+    visualReferenceItemIds: normalizeStringArray(rest.visualReferenceItemIds),
     acceptanceChecks: normalizeStringArray(rest.acceptanceChecks),
     claimReferences: Array.isArray(rest.claimReferences) ? rest.claimReferences : [],
     letteringEntries: Array.isArray(rest.letteringEntries) ? rest.letteringEntries : [],
@@ -249,6 +258,9 @@ export function normalizeRenderingGuide(renderingGuide) {
   return {
     ...rest,
     providerTargets: ['openai-gpt-image-2'],
+    reviewStatus: rest.reviewStatus ?? 'not-reviewed',
+    ...(rest.visualReferencePackId ? { visualReferencePackId: rest.visualReferencePackId } : {}),
+    ...(rest.referenceCoverageSummary ? { referenceCoverageSummary: rest.referenceCoverageSummary } : {}),
     franchiseRules: normalizeStringArray(franchiseRules),
     continuityBible: {
       continuityAnchors: normalizeStringArray(continuityBible?.continuityAnchors),
@@ -305,6 +317,7 @@ export function buildRenderingGuide(options) {
 
       const letteringEntries = letteringByPanel.get(panel.panelId) ?? [];
       const linkedClaimIds = panel.linkedClaimIds ?? renderPrompt.linkedClaimIds ?? [];
+      const visualReferenceItemIds = renderPrompt.visualReferenceItemIds ?? [];
 
       return {
         panelId: panel.panelId,
@@ -324,6 +337,7 @@ export function buildRenderingGuide(options) {
         lightingMood: panel.lightingMood,
         continuityAnchors: panel.continuityAnchors ?? [],
         linkedClaimIds,
+        visualReferenceItemIds,
         acceptanceChecks: panel.acceptanceChecks ?? [],
         claimReferences: linkedClaimIds
           .map((/** @type {string} */ claimId) => claimReferenceMap.get(claimId))
@@ -408,6 +422,7 @@ export function renderRenderingGuideMarkdown(renderingGuide) {
 - Composition notes: ${panel.compositionNotes}
 - Lighting mood: ${panel.lightingMood}
 ${panel.clueRevealed ? `- Clue revealed: ${panel.clueRevealed}\n` : ''}- Continuity anchors: ${panel.continuityAnchors.join('; ')}
+- Visual reference item ids: ${(panel.visualReferenceItemIds ?? []).join(', ') || 'not assigned'}
 - Acceptance checks: ${panel.acceptanceChecks.join('; ')}
 
 ### Claim References
@@ -443,6 +458,8 @@ Locks:
 - Disease: ${normalizedGuide.canonicalDiseaseName}
 - Generated at: ${normalizedGuide.generatedAt}
 - Providers: ${normalizedGuide.providerTargets.join(', ')}
+- Review status: ${normalizedGuide.reviewStatus ?? 'not-reviewed'}
+- Visual reference pack: ${normalizedGuide.visualReferencePackId ?? 'not-generated'}
 
 ## Run Summary
 - One sentence: ${normalizedGuide.runSummary.oneSentence}
@@ -462,6 +479,14 @@ ${normalizedGuide.franchiseRules.map((/** @type {string} */ rule) => `- ${rule}`
 - Anatomy locks: ${normalizedGuide.continuityBible.anatomyLocks.join('; ')}
 - Style locks: ${normalizedGuide.continuityBible.styleLocks.join('; ')}
 - Lettering policy: ${normalizedGuide.continuityBible.letteringPolicy}
+
+## Visual Reference Coverage
+${normalizedGuide.referenceCoverageSummary ? [
+    `- Panels with references: ${normalizedGuide.referenceCoverageSummary.panelsWithReferenceItems}/${normalizedGuide.referenceCoverageSummary.panelCount}`,
+    `- Required characters present: ${normalizedGuide.referenceCoverageSummary.presentCharacterItems}/${normalizedGuide.referenceCoverageSummary.requiredCharacterItems}`,
+    `- Recurring references: ${normalizedGuide.referenceCoverageSummary.recurringItemCount}`,
+    ...(normalizedGuide.referenceCoverageSummary.warnings ?? []).map((/** @type {string} */ warning) => `- Warning: ${warning}`),
+  ].join('\n') : '- Visual reference pack has not been generated.'}
 
 ## Global Negative Constraints
 ${normalizedGuide.globalNegativeConstraints.map((/** @type {string} */ constraint) => `- ${constraint}`).join('\n')}

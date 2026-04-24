@@ -25,8 +25,7 @@
     "pnpm dev:web",
     "pnpm dev:worker",
     "pnpm eval:run -- --run-id <runId>",
-    "pnpm migrate:managed -- --dry-run",
-    "pnpm ops:restore-smoke -- --dry-run",
+    "pnpm ops:restore-smoke",
     "pnpm local:backup",
     "pnpm local:reset",
     "pnpm local:restore -- --path var/backups/<timestamp>"
@@ -39,15 +38,15 @@
       },
       {
         "label": "Local storage, backup, restore, and artifact retention",
-        "percentComplete": 97
+        "percentComplete": 99
       },
       {
         "label": "Open disease intake and research assembly",
-        "percentComplete": 90
+        "percentComplete": 92
       },
       {
         "label": "Clinical truth layer and governance",
-        "percentComplete": 96
+        "percentComplete": 98
       },
       {
         "label": "Workbook and guardrails",
@@ -63,24 +62,22 @@
       },
       {
         "label": "Frontend UX",
-        "percentComplete": 97
+        "percentComplete": 98
       },
       {
-        "label": "Optional managed deployment",
-        "percentComplete": 20
+        "label": "Local operations proof",
+        "percentComplete": 94
       }
     ],
     "overall": {
-      "localMvpReadiness": 98,
-      "pilotReadiness": 76
+      "localMvpReadiness": 99,
+      "pilotReadiness": 84
     },
     "remainingWork": [
-      "Run a deliberate real ChatGPT Image 2.0 / gpt-image-2 smoke with the configured local .env key; stub assets validate structure only.",
-      "Keep active app persistence on local SQLite plus filesystem object storage; managed database/blob cutover is deferred and optional.",
-      "Exercise local backup, reset, restore, and retention drills against realistic run volume before pilot use.",
-      "Broaden promoted governed source coverage and owner workflows beyond fixture-backed provisional packs.",
-      "Integrate external auth at the frontend or gateway layer when the app moves beyond local-open mode.",
-      "Add optional downstream publishing and distribution integrations after the rendered-panel export path is stable."
+      "Run sustained real ChatGPT Image 2.0 / gpt-image-2 panel completion after billing limits are cleared; stub assets validate structure only.",
+      "Exercise local backup, restore-smoke, delivery mirror, and bundle-integrity drills against realistic pilot run volume.",
+      "Broaden governed source ownership workflows beyond the current local primary-care tranche as reviewer volume grows.",
+      "Add richer downstream delivery integrations only after local mirrored bundles are stable."
     ]
   },
   "localStoragePolicy": {
@@ -100,53 +97,6 @@
       "SQLite stores local metadata only.",
       "Generated artifacts, rendered panels, release bundles, evidence packs, and attachments stay in the filesystem object store.",
       "Postgres is not required for the active local app path and must not store binary files or large artifact payloads."
-    ]
-  },
-  "managedRuntimeReadiness": {
-    "status": "ready-locally",
-    "dryRunAvailable": true,
-    "checks": [
-      {
-        "name": "metadata-store",
-        "status": "blocked-awaiting-credentials",
-        "current": "sqlite",
-        "target": "postgres",
-        "requiredEnv": [
-          "MANAGED_POSTGRES_URL"
-        ]
-      },
-      {
-        "name": "object-store",
-        "status": "blocked-awaiting-credentials",
-        "current": "filesystem",
-        "target": "azure-blob",
-        "requiredEnv": [
-          "AZURE_BLOB_CONNECTION_STRING"
-        ]
-      },
-      {
-        "name": "async-queue",
-        "status": "blocked-awaiting-credentials",
-        "current": "in-process",
-        "target": "azure-service-bus",
-        "requiredEnv": [
-          "AZURE_SERVICE_BUS_CONNECTION_STRING"
-        ]
-      },
-      {
-        "name": "restore-smoke",
-        "status": "blocked-awaiting-credentials",
-        "current": "dry-run",
-        "target": "managed-restore-drill",
-        "requiredEnv": [
-          "MANAGED_POSTGRES_URL",
-          "AZURE_BLOB_CONNECTION_STRING"
-        ]
-      }
-    ],
-    "localOnlyCommands": [
-      "pnpm migrate:managed -- --dry-run",
-      "pnpm ops:restore-smoke -- --dry-run"
     ]
   },
   "externalElements": {

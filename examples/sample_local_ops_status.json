@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "1.0.0",
+  "tenantId": "tenant.local",
+  "storage": {
+    "mode": "local-only",
+    "dbFilePath": "var/db/platform.sqlite",
+    "objectStoreDir": "var/object-store",
+    "backupRootDir": "var/backups",
+    "deliveryRootDir": "var/delivery",
+    "objectCount": 42,
+    "byteLength": 1048576
+  },
+  "latestBackup": {
+    "path": "var/backups/2026-04-24T12-00-00-000Z",
+    "createdAt": "2026-04-24T12:00:00Z"
+  },
+  "latestRestoreSmoke": {
+    "schemaVersion": "1.0.0",
+    "id": "rsm.local.001",
+    "tenantId": "tenant.local",
+    "status": "passed",
+    "mode": "local-filesystem",
+    "backupDir": "var/backups/restore-smoke-2026-04-24T12-00-00-000Z",
+    "scratchDir": "var/ops/restore-smoke/restore-smoke-2026-04-24T12-00-00-000Z",
+    "checks": [
+      {
+        "name": "sqlite-copy",
+        "status": "passed",
+        "details": "SQLite file copied into the scratch restore."
+      }
+    ],
+    "stats": {
+      "dbFileCopied": true,
+      "objectCount": 42,
+      "byteLength": 1048576,
+      "releaseBundleCount": 1,
+      "renderedManifestCount": 1,
+      "schemaValidatedArtifactCount": 12,
+      "schemaValidationFailureCount": 0,
+      "objectReferenceCount": 42,
+      "missingObjectReferenceCount": 0,
+      "deliveryVerificationCount": 1,
+      "failedDeliveryVerificationCount": 0
+    },
+    "createdBy": "local-operator",
+    "startedAt": "2026-04-24T12:00:00Z",
+    "completedAt": "2026-04-24T12:01:00Z"
+  },
+  "latestDeliveryMirror": {
+    "schemaVersion": "1.0.0",
+    "id": "ldm.local.001",
+    "tenantId": "tenant.local",
+    "releaseId": "rel.local.001",
+    "workflowRunId": "run.local.001",
+    "status": "mirrored",
+    "deliveryDir": "var/delivery/rel.local.001",
+    "files": [
+      {
+        "label": "release-bundle",
+        "path": "var/delivery/rel.local.001/release-bundle.json",
+        "checksum": "demo-checksum",
+        "byteLength": 4096
+      }
+    ],
+    "checksumManifestLocation": "var/delivery/rel.local.001/checksums.json",
+    "createdBy": "local-operator",
+    "createdAt": "2026-04-24T12:05:00Z"
+  },
+  "latestDeliveryVerification": {
+    "schemaVersion": "1.0.0",
+    "id": "ldv.local.001",
+    "tenantId": "tenant.local",
+    "releaseId": "rel.local.001",
+    "workflowRunId": "run.local.001",
+    "localDeliveryMirrorId": "ldm.local.001",
+    "status": "passed",
+    "deliveryDir": "var/delivery/rel.local.001",
+    "checks": [
+      {
+        "name": "release-bundle",
+        "status": "passed",
+        "details": "Checksum matched."
+      }
+    ],
+    "verifiedFileCount": 1,
+    "failedFileCount": 0,
+    "checksumManifestLocation": "var/delivery/rel.local.001/checksums.json",
+    "createdBy": "local-operator",
+    "createdAt": "2026-04-24T12:05:30Z"
+  },
+  "opsDrillWorkItems": [],
+  "generatedAt": "2026-04-24T12:06:00Z"
+}

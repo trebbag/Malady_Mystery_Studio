@@ -234,12 +234,35 @@ export interface ReviewQueueAnalyticsView {
     completedItemCount: number;
     fallbackQueueItemCount: number;
     unreadNotificationCount: number;
+    unresolvedMentionCount: number;
+    sourceRefreshOpenCount: number;
+    renderRetryOpenCount: number;
+    opsDrillOpenCount: number;
+    medianThreadResolutionHours: number;
   };
   countsByWorkType: Array<{ workType: string; count: number }>;
   countsByStatus: Array<{ status: string; count: number }>;
   countsByPriority: Array<{ priority: string; count: number }>;
   assigneeLoad: Array<{ assignee: string; count: number }>;
   runBlockersByStage: Array<{ stage: string; count: number }>;
+  overdueAgingBuckets: Array<{ bucket: string; count: number }>;
+  slaBuckets: Array<{ bucket: string; count: number }>;
+  sourceRefreshBurden: Array<{ canonicalDiseaseName: string; ownerRole: string; openCount: number; overdueCount: number }>;
+  threadResolution: {
+    openThreadCount: number;
+    resolvedThreadCount: number;
+    medianResolutionHours: number;
+  };
+}
+
+export interface ReviewQueueAnalyticsSnapshot {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  snapshotLabel: string;
+  analytics: ReviewQueueAnalyticsView;
+  createdBy: string;
+  createdAt: string;
 }
 
 export interface Notification {
@@ -338,6 +361,9 @@ export interface RenderingGuide {
   generatedAt: string;
   markdownDocumentId: string;
   markdownLocation: string;
+  visualReferencePackId?: string;
+  reviewStatus?: 'not-reviewed' | 'approved' | 'changes-requested' | 'rejected' | 'stale';
+  referenceCoverageSummary?: Record<string, unknown>;
   runSummary: Record<string, unknown>;
   franchiseRules: string[];
   continuityBible: Record<string, unknown>;
@@ -353,6 +379,60 @@ export interface RenderingGuide {
   panels: Array<Record<string, unknown>>;
 }
 
+export interface VisualReferenceItem {
+  id: string;
+  itemType: 'character' | 'prop' | 'set-piece' | 'anatomy-environment' | 'style-frame';
+  canonicalName: string;
+  description?: string;
+  source: string;
+  approvalStatus: string;
+  usagePanelIds: string[];
+  imageReferenceLocations?: string[];
+  textLocks: string[];
+  personalityLocks?: string[];
+  continuityLocks?: string[];
+  styleLocks: string[];
+  negativeLocks: string[];
+}
+
+export interface VisualReferencePack {
+  id: string;
+  workflowRunId: string;
+  tenantId: string;
+  renderingGuideId: string;
+  generatedAt: string;
+  approvalStatus: 'not-reviewed' | 'approved' | 'changes-requested' | 'rejected' | 'stale';
+  requiredBeforeRender: boolean;
+  items: VisualReferenceItem[];
+  panelReferenceMap: Array<{
+    panelId: string;
+    visualReferenceItemIds: string[];
+  }>;
+  coverageSummary: {
+    panelCount: number;
+    panelsWithReferenceItems: number;
+    missingPanelReferenceCount: number;
+    requiredCharacterItems: number;
+    presentCharacterItems: number;
+    recurringItemCount: number;
+    warnings: string[];
+  };
+}
+
+export interface RenderGuideReviewDecision {
+  id: string;
+  workflowRunId: string;
+  tenantId: string;
+  renderingGuideId: string;
+  visualReferencePackId: string;
+  decision: 'approved' | 'changes-requested' | 'rejected';
+  reviewerId: string;
+  reviewerRoles: string[];
+  comment?: string;
+  requiredChanges?: string[];
+  createdAt: string;
+}
+
 export interface RenderingGuideView {
   schemaVersion: string;
   runId: string;
@@ -363,6 +443,11 @@ export interface RenderingGuideView {
     latestRenderedAssetManifestId?: string;
     attachmentMode: 'guide-only' | 'external-art-attached';
   };
+  visualReferencePack: VisualReferencePack | null;
+  reviewDecision: RenderGuideReviewDecision | null;
+  gateStatus: 'not-reviewed' | 'approved' | 'changes-requested' | 'rejected' | 'stale' | 'missing-guide' | 'missing-reference-pack';
+  renderDisabledReason: string;
+  guideWarnings: string[];
   availableActions: string[];
 }
 
@@ -549,18 +634,6 @@ export interface LocalRuntimeView {
     resetCommand: string;
     notes: string[];
   };
-  managedRuntimeReadiness?: {
-    status: 'ready-locally' | 'configured' | 'blocked-awaiting-credentials' | 'failed';
-    dryRunAvailable: boolean;
-    checks: Array<{
-      name: string;
-      status: 'ready-locally' | 'configured' | 'blocked-awaiting-credentials' | 'failed';
-      current: string;
-      target: string;
-      requiredEnv: string[];
-    }>;
-    localOnlyCommands: string[];
-  };
   externalElements?: {
     clinicalEducationCompatibility: {
       enabled: boolean;
@@ -593,6 +666,159 @@ export interface LocalRuntimeView {
       agentIsolationMode: string;
     };
   };
+}
+
+export interface RestoreSmokeResult {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  status: 'passed' | 'failed';
+  mode: 'local-filesystem';
+  backupDir: string;
+  scratchDir: string;
+  checks: Array<{ name: string; status: 'passed' | 'failed' | 'warning'; details?: string }>;
+  stats: {
+    dbFileCopied: boolean;
+    objectCount: number;
+    byteLength: number;
+    releaseBundleCount: number;
+    renderedManifestCount: number;
+    schemaValidatedArtifactCount: number;
+    schemaValidationFailureCount: number;
+    objectReferenceCount: number;
+    missingObjectReferenceCount: number;
+    deliveryVerificationCount: number;
+    failedDeliveryVerificationCount: number;
+  };
+  createdBy: string;
+  startedAt: string;
+  completedAt: string;
+}
+
+export interface LocalDeliveryMirror {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  releaseId: string;
+  workflowRunId: string;
+  status: 'mirrored' | 'partial' | 'failed';
+  deliveryDir: string;
+  files: Array<{ label: string; path: string; checksum: string; byteLength: number }>;
+  warnings?: string[];
+  checksumManifestLocation: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface LocalDeliveryVerification {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  releaseId: string;
+  workflowRunId: string;
+  localDeliveryMirrorId: string;
+  status: 'passed' | 'failed';
+  deliveryDir: string;
+  checks: Array<{ name: string; status: 'passed' | 'failed' | 'warning'; details?: string }>;
+  verifiedFileCount: number;
+  failedFileCount: number;
+  checksumManifestLocation: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface LocalOpsStatus {
+  schemaVersion: string;
+  tenantId: string;
+  storage: {
+    mode: 'local-only';
+    dbFilePath: string;
+    objectStoreDir: string;
+    backupRootDir: string;
+    deliveryRootDir: string;
+    objectCount: number;
+    byteLength: number;
+  };
+  latestBackup: null | { path: string; createdAt: string };
+  latestRestoreSmoke: RestoreSmokeResult | null;
+  latestDeliveryMirror: LocalDeliveryMirror | null;
+  latestDeliveryVerification: LocalDeliveryVerification | null;
+  opsDrillWorkItems: WorkItem[];
+  generatedAt: string;
+}
+
+export interface SourceRefreshCalendar {
+  schemaVersion: string;
+  tenantId: string;
+  generatedAt: string;
+  summary: {
+    totalSourceCount: number;
+    dueSoonCount: number;
+    overdueCount: number;
+    ownerlessCount: number;
+    openRefreshWorkCount: number;
+  };
+  items: Array<{
+    sourceId: string;
+    sourceLabel: string;
+    canonicalDiseaseName: string;
+    primaryOwnerRole: string;
+    backupOwnerRole: string;
+    freshnessState: string;
+    nextReviewDueAt: string;
+    daysUntilDue: number;
+    bucket: 'overdue' | 'due-30-days' | 'due-90-days' | 'future' | 'ownerless' | 'blocked';
+    openRefreshWorkItemIds: string[];
+  }>;
+}
+
+export interface SourceOpsView {
+  schemaVersion: string;
+  filters: {
+    disease: string;
+    freshnessState: string;
+    approvalStatus: string;
+    ownerRole: string;
+    openRefreshOnly: boolean;
+  };
+  summary: {
+    visibleSourceCount: number;
+    staleSourceCount: number;
+    blockedSourceCount: number;
+    suspendedSourceCount: number;
+    ownerlessSourceCount: number;
+    openRefreshTaskCount: number;
+    impactedRunCount: number;
+    promotedDiseaseCount: number;
+  };
+  sourceRecords: Array<Record<string, unknown>>;
+  refreshTasks: Array<Record<string, unknown>>;
+  workItems: WorkItem[];
+}
+
+export interface RenderedPanelQaDecision {
+  schemaVersion: string;
+  id: string;
+  tenantId: string;
+  workflowRunId: string;
+  renderedAssetManifestId: string;
+  renderJobId?: string;
+  decision: 'approved' | 'changes-requested' | 'rejected' | 'structural-only';
+  checklist: {
+    cytoConsistency: boolean;
+    pipConsistency: boolean;
+    styleConsistency: boolean;
+    anatomyFidelity: boolean;
+    setPieceContinuity: boolean;
+    letteringSeparation: boolean;
+    noVisibleText: boolean;
+    panelOrder: boolean;
+    guideProvenance: boolean;
+  };
+  notes?: string;
+  reviewerId: string;
+  reviewerRoles: string[];
+  createdAt: string;
 }
 
 export interface AuditLogEntry {

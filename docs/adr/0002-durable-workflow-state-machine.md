@@ -15,6 +15,8 @@ Model the system as a durable workflow with explicit states, stage transitions, 
 
 The workflow stage order now accepts arbitrary disease input, compiles provisional clinical evidence when no governed pack exists yet, and treats `render-execution` as the default path to done. A compiled `rendering-guide` still exists, but as a secondary QA, retry, and manual handoff artifact rather than the definition of completion.
 
+Before `render-execution` can begin, the workflow must pause after `render-prep` with `pauseReason = render-guide-review-required`. The latest `rendering-guide`, latest `visual-reference-pack`, and latest `render-guide-review-decision` must align and be approved before any stub, OpenAI, retry, manual attachment, or future reference-image rendering path can proceed.
+
 ## Consequences
 
 ### Positive
@@ -23,6 +25,7 @@ The workflow stage order now accepts arbitrary disease input, compiles provision
 - easier human-in-the-loop review
 - better traceability for eval failures
 - explicit rendered-output release gating before pilot release assembly
+- explicit pre-render review gating before any panel generation
 - open-disease research assembly can be inspected and replayed before the run advances into story and panel work
 - prompt and rendering-guide artifacts remain auditable secondary support assets
 

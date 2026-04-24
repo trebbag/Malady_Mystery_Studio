@@ -4,7 +4,7 @@
   "panelId": "pnl.hcc.004.03",
   "modelFamily": "openai-gpt-image-2",
   "aspectRatio": "4:3",
-  "positivePrompt": "Comic-book panel art, dynamic science-fantasy mystery tone. Two tiny alien detectives hover with miniature jet packs beside a suspicious focal region inside the liver. Surrounding liver tissue appears more orderly, but the target region shows distorted architecture and ominous self-contained growth. Medium shot with slight push-in, slightly canted angle, warm reds and golds turning uneasy, no visible text, clean composition, cinematic lighting, highly readable anatomy-inspired environment.",
+  "positivePrompt": "Create a premium cinematic 3D animated felt-toy comic panel with warm feature-animation lighting, soft tactile fibers, expressive eyes, stable silhouettes, and no visible text. Detective Cyto Kine and Deputy Pip hover with miniature jet packs beside a suspicious focal region inside the liver. Surrounding liver tissue appears more orderly, but the target region shows distorted architecture and ominous self-contained growth. Medium shot with slight push-in, slightly canted angle, warm reds and golds turning uneasy, clean composition, cinematic lighting, highly readable anatomy-inspired environment.",
   "negativePrompt": "no speech bubbles, no captions, no labels, no medical chart overlays, no gore, no photoreal pathology slide, no extra detectives, no duplicate limbs, no illegible background text",
   "continuityAnchors": [
     "same two recurring alien detectives",
@@ -13,8 +13,8 @@
     "red-gold liver environment"
   ],
   "characterLocks": [
-    "Detective Cyto Kine is the felt lead investigator with HUD visor and evidence vial",
-    "Deputy Pip is the felt field deputy with micro-scanner and learner questions"
+    "Detective Cyto Kine is calm, precise, dryly funny, protective of Pip, and carries a HUD visor, tiny badge, and evidence vial",
+    "Deputy Pip is earnest, loyal, curious, theatrically noir, competent, and carries a tiny badge plus handheld micro-scanner"
   ],
   "anatomyLocks": [
     "liver-inspired tissue geometry",
@@ -22,9 +22,19 @@
     "avoid generic intestine-like visuals"
   ],
   "styleLocks": [
-    "action-packed whimsical comic mystery",
-    "high clarity",
+    "premium cinematic 3D animated felt-toy rendering",
+    "warm feature-animation lighting with soft tactile fibers",
+    "expressive eyes and stable silhouettes",
     "panel composition optimized for later lettering"
+  ],
+  "visualReferenceItemIds": [
+    "vref.style.series-felt-cinematic",
+    "vref.character.cyto-kine",
+    "vref.character.pip",
+    "vref.prop.hud-visor",
+    "vref.prop.evidence-vial",
+    "vref.prop.micro-scanner",
+    "vref.prop.agency-badge"
   ],
   "textLayerPolicy": {
     "renderVisibleText": false,

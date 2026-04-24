@@ -2,12 +2,13 @@
 
 The current repo runs locally without external credentials by using fixture-backed provisional research assembly, SQLite metadata, filesystem object storage, in-process queueing, and the local `stub-image` renderer. Active persistence should stay local: `var/db/platform.sqlite` for metadata and `var/object-store/**` for generated files, rendered panels, release bundles, evidence packs, and attachments. Postgres is not required for the active product path and should not be used as a file/blob store.
 
-The items below are required only for live OpenAI rendering/research or optional future infrastructure work.
+The items below are required only for live OpenAI rendering/research or local pilot operating decisions. Managed databases, Blob Storage, Service Bus, external auth, email, Slack, IdP, and managed secrets are not required for this product phase.
 
 ## OpenAI Render and Research Runtime
 
 - `OPENAI_API_KEY` and `KB_VECTOR_STORE_ID` may live in the repo-root `.env`; local Node entrypoints load that file automatically and never print the secret value.
 - Confirmation that your OpenAI org/project stays verified and enabled for GPT Image usage. A local Celiac disease render smoke on 2026-04-24 loaded the configured key and successfully produced both low-quality and high-quality `gpt-image-2` images, so model access is no longer the active blocker. The remaining render validation work is full multi-panel app execution, approval, eval, and export using live images rather than stub placeholders.
+- Raise or clear the OpenAI project billing hard limit before the full live panel set can finish. The app-path full Celiac render on 2026-04-24 stored real `gpt-image-2` panel assets, then OpenAI returned `billing_hard_limit_reached`, so remaining panels are externally billing-blocked.
 - Optional model override if you want something other than the default `OPENAI_RENDER_MODEL=gpt-image-2`.
 - Optional render quality override if you want to trade speed for finality. The default remains `OPENAI_RENDER_QUALITY=high`; set `OPENAI_RENDER_QUALITY=medium` or `low` only for faster drafts.
 - Optional render timeout override via `OPENAI_RENDER_TIMEOUT_MS`; the default is 300000ms so high-quality panels can finish while still failing cleanly if a request hangs.
@@ -23,39 +24,13 @@ The items below are required only for live OpenAI rendering/research or optional
 
 - Confirm whether the local backup directory should remain `var/backups` or move to another local path.
 - Confirm any retention limits for local rendered panels and release bundles before pilot use.
-- Confirm whether pilot bundles should remain app-retrievable only or also mirror to another local folder.
+- Confirm whether local delivery mirrors should remain under `var/delivery/<releaseId>/` or use another local filesystem path.
+- Confirm how often pilot operators should run `pnpm ops:restore-smoke` during rehearsal and pilot use.
+- Confirm how often pilot operators should capture queue trend snapshots, verify local delivery mirrors, and record rendered-panel QA decisions during rehearsal.
 
-## Deferred Optional Azure Foundations
+## Deferred Infrastructure
 
-- Azure subscription ID, only if the app later moves away from local storage.
-- Azure tenant ID used for Key Vault and managed infrastructure access.
-- Preferred Azure region and resource-group naming convention for:
-  - Container Apps environment
-  - PostgreSQL Flexible Server
-  - Blob Storage account/container
-  - Service Bus namespace
-  - Key Vault
-  - Log Analytics / Application Insights
-- Confirmation of the first backup and restore policy:
-  - PostgreSQL retention window
-  - Blob soft-delete retention window
-  - restore-smoke cadence and scratch-environment expectations
-
-## Managed Runtime Secrets
-
-These are not needed for local storage. Keep them unset unless you intentionally re-open the optional managed deployment path.
-
-- `MANAGED_POSTGRES_URL`
-- `AZURE_BLOB_CONNECTION_STRING`
-- `AZURE_SERVICE_BUS_CONNECTION_STRING`
-- Container image references for the API and worker when the Azure deployment tranche is actually cut over.
-
-Local dry-run commands are available before those credentials exist:
-
-```bash
-pnpm migrate:managed -- --dry-run
-pnpm ops:restore-smoke -- --dry-run
-```
+No Azure/Postgres cutover inputs are needed while this app remains local-open and local-storage only. Leave managed runtime secrets unset unless a later phase explicitly reopens cloud portability.
 
 ## Optional External Art Attachments
 
@@ -78,12 +53,8 @@ pnpm ops:restore-smoke -- --dry-run
 
 ## Identity and Access
 
-- External operator identity is still out of scope for this tranche, but pilot planning still needs:
-  - chosen IdP
-  - issuer / audience / JWKS details
-  - initial operator roster and pilot roles
+- External operator identity is out of scope for this local-open tranche. No IdP, issuer, audience, JWKS, session, account, profile, or tenant-admin input is required.
 
 ## Release and Delivery
 
-- Confirm whether pilot bundles should remain app-retrievable only or also mirror to an external delivery location later.
-- Confirm the first non-local delivery target after the managed pilot bundle path is cut over.
+- Confirm whether local mirrored bundles should be the only pilot handoff path or whether another local-only delivery folder should be added later.

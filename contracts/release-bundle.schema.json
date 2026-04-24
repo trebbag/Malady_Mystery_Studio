@@ -330,6 +330,14 @@
     "renderingGuideMarkdownLocation": {
       "type": "string"
     },
+    "visualReferencePackId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "renderGuideReviewDecisionId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
     "renderedAssetManifestId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9._:-]+$"

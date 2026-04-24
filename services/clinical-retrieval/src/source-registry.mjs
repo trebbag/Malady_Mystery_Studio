@@ -101,7 +101,12 @@ export function buildSourceRecord(sourceCatalogEntry, decision, contradictionSta
   const primaryOwnerRole = defaultPrimaryOwnerRole(sourceCatalogEntry);
   const backupOwnerRole = defaultBackupOwnerRole(sourceCatalogEntry);
   const refreshCadenceDays = defaultRefreshCadenceDays(sourceCatalogEntry);
-  const nextReviewDueAt = sourceCatalogEntry.nextReviewDueAt ?? calculateNextReviewDueAt(reviewedAt, refreshCadenceDays);
+  const supersededBy = typeof decision?.supersededBy === 'string'
+    ? decision.supersededBy
+    : sourceCatalogEntry.supersededBy;
+  const nextReviewDueAt = decision?.decision === 'refresh-review-date'
+    ? calculateNextReviewDueAt(reviewedAt, refreshCadenceDays)
+    : (sourceCatalogEntry.nextReviewDueAt ?? calculateNextReviewDueAt(reviewedAt, refreshCadenceDays));
   const governanceNotes = [...(sourceCatalogEntry.governanceNotes ?? [])];
 
   if (typeof decision?.reason === 'string' && decision.reason) {
@@ -128,12 +133,12 @@ export function buildSourceRecord(sourceCatalogEntry, decision, contradictionSta
     backupOwnerRole,
     refreshCadenceDays,
     nextReviewDueAt,
-    freshnessState: approvalStatus === 'suspended' || typeof sourceCatalogEntry.supersededBy === 'string'
+    freshnessState: approvalStatus === 'suspended' || typeof supersededBy === 'string'
       ? 'blocked'
       : freshnessStatus,
     governanceNotes,
     lastReviewedAt: reviewedAt,
-    ...(typeof sourceCatalogEntry.supersededBy === 'string' ? { supersededBy: sourceCatalogEntry.supersededBy } : {}),
+    ...(typeof supersededBy === 'string' ? { supersededBy } : {}),
     ...(typeof sourceCatalogEntry.sourceUrl === 'string' ? { sourceUrl: sourceCatalogEntry.sourceUrl } : {}),
   };
 }

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/local-ops-status.schema.json",
+  "title": "LocalOpsStatus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "tenantId",
+    "storage",
+    "latestBackup",
+    "latestRestoreSmoke",
+    "latestDeliveryMirror",
+    "latestDeliveryVerification",
+    "opsDrillWorkItems",
+    "generatedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "dbFilePath", "objectStoreDir", "backupRootDir", "deliveryRootDir", "objectCount", "byteLength"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["local-only"] },
+        "dbFilePath": { "type": "string" },
+        "objectStoreDir": { "type": "string" },
+        "backupRootDir": { "type": "string" },
+        "deliveryRootDir": { "type": "string" },
+        "objectCount": { "type": "integer", "minimum": 0 },
+        "byteLength": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "latestBackup": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "createdAt"],
+          "properties": {
+            "path": { "type": "string" },
+            "createdAt": { "type": "string", "format": "date-time" }
+          }
+        }
+      ]
+    },
+    "latestRestoreSmoke": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "restore-smoke-result.schema.json" }
+      ]
+    },
+    "latestDeliveryMirror": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "local-delivery-mirror.schema.json" }
+      ]
+    },
+    "latestDeliveryVerification": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "local-delivery-verification.schema.json" }
+      ]
+    },
+    "opsDrillWorkItems": {
+      "type": "array",
+      "items": { "$ref": "work-item.schema.json" }
+    },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  }
+}

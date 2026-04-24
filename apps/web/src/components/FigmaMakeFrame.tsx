@@ -71,6 +71,8 @@ const artifactStageHints: Record<string, string> = {
   'render-prompt': 'render-prep',
   'lettering-map': 'render-prep',
   'rendering-guide': 'render-prep',
+  'visual-reference-pack': 'render-prep',
+  'render-guide-review-decision': 'render-prep',
   'render-job': 'render-prep',
   'rendered-asset-manifest': 'render-prep',
   'qa-report': 'review',

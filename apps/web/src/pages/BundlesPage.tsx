@@ -6,7 +6,18 @@ import { SectionStack } from '@/components/StatePanel';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
-import { exportBundle, fetchExports, fetchReleaseBundle, fetchReviewRunView, getReleaseBundleRenderingGuideUrl } from '@/lib/api';
+import {
+  exportBundle,
+  fetchExports,
+  fetchReleaseBundle,
+  fetchReviewRunView,
+  fetchRenderedPanelQaDecisions,
+  getReleaseBundleRenderingGuideUrl,
+  mirrorReleaseBundleLocal,
+  recordRenderedPanelQaDecision,
+  verifyReleaseBundleLocalMirror,
+} from '@/lib/api';
+import type { LocalDeliveryMirror, LocalDeliveryVerification, RenderedPanelQaDecision } from '@/lib/types';
 import { useRefreshSignal } from '@/lib/refresh-context';
 import { useRemoteData } from '@/lib/use-remote-data';
 import { formatDateTime } from '@/lib/utils';
@@ -18,17 +29,24 @@ export function BundlesPage() {
   const exportsState = useRemoteData(() => fetchExports(runId), [runId, refreshSignal]);
   const reviewState = useRemoteData(() => fetchReviewRunView(runId), [runId, refreshSignal]);
   const [selectedReleaseId, setSelectedReleaseId] = useState<string | null>(null);
+  const [mirrorResult, setMirrorResult] = useState<LocalDeliveryMirror | null>(null);
+  const [verificationResult, setVerificationResult] = useState<LocalDeliveryVerification | null>(null);
+  const [qaDecisionResult, setQaDecisionResult] = useState<RenderedPanelQaDecision | null>(null);
   const releaseId = selectedReleaseId ?? exportsState.data?.[0]?.releaseId ?? null;
   const bundleState = useRemoteData(
     () => releaseId ? fetchReleaseBundle(releaseId) : Promise.resolve(null),
     [releaseId, refreshSignal],
+  );
+  const renderedAssetManifestId = bundleState.data?.renderedAssetManifestId;
+  const qaDecisionState = useRemoteData(
+    () => renderedAssetManifestId ? fetchRenderedPanelQaDecisions(renderedAssetManifestId) : Promise.resolve([]),
+    [renderedAssetManifestId ?? '', refreshSignal],
   );
   const exportDisabledReason = workflowRun.latestEvalStatus !== 'passed'
     ? 'Export is blocked until the latest eval run is fresh and passing.'
     : (!workflowRun.artifacts.some((artifact) => artifact.artifactType === 'rendered-asset-manifest')
       ? 'Export is blocked until rendered panel assets and a rendered asset manifest exist for this run.'
       : undefined);
-  const renderedAssetManifestId = bundleState.data?.renderedAssetManifestId;
   const renderedManifestLink = renderedAssetManifestId
     ? `/api/v1/artifacts/rendered-asset-manifest/${encodeURIComponent(renderedAssetManifestId)}`
     : undefined;
@@ -85,7 +103,67 @@ export function BundlesPage() {
             {bundleLinks.evidencePack ? <a href={bundleLinks.evidencePack} className="rounded-xl bg-shell-800 px-4 py-2 text-sm font-semibold text-white">Open evidence pack</a> : null}
             {bundleLinks.renderingGuide ? <a href={bundleLinks.renderingGuide} className="rounded-xl bg-shell-900 px-4 py-2 text-sm font-semibold text-white">Open rendering guide</a> : null}
             {renderedManifestLink ? <a href={renderedManifestLink} className="rounded-xl bg-shell-700 px-4 py-2 text-sm font-semibold text-white">Open rendered asset manifest</a> : null}
+            <Button
+              variant="secondary"
+              onClick={() => void mirrorReleaseBundleLocal(releaseId).then((result) => {
+                setMirrorResult(result);
+                refreshRun();
+              })}
+            >
+              Mirror locally
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void verifyReleaseBundleLocalMirror(releaseId).then((result) => {
+                setVerificationResult(result);
+                refreshRun();
+              })}
+            >
+              Verify mirror
+            </Button>
+            {renderedAssetManifestId ? (
+              <Button
+                variant="secondary"
+                onClick={() => void recordRenderedPanelQaDecision(renderedAssetManifestId, {
+                  decision: bundleState.data?.qualitySummary?.renderOutputQuality === 1 ? 'approved' : 'structural-only',
+                  notes: 'Local pilot QA checklist recorded from the Bundles page. Stub assets remain structural-only unless replaced by live gpt-image-2 output.',
+                }).then((result) => {
+                  setQaDecisionResult(result);
+                  refreshRun();
+                })}
+              >
+                Record panel QA
+              </Button>
+            ) : null}
           </div>
+          {mirrorResult ? (
+            <Alert tone={mirrorResult.status === 'mirrored' ? 'success' : 'warning'}>
+              Local mirror {String(mirrorResult.status)} at {String(mirrorResult.deliveryDir)}.
+            </Alert>
+          ) : null}
+          {verificationResult ? (
+            <Alert tone={verificationResult.status === 'passed' ? 'success' : 'warning'}>
+              Local mirror verification {verificationResult.status}: {verificationResult.verifiedFileCount} files verified, {verificationResult.failedFileCount} failed.
+            </Alert>
+          ) : null}
+          {qaDecisionResult ? (
+            <Alert tone={qaDecisionResult.decision === 'rejected' ? 'warning' : 'success'}>
+              Rendered-panel QA recorded as {qaDecisionResult.decision}.
+            </Alert>
+          ) : null}
+          {qaDecisionState.data?.length ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {qaDecisionState.data.map((decision) => (
+                <div key={decision.id} className="rounded-2xl border border-black/10 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-shell-950">{decision.decision}</p>
+                  <p className="text-xs text-slate-500">{formatDateTime(decision.createdAt)} · {decision.reviewerId}</p>
+                  <p className="mt-2 text-xs text-slate-600">
+                    Cyto/Pip/style/anatomy/lettering/text/provenance checks: {Object.values(decision.checklist).filter(Boolean).length}/9
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </Card>
       ) : null}
     </SectionStack>

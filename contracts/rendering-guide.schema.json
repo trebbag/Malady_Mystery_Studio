@@ -67,6 +67,63 @@
     "markdownLocation": {
       "type": "string"
     },
+    "visualReferencePackId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "reviewStatus": {
+      "type": "string",
+      "enum": [
+        "not-reviewed",
+        "approved",
+        "changes-requested",
+        "rejected",
+        "stale"
+      ]
+    },
+    "referenceCoverageSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "panelCount",
+        "panelsWithReferenceItems",
+        "missingPanelReferenceCount",
+        "requiredCharacterItems",
+        "presentCharacterItems",
+        "recurringItemCount",
+        "warnings"
+      ],
+      "properties": {
+        "panelCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "panelsWithReferenceItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingPanelReferenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requiredCharacterItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "presentCharacterItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recurringItemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
     "runSummary": {
       "type": "object",
       "additionalProperties": false,
@@ -315,6 +372,13 @@
                   "type": "string"
                 }
               }
+            }
+          },
+          "visualReferenceItemIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
             }
           },
           "letteringEntries": {

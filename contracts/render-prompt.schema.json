@@ -72,6 +72,13 @@
         "type": "string"
       }
     },
+    "visualReferenceItemIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      }
+    },
     "textLayerPolicy": {
       "type": "object",
       "additionalProperties": false,
