@@ -316,6 +316,11 @@ export interface RenderJob {
   renderPromptIds: string[];
   attemptIds?: string[];
   renderedAssetManifestId?: string;
+  startedAt?: string;
+  activeRenderPromptId?: string;
+  completedRenderPromptIds?: string[];
+  completedRenderCount?: number;
+  totalRenderCount?: number;
   lastError?: string;
   createdBy?: string;
   createdAt: string;

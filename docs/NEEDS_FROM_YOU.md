@@ -7,8 +7,10 @@ The items below are required only for live OpenAI rendering/research or optional
 ## OpenAI Render and Research Runtime
 
 - `OPENAI_API_KEY` and `KB_VECTOR_STORE_ID` may live in the repo-root `.env`; local Node entrypoints load that file automatically and never print the secret value.
-- Confirmation that your OpenAI org/project is verified and enabled for GPT Image usage. A local Celiac disease render smoke on 2026-04-24 loaded the configured key and reached OpenAI, but every `gpt-image-2` attempt returned a 403 model-access error for the configured project, so true rendered-panel quality validation is still credential/access-blocked rather than code-blocked.
+- Confirmation that your OpenAI org/project stays verified and enabled for GPT Image usage. A local Celiac disease render smoke on 2026-04-24 loaded the configured key and successfully produced both low-quality and high-quality `gpt-image-2` images, so model access is no longer the active blocker. The remaining render validation work is full multi-panel app execution, approval, eval, and export using live images rather than stub placeholders.
 - Optional model override if you want something other than the default `OPENAI_RENDER_MODEL=gpt-image-2`.
+- Optional render quality override if you want to trade speed for finality. The default remains `OPENAI_RENDER_QUALITY=high`; set `OPENAI_RENDER_QUALITY=medium` or `low` only for faster drafts.
+- Optional render timeout override via `OPENAI_RENDER_TIMEOUT_MS`; the default is 300000ms so high-quality panels can finish while still failing cleanly if a request hangs.
 - Optional research-model override if you want something other than `OPENAI_RESEARCH_MODEL` / legacy `MMS_MODEL`.
 - Optional canon-file path overrides if the legacy ClinicalEducation character/style/deck files should be used from a location outside this repo.
 - Confirmation that stub rendered assets should remain non-final placeholders in any pilot bundle until replaced by live `gpt-image-2` outputs.

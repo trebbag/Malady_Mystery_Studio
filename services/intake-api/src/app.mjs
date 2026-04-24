@@ -4658,6 +4658,48 @@ function enqueueRenderJob(options) {
 }
 
 /**
+ * @param {any} renderExecutionService
+ * @returns {boolean}
+ */
+function shouldAwaitRenderExecutionQueue(renderExecutionService) {
+  const mode = String(process.env.RENDER_QUEUE_MODE ?? '').trim().toLowerCase();
+
+  if (mode === 'inline') {
+    return true;
+  }
+
+  if (mode === 'background') {
+    return false;
+  }
+
+  return renderExecutionService.providerName !== 'openai-image';
+}
+
+/**
+ * @param {{ queueAdapter: any, renderExecutionService: any, telemetry: any, workflowRunId: string, renderJobId: string }} options
+ * @returns {Promise<void>}
+ */
+async function dispatchRenderExecution(options) {
+  const dispatch = options.queueAdapter.enqueue('render-execution', {
+    workflowRunId: options.workflowRunId,
+    renderJobId: options.renderJobId,
+  });
+
+  if (shouldAwaitRenderExecutionQueue(options.renderExecutionService)) {
+    await dispatch;
+    return;
+  }
+
+  void dispatch.catch((/** @type {unknown} */ error) => {
+    options.telemetry.error?.('render-job.background-dispatch-failed', {
+      renderJobId: options.renderJobId,
+      workflowRunId: options.workflowRunId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+}
+
+/**
  * @param {{ store: PlatformStore, schemaRegistry: any, workflowSpec: any, workflowRun: any, actor: any }} options
  * @returns {any}
  */
@@ -4730,10 +4772,19 @@ function prepareWorkflowRunForManualRenderExecution(options) {
  */
 export async function processRenderJob(options) {
   let workflowRun = options.workflowRun;
+  const now = new Date().toISOString();
   let renderJob = {
     ...options.renderJob,
     status: 'running',
-    updatedAt: new Date().toISOString(),
+    startedAt: options.renderJob.startedAt ?? now,
+    completedRenderPromptIds: Array.isArray(options.renderJob.completedRenderPromptIds)
+      ? options.renderJob.completedRenderPromptIds
+      : [],
+    completedRenderCount: Array.isArray(options.renderJob.completedRenderPromptIds)
+      ? options.renderJob.completedRenderPromptIds.length
+      : 0,
+    totalRenderCount: options.renderJob.renderPromptIds.length,
+    updatedAt: now,
   };
   options.store.saveArtifact('render-job', renderJob.id, renderJob, {
     tenantId: workflowRun.tenantId,
@@ -4741,6 +4792,9 @@ export async function processRenderJob(options) {
   const renderPrompts = renderJob.renderPromptIds
     .map((/** @type {string} */ renderPromptId) => options.store.getArtifact('render-prompt', renderPromptId))
     .filter(Boolean);
+  const requiredRenderPromptIds = collectArtifactsForRun(options.store, workflowRun)
+    .filter((entry) => entry.artifactType === 'render-prompt')
+    .map((entry) => entry.artifact.id);
   /** @type {any[]} */
   let renderedAssets = [];
   let lastError = null;
@@ -4750,6 +4804,17 @@ export async function processRenderJob(options) {
       renderedAssets = [];
 
       for (const renderPrompt of renderPrompts) {
+        renderJob = {
+          ...renderJob,
+          activeRenderPromptId: renderPrompt.id,
+          completedRenderPromptIds: renderedAssets.map((asset) => asset.renderPromptId),
+          completedRenderCount: renderedAssets.length,
+          totalRenderCount: renderPrompts.length,
+          updatedAt: new Date().toISOString(),
+        };
+        options.store.saveArtifact('render-job', renderJob.id, renderJob, {
+          tenantId: workflowRun.tenantId,
+        });
         const renderedImage = await options.renderExecutionService.renderSinglePrompt(renderPrompt, strategy);
         const assetId = createId('ras');
         const documentRecord = options.store.saveDocument('render-output', assetId, renderedImage.buffer, {
@@ -4777,6 +4842,16 @@ export async function processRenderJob(options) {
           status: 'generated',
         });
         renderedAssets.push(renderedAsset);
+        renderJob = {
+          ...renderJob,
+          completedRenderPromptIds: renderedAssets.map((asset) => asset.renderPromptId),
+          completedRenderCount: renderedAssets.length,
+          totalRenderCount: renderPrompts.length,
+          updatedAt: new Date().toISOString(),
+        };
+        options.store.saveArtifact('render-job', renderJob.id, renderJob, {
+          tenantId: workflowRun.tenantId,
+        });
       }
 
       const renderAttempt = options.renderExecutionService.buildRenderAttempt({
@@ -4802,6 +4877,7 @@ export async function processRenderJob(options) {
         workflowRun,
         renderJob,
         renderedAssets,
+        requiredRenderPromptIds,
       });
       assertSchema(options.schemaRegistry, 'contracts/rendered-asset-manifest.schema.json', renderedAssetManifest);
       options.store.saveArtifact('rendered-asset-manifest', renderedAssetManifest.id, renderedAssetManifest, {
@@ -4813,18 +4889,34 @@ export async function processRenderJob(options) {
         status: 'generated',
       });
 
-      renderJob = {
+      const completedRenderJob = {
         ...renderJob,
+      };
+      delete completedRenderJob.activeRenderPromptId;
+      renderJob = {
+        ...completedRenderJob,
         status: 'completed',
-        approvalStatus: 'approved',
+        approvalStatus: renderedAssetManifest.allPanelsRendered ? 'approved' : 'pending',
         attemptIds: [...(renderJob.attemptIds ?? []), renderAttempt.id],
         renderedAssetManifestId: renderedAssetManifest.id,
+        completedRenderPromptIds: renderedAssets.map((asset) => asset.renderPromptId),
+        completedRenderCount: renderedAssets.length,
+        totalRenderCount: renderPrompts.length,
         updatedAt: new Date().toISOString(),
         completedAt: new Date().toISOString(),
       };
       options.store.saveArtifact('render-job', renderJob.id, renderJob, {
         tenantId: workflowRun.tenantId,
       });
+      if (!renderedAssetManifest.allPanelsRendered) {
+        options.telemetry.info('render-job.partial-completed', {
+          renderJobId: renderJob.id,
+          workflowRunId: workflowRun.id,
+          renderedAssetCount: renderedAssets.length,
+          requiredRenderCount: requiredRenderPromptIds.length,
+        });
+        return renderJob;
+      }
       workflowRun = transitionWorkflow(
         options.store,
         options.schemaRegistry,
@@ -4972,7 +5064,10 @@ async function resumeRenderExecutionIfReady(options) {
     workflowRun: options.workflowRun,
     actor: options.actor,
   });
-  await options.queueAdapter.enqueue('render-execution', {
+  await dispatchRenderExecution({
+    queueAdapter: options.queueAdapter,
+    renderExecutionService: options.renderExecutionService,
+    telemetry: options.telemetry,
     workflowRunId: queued.workflowRun.id,
     renderJobId: queued.renderJob.id,
   });
@@ -6568,7 +6663,10 @@ export async function createApp(options = {}) {
             renderPromptCount: queued.renderJob.renderPromptIds.length,
           },
         );
-        await platformRuntime.queueAdapter.enqueue('render-execution', {
+        await dispatchRenderExecution({
+          queueAdapter: platformRuntime.queueAdapter,
+          renderExecutionService,
+          telemetry: platformRuntime.telemetry,
           workflowRunId: queued.workflowRun.id,
           renderJobId: queued.renderJob.id,
         });
@@ -6647,7 +6745,10 @@ export async function createApp(options = {}) {
             renderJobId: queued.renderJob.id,
           },
         );
-        await platformRuntime.queueAdapter.enqueue('render-execution', {
+        await dispatchRenderExecution({
+          queueAdapter: platformRuntime.queueAdapter,
+          renderExecutionService,
+          telemetry: platformRuntime.telemetry,
           workflowRunId: queued.workflowRun.id,
           renderJobId: queued.renderJob.id,
         });

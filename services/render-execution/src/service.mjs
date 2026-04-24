@@ -6,6 +6,8 @@ const ONE_PIXEL_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WwZ0iQAAAAASUVORK5CYII=',
   'base64',
 );
+const DEFAULT_OPENAI_RENDER_TIMEOUT_MS = 300_000;
+const OPENAI_RENDER_QUALITIES = new Set(['low', 'medium', 'high', 'auto']);
 
 /**
  * @param {Buffer | string} value
@@ -13,6 +15,29 @@ const ONE_PIXEL_PNG = Buffer.from(
  */
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
+}
+
+/**
+ * @param {string | undefined} value
+ * @param {number} fallback
+ * @returns {number}
+ */
+function readPositiveInteger(value, fallback) {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/**
+ * @param {string | undefined} value
+ * @returns {'low' | 'medium' | 'high' | 'auto'}
+ */
+function normalizeOpenAiRenderQuality(value) {
+  const normalized = String(value ?? 'high').trim().toLowerCase();
+
+  return OPENAI_RENDER_QUALITIES.has(normalized)
+    ? /** @type {'low' | 'medium' | 'high' | 'auto'} */ (normalized)
+    : 'high';
 }
 
 export const DEFAULT_RENDER_TARGET_PROFILE = Object.freeze({
@@ -131,12 +156,14 @@ function summarizeLetteringSeparation(renderPrompt) {
 class OpenAiImageProvider {
   /**
    * @param {string} apiKey
-   * @param {string} [model]
+   * @param {{ model?: string, quality?: string, timeoutMs?: number }} [options]
    */
-  constructor(apiKey, model = DEFAULT_RENDER_TARGET_PROFILE.model) {
+  constructor(apiKey, options = {}) {
     this.apiKey = apiKey;
     this.provider = 'openai-image';
-    this.model = model;
+    this.model = options.model ?? DEFAULT_RENDER_TARGET_PROFILE.model;
+    this.quality = normalizeOpenAiRenderQuality(options.quality);
+    this.timeoutMs = readPositiveInteger(String(options.timeoutMs ?? ''), DEFAULT_OPENAI_RENDER_TIMEOUT_MS);
   }
 
   /**
@@ -152,25 +179,42 @@ class OpenAiImageProvider {
     const prompt = strategyPrompt(renderPrompt, strategy);
     const size = mapAspectRatioToSize(renderPrompt.aspectRatio);
     const dimensions = parseSize(size);
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => {
+      abortController.abort();
+    }, this.timeoutMs);
 
-    const response = await fetch(
-      'https://api.openai.com/v1/images/generations',
-      {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${this.apiKey}`,
-          'content-type': 'application/json',
+    let response;
+
+    try {
+      response = await fetch(
+        'https://api.openai.com/v1/images/generations',
+        {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${this.apiKey}`,
+            'content-type': 'application/json',
+          },
+          signal: abortController.signal,
+          body: JSON.stringify({
+            model: this.model,
+            prompt,
+            size,
+            quality: this.quality,
+            background: 'opaque',
+            output_format: 'png',
+          }),
         },
-        body: JSON.stringify({
-          model: this.model,
-          prompt,
-          size,
-          quality: 'high',
-          background: 'opaque',
-          output_format: 'png',
-        }),
-      },
-    );
+      );
+    } catch (error) {
+      if (abortController.signal.aborted) {
+        throw new Error(`OpenAI image request timed out after ${this.timeoutMs}ms.`);
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       const text = await response.text();
@@ -199,7 +243,7 @@ class OpenAiImageProvider {
 }
 
 /**
- * @param {{ provider?: string, apiKey?: string }} [options]
+ * @param {{ provider?: string, apiKey?: string, model?: string, quality?: string, timeoutMs?: number }} [options]
  */
 export function createRenderExecutionService(options = {}) {
   const providerName = options.provider
@@ -208,7 +252,11 @@ export function createRenderExecutionService(options = {}) {
   const provider = providerName === 'openai-image'
     ? new OpenAiImageProvider(
       options.apiKey ?? process.env.RENDER_PROVIDER_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
-      process.env.OPENAI_RENDER_MODEL ?? DEFAULT_RENDER_TARGET_PROFILE.model,
+      {
+        model: options.model ?? process.env.OPENAI_RENDER_MODEL ?? DEFAULT_RENDER_TARGET_PROFILE.model,
+        quality: options.quality ?? process.env.OPENAI_RENDER_QUALITY ?? 'high',
+        timeoutMs: options.timeoutMs ?? readPositiveInteger(process.env.OPENAI_RENDER_TIMEOUT_MS, DEFAULT_OPENAI_RENDER_TIMEOUT_MS),
+      },
     )
     : new StubRenderProvider();
 
@@ -315,14 +363,19 @@ export function createRenderExecutionService(options = {}) {
       };
     },
     /**
-     * @param {{ workflowRun: any, renderJob: any, renderedAssets: any[] }} options
+     * @param {{ workflowRun: any, renderJob: any, renderedAssets: any[], requiredRenderPromptIds?: string[] }} options
      * @returns {any}
      */
-    buildRenderedAssetManifest({ workflowRun, renderJob, renderedAssets }) {
+    buildRenderedAssetManifest({ workflowRun, renderJob, renderedAssets, requiredRenderPromptIds }) {
       const renderMode = renderJob.provider === 'stub-image'
         ? 'stub-placeholder'
         : (renderJob.provider === 'external-manual' ? 'external-manual' : 'live-provider');
       const nonFinalPlaceholder = renderedAssets.some((asset) => asset.isPlaceholder);
+      const requiredPromptIds = Array.isArray(requiredRenderPromptIds) && requiredRenderPromptIds.length > 0
+        ? requiredRenderPromptIds
+        : renderJob.renderPromptIds;
+      const renderedPromptIds = new Set(renderedAssets.map((asset) => asset.renderPromptId));
+      const allPanelsRendered = requiredPromptIds.every((/** @type {string} */ renderPromptId) => renderedPromptIds.has(renderPromptId));
 
       return {
         schemaVersion: '1.0.0',
@@ -336,7 +389,7 @@ export function createRenderExecutionService(options = {}) {
         providerNotice: nonFinalPlaceholder
           ? 'Local stub images validate panel coverage, prompt traceability, and release wiring only. They do not certify final image quality.'
           : 'Rendered asset manifest contains externally generated or live provider artwork.',
-        allPanelsRendered: renderedAssets.length === renderJob.renderPromptIds.length,
+        allPanelsRendered,
         renderedAssets: renderedAssets.map((/** @type {any} */ asset) => ({
           renderedAssetId: asset.id,
           renderPromptId: asset.renderPromptId,
@@ -354,7 +407,7 @@ export function createRenderExecutionService(options = {}) {
         })),
         localValidation: {
           structuralOnly: renderMode === 'stub-placeholder',
-          requiredPanelCount: renderJob.renderPromptIds.length,
+          requiredPanelCount: requiredPromptIds.length,
           renderedPanelCount: renderedAssets.length,
           panelPromptHashes: Object.fromEntries(renderedAssets.map((asset) => [asset.renderPromptId, asset.promptHash])),
           letteringSeparationPassed: renderedAssets.every((asset) => asset.letteringSeparation?.status === 'passed'),

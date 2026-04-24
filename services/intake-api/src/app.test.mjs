@@ -1274,6 +1274,9 @@ test('review queue, threaded review, source ownership, refresh tasks, and render
     const renderJobDetail = await renderJobDetailResponse.json();
     assert.equal(Array.isArray(renderJobDetail.attempts), true);
     assert.equal(Array.isArray(renderJobDetail.renderedAssets), true);
+    assert.equal(renderJobDetail.completedRenderCount, renderJobDetail.totalRenderCount);
+    assert.equal(renderJobDetail.completedRenderPromptIds.length, renderJobDetail.totalRenderCount);
+    assert.equal(renderJobDetail.activeRenderPromptId, undefined);
     assert.equal(renderJobDetail.renderedAssetManifest.renderMode, 'stub-placeholder');
     assert.equal(renderJobDetail.renderedAssetManifest.localValidation.structuralOnly, true);
     assert.equal(renderJobDetail.renderedAssetManifest.renderedAssets.every((/** @type {any} */ asset) => asset.letteringSeparationStatus === 'passed'), true);
