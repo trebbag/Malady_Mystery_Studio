@@ -6,7 +6,7 @@ export function Badge({ children, className, ...props }: PropsWithChildren<HTMLA
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border border-black/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em]',
+        'inline-flex items-center rounded-full border border-sand-300 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em]',
         className,
       )}
       {...props}

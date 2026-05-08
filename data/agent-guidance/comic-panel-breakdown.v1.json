@@ -1,0 +1,174 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "comic-panel-breakdown",
+  "version": "1.0.0",
+  "title": "Comic Panel Breakdown and Beat Adaptation",
+  "sourceDocIds": [
+    "ai-comic-panel-breakdown-master"
+  ],
+  "pipelineStages": [
+    "scene-planning",
+    "panel-planning",
+    "panelization"
+  ],
+  "summary": "Rules for translating a story into comic pages by adapting beats, assigning one dominant change per panel, and preserving continuity and inference across gutters.",
+  "rules": [
+    {
+      "id": "CPB-ADAPT-BEATS",
+      "title": "Adapt beats, not sentences",
+      "severity": "blocking",
+      "pipelineStages": [
+        "scene-planning",
+        "panel-planning"
+      ],
+      "sourceDocIds": [
+        "ai-comic-panel-breakdown-master"
+      ],
+      "instruction": "Scenes and panels should adapt story beats and functions, not split prose mechanically sentence by sentence.",
+      "requiredArtifactFields": [
+        "panelAdaptation.storySpine",
+        "panelAdaptation.beatMap"
+      ],
+      "failureMessage": "Panel planning appears to split text instead of adapting story beats."
+    },
+    {
+      "id": "CPB-ONE-DOMINANT-CHANGE",
+      "title": "Each panel has one dominant change",
+      "severity": "blocking",
+      "pipelineStages": [
+        "panel-planning"
+      ],
+      "sourceDocIds": [
+        "ai-comic-panel-breakdown-master"
+      ],
+      "instruction": "Every panel must create a visible story, emotional, spatial, or medical change from its start state to end state.",
+      "requiredArtifactFields": [
+        "panelPlan.panels.actionSummary",
+        "panelAdaptation.beatMap.changeCreated"
+      ],
+      "failureMessage": "A panel does not create a readable state change."
+    },
+    {
+      "id": "CPB-PAGE-RHYTHM",
+      "title": "Pages carry rhythm and page-ending effects",
+      "severity": "warning",
+      "pipelineStages": [
+        "panel-planning"
+      ],
+      "sourceDocIds": [
+        "ai-comic-panel-breakdown-master"
+      ],
+      "instruction": "Page purpose and page-ending effect should shape panel order, pacing, reveals, and cliffhangers.",
+      "requiredArtifactFields": [
+        "panelAdaptation.pageAllocation",
+        "panelAdaptation.pageRhythm"
+      ],
+      "failureMessage": "Panel planning lacks page-level rhythm or page-ending intent."
+    },
+    {
+      "id": "CPB-GUTTER-INFERENCE",
+      "title": "Gutters imply intentional inference",
+      "severity": "blocking",
+      "pipelineStages": [
+        "panel-planning"
+      ],
+      "sourceDocIds": [
+        "ai-comic-panel-breakdown-master"
+      ],
+      "instruction": "Panel transitions must make clear what the reader infers between moments instead of hiding necessary action or medical causality.",
+      "requiredArtifactFields": [
+        "panelAdaptation.panelTransitionLogic"
+      ],
+      "failureMessage": "A gutter transition leaves required causality or action unreadable."
+    },
+    {
+      "id": "CPB-CONTINUITY-LEDGER",
+      "title": "Track continuity explicitly",
+      "severity": "blocking",
+      "pipelineStages": [
+        "scene-planning",
+        "panel-planning"
+      ],
+      "sourceDocIds": [
+        "ai-comic-panel-breakdown-master"
+      ],
+      "instruction": "Panel planning must track continuity for characters, props, locations, time, costumes, injuries, and medical devices.",
+      "requiredArtifactFields": [
+        "panelAdaptation.continuityLedger",
+        "panelPlan.panels.continuityAnchors"
+      ],
+      "failureMessage": "Continuity anchors or ledger entries are missing for repeated story elements."
+    },
+    {
+      "id": "CPB-TEXT-IMAGE-REDUNDANCY",
+      "title": "Avoid text-image redundancy",
+      "severity": "warning",
+      "pipelineStages": [
+        "panel-planning",
+        "lettering-map"
+      ],
+      "sourceDocIds": [
+        "ai-comic-panel-breakdown-master"
+      ],
+      "instruction": "Do not use lettering to restate exactly what the image already shows unless the repetition has a specific instructional purpose.",
+      "requiredArtifactFields": [
+        "panelAdaptation.textImageRedundancyChecks"
+      ],
+      "failureMessage": "A panel uses text and image redundantly without a stated purpose."
+    }
+  ],
+  "checklists": [
+    {
+      "id": "CPB-PANEL-GATE-CHECKLIST",
+      "title": "Panel Adaptation Gate",
+      "pipelineStage": "panel-planning",
+      "items": [
+        {
+          "id": "story-spine-present",
+          "label": "Story spine and scene function are present.",
+          "required": true,
+          "severity": "blocking"
+        },
+        {
+          "id": "panel-change-present",
+          "label": "Every panel has start state, end state, and change created.",
+          "required": true,
+          "severity": "blocking"
+        },
+        {
+          "id": "gutter-logic-readable",
+          "label": "Panel transitions preserve causality and reader inference.",
+          "required": true,
+          "severity": "blocking"
+        },
+        {
+          "id": "continuity-ledger-present",
+          "label": "Continuity ledger covers characters, props, locations, time, costumes, injuries, and medical devices.",
+          "required": true,
+          "severity": "blocking"
+        },
+        {
+          "id": "page-rhythm-present",
+          "label": "Page purpose and page-ending effects are explicit.",
+          "required": true,
+          "severity": "warning"
+        }
+      ]
+    }
+  ],
+  "gateCriteria": [
+    {
+      "id": "CPB-GATE-PANEL-ADAPTATION",
+      "pipelineStage": "panel-planning",
+      "severity": "critical",
+      "ruleIds": [
+        "CPB-ADAPT-BEATS",
+        "CPB-ONE-DOMINANT-CHANGE",
+        "CPB-GUTTER-INFERENCE",
+        "CPB-CONTINUITY-LEDGER"
+      ],
+      "blockingWhen": "Any panel has no dominant change, missing continuity anchors, or unclear causality.",
+      "failureMessage": "Panel planning cannot proceed to render prep until blocking adaptation issues are resolved."
+    }
+  ]
+}

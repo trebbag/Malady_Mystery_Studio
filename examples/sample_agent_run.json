@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "arun.sample.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.sample.001",
+  "purpose": "research-disease-medical-dossier",
+  "status": "review-required",
+  "model": "gpt-5.2",
+  "orchestration": "openai-agents-sdk",
+  "tooling": ["web-search", "structured-json"],
+  "stepIds": ["astep.sample.001"],
+  "producedArtifactIds": ["mdos.sample.001"],
+  "summary": "Compiled a high-yield medical dossier and paused for local reviewer approval.",
+  "startedAt": "2026-04-23T12:00:00Z",
+  "endedAt": "2026-04-23T12:05:00Z"
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "mdb.sample.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.sample.001",
+  "targetCanonicalDiseaseName": "Sample Disease",
+  "medicalDossierId": "mdos.sample.001",
+  "agentRunId": "arun.sample.001",
+  "status": "review-required",
+  "sectionCoverage": {
+    "required": 16,
+    "completed": 16
+  },
+  "claimCount": 1,
+  "sourceCount": 1,
+  "blockingIssues": [],
+  "warnings": ["Reviewer approval is required before story generation."],
+  "missingSections": [],
+  "traceabilityScore": 1,
+  "fitForStoryContinuation": false,
+  "generatedAt": "2026-04-23T12:04:30Z"
+}

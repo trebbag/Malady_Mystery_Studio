@@ -20,7 +20,7 @@ export function Alert({
   ...props
 }: PropsWithChildren<AlertProps>) {
   return (
-    <div className={cn('rounded-2xl border px-4 py-3 text-sm', toneClasses[tone], className)} {...props}>
+    <div className={cn('rounded-[1.35rem] border px-4 py-3 text-sm leading-6', toneClasses[tone], className)} {...props}>
       {children}
     </div>
   );

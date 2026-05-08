@@ -29,11 +29,70 @@
       "type": "string",
       "pattern": "^[A-Za-z0-9._:-]+$"
     },
+    "medicalProvenance": {
+      "$ref": "artifact-medical-provenance.schema.json"
+    },
     "modelFamily": {
       "type": "string"
     },
     "aspectRatio": {
       "type": "string"
+    },
+    "guidancePackVersionIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      }
+    },
+    "sourceGuidanceProvenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "guidancePackId",
+          "version",
+          "ruleIds",
+          "sourceDocIds"
+        ],
+        "properties": {
+          "guidancePackId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "version": {
+            "type": "string"
+          },
+          "ruleIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          },
+          "sourceDocIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          }
+        }
+      }
+    },
+    "promptModulesApplied": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      }
+    },
+    "promptCompilationOrder": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "positivePrompt": {
       "type": "string"

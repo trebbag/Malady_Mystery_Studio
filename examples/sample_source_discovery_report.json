@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sdr.sample.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.sample.001",
+  "targetCanonicalDiseaseName": "Sample Disease",
+  "agentRunId": "arun.sample.001",
+  "searchStrategy": "Prioritize guideline, review, and major public-health sources before lower-tier references.",
+  "allowedDomains": ["pubmed.ncbi.nlm.nih.gov", "www.cdc.gov"],
+  "sources": [
+    {
+      "sourceId": "src.sample.001",
+      "sourceLabel": "Sample guideline",
+      "sourceType": "guideline",
+      "origin": "agent-web",
+      "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/example",
+      "status": "provisional",
+      "topics": ["diagnosis", "management"]
+    }
+  ],
+  "droppedSources": [],
+  "gaps": ["Reviewer must confirm source recency before export."],
+  "generatedAt": "2026-04-23T12:03:00Z"
+}

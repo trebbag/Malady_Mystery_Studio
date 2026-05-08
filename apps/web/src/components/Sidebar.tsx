@@ -1,20 +1,18 @@
-import { NavLink, useLocation, useParams } from 'react-router-dom';
+import { NavLink, useParams } from 'react-router-dom';
 
 import { RunsList } from '@/components/RunsList';
 import type { DashboardRun } from '@/lib/types';
-import { runPageDefinitions } from '@/lib/navigation';
 
 export function Sidebar({ runs }: { runs: DashboardRun[] }) {
-  const location = useLocation();
   const params = useParams<{ runId: string }>();
 
   return (
-    <aside className="flex w-full max-w-none flex-col gap-6 border-b border-white/10 bg-shell-950 px-5 py-6 text-white md:min-h-screen md:max-w-[23rem] md:border-b-0 md:border-r">
+    <aside className="flex w-full max-w-none flex-col gap-6 border-b border-white/10 bg-shell-950 px-5 py-6 text-white shadow-[24px_0_80px_rgba(7,18,24,0.16)] md:min-h-screen md:max-w-[19rem] md:border-b-0 md:border-r">
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-300">Disease Comic Platform</p>
-        <h1 className="font-display text-2xl font-semibold">Local Production Shell</h1>
-        <p className="text-sm text-slate-300">
-          Built from the Figma Make shell, but grounded in the platform’s real review, governance, eval, and export state.
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-300">Malady Mystery Studio</p>
+        <h1 className="font-display text-2xl font-semibold">Local creator workspace</h1>
+        <p className="text-sm leading-6 text-slate-300">
+          Start a disease, approve the safety gates, render panels, and export local files.
         </p>
       </div>
 
@@ -22,59 +20,51 @@ export function Sidebar({ runs }: { runs: DashboardRun[] }) {
         <NavLink
           to="/review"
           className={({ isActive }) => [
-            'block rounded-2xl px-4 py-3 text-sm transition',
-            isActive ? 'bg-white text-shell-950' : 'bg-white/5 text-white hover:bg-white/10',
+            'block rounded-2xl px-4 py-3 text-sm font-semibold transition',
+            isActive ? 'bg-shell-700 text-white ring-1 ring-shell-600' : 'bg-white/5 text-slate-200 hover:bg-white/10',
           ].join(' ')}
         >
-          Review dashboard
+          Home
+        </NavLink>
+        <NavLink
+          to="/runs"
+          className={({ isActive }) => [
+            'block rounded-2xl px-4 py-3 text-sm font-semibold transition',
+            isActive ? 'bg-shell-700 text-white ring-1 ring-shell-600' : 'bg-white/5 text-slate-200 hover:bg-white/10',
+          ].join(' ')}
+        >
+          Runs
         </NavLink>
         <NavLink
           to="/review/queue"
           className={({ isActive }) => [
-            'block rounded-2xl px-4 py-3 text-sm transition',
-            isActive ? 'bg-white text-shell-950' : 'bg-white/5 text-white hover:bg-white/10',
+            'block rounded-2xl px-4 py-3 text-sm font-semibold transition',
+            isActive ? 'bg-shell-700 text-white ring-1 ring-shell-600' : 'bg-white/5 text-slate-200 hover:bg-white/10',
           ].join(' ')}
         >
-          Review queue
+          Queue
+        </NavLink>
+        <NavLink
+          to="/sources"
+          className={({ isActive }) => [
+            'block rounded-2xl px-4 py-3 text-sm font-semibold transition',
+            isActive ? 'bg-shell-700 text-white ring-1 ring-shell-600' : 'bg-white/5 text-slate-200 hover:bg-white/10',
+          ].join(' ')}
+        >
+          Sources
         </NavLink>
         <NavLink
           to="/settings"
           className={({ isActive }) => [
-            'block rounded-2xl px-4 py-3 text-sm transition',
-            isActive ? 'bg-white text-shell-950' : 'bg-white/5 text-white hover:bg-white/10',
+            'block rounded-2xl px-4 py-3 text-sm font-semibold transition',
+            isActive ? 'bg-shell-700 text-white ring-1 ring-shell-600' : 'bg-white/5 text-slate-200 hover:bg-white/10',
           ].join(' ')}
         >
-          Local settings
+          Settings
         </NavLink>
       </nav>
 
       <RunsList runs={runs} selectedRunId={params.runId} />
-
-      {params.runId ? (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Run pages</p>
-          <div className="grid gap-2">
-            {runPageDefinitions.map((page) => {
-              const target = `/runs/${encodeURIComponent(params.runId ?? '')}/${page.path}`;
-              const selected = location.pathname === target;
-
-              return (
-                <NavLink
-                  key={page.path}
-                  to={target}
-                  className={[
-                    'rounded-xl px-4 py-3 text-sm transition',
-                    selected ? 'bg-accent-500/15 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white',
-                  ].join(' ')}
-                >
-                  <div className="font-medium">{page.label}</div>
-                  <div className="mt-1 text-xs text-slate-400">{page.description}</div>
-                </NavLink>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
     </aside>
   );
 }

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/agent-run.schema.json",
+  "title": "AgentRun",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "purpose",
+    "status",
+    "model",
+    "orchestration",
+    "stepIds",
+    "producedArtifactIds",
+    "summary",
+    "startedAt",
+    "endedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "purpose": { "type": "string" },
+    "status": { "type": "string", "enum": ["succeeded", "review-required", "failed"] },
+    "model": { "type": "string" },
+    "orchestration": { "type": "string" },
+    "tooling": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "stepIds": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+    },
+    "producedArtifactIds": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+    },
+    "summary": { "type": "string" },
+    "blockedReason": { "type": "string" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "endedAt": { "type": "string", "format": "date-time" }
+  }
+}

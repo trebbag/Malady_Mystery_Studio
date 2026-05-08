@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "mdq.sample.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.sample.001",
+  "medicalDossierId": "mdos.sample.001",
+  "agentRunId": "arun.sample.001",
+  "status": "review-required",
+  "completenessScore": 1,
+  "traceabilityScore": 1,
+  "sourceGovernanceStatus": "review-required",
+  "contradictionStatus": "clear",
+  "checks": [
+    {
+      "checkId": "medical-dossier.required-sections",
+      "status": "passed",
+      "message": "All required high-yield sections are present."
+    },
+    {
+      "checkId": "medical-dossier.reviewer-gate",
+      "status": "warning",
+      "message": "A local reviewer must approve the dossier before story generation."
+    }
+  ],
+  "blockingIssues": [],
+  "warnings": ["Reviewer approval required."],
+  "generatedAt": "2026-04-23T12:04:45Z"
+}

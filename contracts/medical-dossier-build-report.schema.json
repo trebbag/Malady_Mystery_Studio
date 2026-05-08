@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/medical-dossier-build-report.schema.json",
+  "title": "MedicalDossierBuildReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "targetCanonicalDiseaseName",
+    "medicalDossierId",
+    "status",
+    "sectionCoverage",
+    "claimCount",
+    "sourceCount",
+    "blockingIssues",
+    "warnings",
+    "missingSections",
+    "traceabilityScore",
+    "fitForStoryContinuation",
+    "generatedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "targetCanonicalDiseaseName": { "type": "string" },
+    "medicalDossierId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "agentRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "status": { "type": "string", "enum": ["ready", "review-required", "blocked"] },
+    "sectionCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "completed"],
+      "properties": {
+        "required": { "type": "integer", "minimum": 0 },
+        "completed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "claimCount": { "type": "integer", "minimum": 0 },
+    "sourceCount": { "type": "integer", "minimum": 0 },
+    "blockingIssues": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "missingSections": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "traceabilityScore": { "type": "number", "minimum": 0, "maximum": 1 },
+    "fitForStoryContinuation": { "type": "boolean" },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  }
+}

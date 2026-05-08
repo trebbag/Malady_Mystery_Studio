@@ -28,8 +28,10 @@
       "enum": [
         "disease-packet",
         "story-workbook",
+        "story-craft-report",
         "scene-card",
         "panel-plan",
+        "panel-adaptation-report",
         "render-prompt",
         "workflow-run",
         "release-bundle"

@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/medical-dossier.schema.json",
+  "title": "MedicalDossier",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "canonicalDiseaseName",
+    "sourceDiscoveryReportId",
+    "agentRunId",
+    "sections",
+    "claims",
+    "sourceIds",
+    "completeness",
+    "reviewStatus",
+    "generatedAt",
+    "generatedBy"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "canonicalDiseaseName": { "type": "string" },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "ontologyId": { "type": "string" },
+    "diseaseCategory": { "type": "string" },
+    "sourceDiscoveryReportId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "agentRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "knowledgePackId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "epidemiology",
+        "etiology",
+        "pathophysiology",
+        "clinicalFeatures",
+        "history",
+        "exam",
+        "labs",
+        "imaging",
+        "diagnosticCriteria",
+        "differentialDiagnosis",
+        "treatment",
+        "management",
+        "complications",
+        "prognosis",
+        "teachingPoints",
+        "visualAnchors"
+      ],
+      "properties": {
+        "epidemiology": { "$ref": "#/$defs/section" },
+        "etiology": { "$ref": "#/$defs/section" },
+        "pathophysiology": { "$ref": "#/$defs/section" },
+        "clinicalFeatures": { "$ref": "#/$defs/section" },
+        "history": { "$ref": "#/$defs/section" },
+        "exam": { "$ref": "#/$defs/section" },
+        "labs": { "$ref": "#/$defs/section" },
+        "imaging": { "$ref": "#/$defs/section" },
+        "diagnosticCriteria": { "$ref": "#/$defs/section" },
+        "differentialDiagnosis": { "$ref": "#/$defs/section" },
+        "treatment": { "$ref": "#/$defs/section" },
+        "management": { "$ref": "#/$defs/section" },
+        "complications": { "$ref": "#/$defs/section" },
+        "prognosis": { "$ref": "#/$defs/section" },
+        "teachingPoints": { "$ref": "#/$defs/section" },
+        "visualAnchors": { "$ref": "#/$defs/section" }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/claimReference" }
+    },
+    "sourceIds": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+    },
+    "contradictions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fromClaimId", "toClaimId", "status"],
+        "properties": {
+          "fromClaimId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "toClaimId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "status": { "type": "string", "enum": ["open", "monitor", "blocking", "resolved"] },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "completeness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiredSectionCount", "completedSectionCount", "missingSections", "traceabilityScore"],
+      "properties": {
+        "requiredSectionCount": { "type": "integer", "minimum": 0 },
+        "completedSectionCount": { "type": "integer", "minimum": 0 },
+        "missingSections": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "traceabilityScore": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "reviewStatus": {
+      "type": "string",
+      "enum": ["review-required", "approved", "changes-requested", "rejected"]
+    },
+    "guidancePackVersionIds": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "generatedBy": { "type": "string" }
+  },
+  "$defs": {
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sectionKey", "title", "summary", "highYieldFacts", "linkedClaimIds"],
+      "properties": {
+        "sectionKey": { "type": "string" },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "highYieldFacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["claimId", "statement"],
+            "properties": {
+              "claimId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+              "statement": { "type": "string" },
+              "sourceIds": {
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+              }
+            }
+          }
+        },
+        "linkedClaimIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+        },
+        "reviewNotes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "claimReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claimId", "claimText", "sectionKeys", "sourceIds"],
+      "properties": {
+        "claimId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+        "claimText": { "type": "string" },
+        "sectionKeys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "sourceIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}

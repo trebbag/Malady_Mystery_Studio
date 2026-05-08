@@ -52,20 +52,25 @@ The repository CI workflow can be started manually from GitHub Actions with **Ru
 
 - `RENDER_PROVIDER=stub-image` is the default. It creates deterministic rendered-asset manifests for every required panel, with prompt hashes, continuity locks, anatomy locks, lettering-separation status, retry strategy, and acceptance checks.
 - Stub rendered assets are explicitly marked as non-final placeholders. They validate local workflow structure, release wiring, traceability, and gates only; they do not certify final image quality.
-- Arbitrary typed diseases can compile locally without `OPENAI_API_KEY` through fixture-backed provisional research assembly. Those packs remain provisional and reviewer-gated until approved or promoted.
+- Arbitrary typed diseases now start with a medical-dossier gate. With `OPENAI_API_KEY`, the app uses the OpenAI Agents SDK, web search, optional file search via `KB_VECTOR_STORE_ID`, and deterministic QA to compile a high-yield, source-traceable medical dossier before story generation. Without a key, fixture-backed assembly is UI/testing only and cannot proceed as pilot-ready medical content.
+- Story, panel, render-prompt, rendering-guide, and visual-reference artifacts now carry `artifact-medical-provenance` so evals/export can verify they were built from the latest approved medical dossier and source-discovery agent run. Regenerating research makes older dossier and knowledge-pack approvals stale unless a new decision points at the latest artifact.
 - Local backup, reset, restore, restore-smoke, and delivery mirroring operate on `var/db/platform.sqlite`, `var/object-store/**`, `var/backups/**`, and `var/delivery/**`.
 
 ## ClinicalEducation compatibility
 
 This repo is a rebuild, but it keeps the old ClinicalEducation/Malady Mystery external integration surface where that surface is still safe and aligned with the current product path:
 
-- `OPENAI_API_KEY` remains a backend-only secret for live research and `gpt-image-2` panel rendering.
+- `OPENAI_API_KEY` remains a backend-only secret for live multi-agent disease research and `gpt-image-2` panel rendering.
 - `KB_VECTOR_STORE_ID` reuses the old OpenAI vector-store knowledge base during live provisional disease research.
 - `MMS_MODEL` is still honored as the research-model fallback after `OPENAI_RESEARCH_MODEL`.
 - `MMS_CANON_ROOT`, `MMS_CHARACTER_BIBLE_PATH`, `MMS_SERIES_STYLE_BIBLE_PATH`, `MMS_DECK_SPEC_PATH`, and `MMS_EPISODE_MEMORY_PATH` are recognized for canon/story profile inputs.
 - `MAX_CONCURRENT_RUNS`, `MMS_RUN_RETENTION_KEEP_LAST`, `MMS_PIPELINE_MODE`, fake-mode delay, v2 timeout, and agent-isolation environment variables are surfaced in `/settings` for continuity with the previous app.
 
 The active render path remains OpenAI-targeted (`gpt-image-2`) or local `stub-image`. Deprecated non-OpenAI provider labels from older files are not part of the active rebuilt app.
+
+## Expert guidance packs
+
+Approved story, panel-breakdown, and `gpt-image-2` prompt/QA source documents are preserved under `docs/expert-guidance/source-material/` with SHA256 provenance in `data/agent-guidance/guidance-index.json`. Runtime agents consume the distilled packs in `data/agent-guidance/`, so generated workbooks, story-craft reports, panel-adaptation reports, render prompts, rendering guides, visual reference packs, QA decisions, and eval gates can cite compact guidance pack version IDs.
 
 ## Local review flow
 
@@ -95,7 +100,7 @@ The active render path remains OpenAI-targeted (`gpt-image-2`) or local `stub-im
 
 ## Governed local clinical library
 
-The promoted governed library now includes 18 local-storage packs: Type 2 diabetes mellitus, essential hypertension, chronic kidney disease, hypothyroidism, iron deficiency anemia, migraine, COPD, community-acquired pneumonia, urinary tract infection, GERD, hyperlipidemia, major depressive disorder, generalized anxiety disorder, osteoarthritis, low back pain with red-flag screening, allergic rhinitis, atopic dermatitis/eczema, and obesity/metabolic syndrome. Arbitrary typed diseases still compile through provisional run-scoped packs and must be approved or promoted before export.
+The promoted governed library now includes 18 local-storage packs: Type 2 diabetes mellitus, essential hypertension, chronic kidney disease, hypothyroidism, iron deficiency anemia, migraine, COPD, community-acquired pneumonia, urinary tract infection, GERD, hyperlipidemia, major depressive disorder, generalized anxiety disorder, osteoarthritis, low back pain with red-flag screening, allergic rhinitis, atopic dermatitis/eczema, and obesity/metabolic syndrome. Arbitrary typed diseases compile into provisional run-scoped dossiers and packs; the latest medical dossier must be approved before story generation, and provisional packs must still be approved or promoted before export.
 
 Source ops are available through `/runs/:runId/sources`, `/review/queue`, and `/api/v1/source-ops`. Reviewers can assign/transfer owner roles, mark sources refreshed, suspend or supersede sources, create/reopen refresh work, and resolve queue work locally.
 
@@ -113,7 +118,7 @@ Source ops are available through `/runs/:runId/sources`, `/review/queue`, and `/
 
 - Foundation and local runtime: `100%`
 - Local storage, backup, restore, and artifact retention: `100%`
-- Open disease intake and research assembly: `94%`
+- Open disease intake and research assembly: `96%`
 - Clinical truth layer and governance: `98%`
 - Workbook and guardrails: `80%`
 - Scene, panel, and rendered-output flow: `98%` structurally, with full-story live image quality still billing-limit blocked

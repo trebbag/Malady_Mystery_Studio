@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "1.0.0",
+  "importedAt": "2026-05-05",
+  "sources": [
+    {
+      "id": "detective-series-master-guide",
+      "title": "Detective Series Master Guide",
+      "sourceType": "markdown",
+      "importedFilename": "docs/expert-guidance/source-material/Detective_Series_Master_Guide.md",
+      "sha256": "74800fba06f3b62b0f29ff5c4acabc8c578b9058cfb0815d6b8a57b673fcf118",
+      "mappedPipelineStages": [
+        "story-workbook",
+        "mystery-integrity",
+        "franchise-variety"
+      ]
+    },
+    {
+      "id": "ai-comic-panel-breakdown-master",
+      "title": "AI Comic Panel Breakdown Master Document",
+      "sourceType": "docx",
+      "importedFilename": "docs/expert-guidance/source-material/AI_Comic_Panel_Breakdown_Master_Document.docx",
+      "sha256": "4ab39c6ea88850a0c5d9189462a64f9339c3499a50c8888f971d9269c896d4f1",
+      "mappedPipelineStages": [
+        "scene-planning",
+        "panel-planning",
+        "panelization"
+      ]
+    },
+    {
+      "id": "chatgpt-image2-slide-deck-playbook",
+      "title": "Comic Panel to ChatGPT Image2 Slide Deck Playbook",
+      "sourceType": "pdf",
+      "importedFilename": "docs/expert-guidance/source-material/comic_panel_to_chatgpt_image2_slide_deck_playbook.pdf",
+      "sha256": "d9d3b0b89ffd2a87b0f19cc52c8759032c34d97dc6faf23f3aeef9bfa5740a00",
+      "mappedPipelineStages": [
+        "render-prep",
+        "rendering-guide",
+        "render-execution",
+        "render-output-qa"
+      ]
+    }
+  ],
+  "guidancePacks": [
+    {
+      "id": "detective-mystery-craft",
+      "version": "1.0.0",
+      "path": "data/agent-guidance/detective-mystery-craft.v1.json",
+      "sourceDocIds": [
+        "detective-series-master-guide"
+      ]
+    },
+    {
+      "id": "comic-panel-breakdown",
+      "version": "1.0.0",
+      "path": "data/agent-guidance/comic-panel-breakdown.v1.json",
+      "sourceDocIds": [
+        "ai-comic-panel-breakdown-master"
+      ]
+    },
+    {
+      "id": "chatgpt-image2-rendering",
+      "version": "1.0.0",
+      "path": "data/agent-guidance/chatgpt-image2-rendering.v1.json",
+      "sourceDocIds": [
+        "chatgpt-image2-slide-deck-playbook"
+      ]
+    }
+  ]
+}

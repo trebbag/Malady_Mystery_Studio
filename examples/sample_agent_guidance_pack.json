@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "detective-mystery-craft",
+  "version": "1.0.0",
+  "title": "Detective Mystery Craft and Series Variety",
+  "sourceDocIds": [
+    "detective-series-master-guide"
+  ],
+  "pipelineStages": [
+    "story-workbook"
+  ],
+  "summary": "Rules for fair clue-driven detective story generation.",
+  "rules": [
+    {
+      "id": "DSG-FAIR-REVEAL",
+      "title": "Reveal by proof chain",
+      "severity": "critical",
+      "pipelineStages": [
+        "story-workbook"
+      ],
+      "sourceDocIds": [
+        "detective-series-master-guide"
+      ],
+      "instruction": "The reveal must cite prior clues before naming the diagnosis.",
+      "requiredArtifactFields": [
+        "grandReveal.revealLogic"
+      ],
+      "failureMessage": "The diagnosis reveal is unsupported."
+    }
+  ],
+  "checklists": [
+    {
+      "id": "DSG-STORY-CRAFT-CHECKLIST",
+      "title": "Story Craft Gate",
+      "pipelineStage": "story-workbook",
+      "items": [
+        {
+          "id": "proof-before-diagnosis",
+          "label": "Reveal logic cites prior clues before diagnosis naming.",
+          "required": true,
+          "severity": "critical"
+        }
+      ]
+    }
+  ],
+  "gateCriteria": [
+    {
+      "id": "DSG-GATE-STORY-CRAFT",
+      "pipelineStage": "story-workbook",
+      "severity": "critical",
+      "ruleIds": [
+        "DSG-FAIR-REVEAL"
+      ],
+      "blockingWhen": "Reveal logic does not cite prior clues.",
+      "failureMessage": "Story cannot proceed until the reveal is fair."
+    }
+  ]
+}

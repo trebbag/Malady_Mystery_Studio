@@ -9,9 +9,11 @@ import { normalizeRenderingGuide } from '../../exporter/src/rendering-guide.mjs'
 import {
   reviewEducationalSequencing,
   reviewMysteryIntegrity,
+  reviewPanelAdaptationReport,
   reviewPanelPlans,
   reviewRenderPrompts,
   reviewSceneCards,
+  reviewStoryCraftReport,
 } from '../../story-engine/src/service.mjs';
 
 const SCHEMA_VERSION = '1.0.0';
@@ -433,6 +435,25 @@ function scoreRenderedOutput(context) {
     score = Math.min(score, 0.6);
   }
 
+  const latestQaDecision = context.renderedPanelQaDecision;
+
+  if (latestQaDecision) {
+    const checklistValues = Object.values(latestQaDecision.checklist ?? {});
+    const failedChecklistItems = checklistValues.filter((value) => value === false).length;
+
+    if (latestQaDecision.decision === 'rejected') {
+      score = 0;
+    } else if (latestQaDecision.decision === 'changes-requested') {
+      score = Math.min(score, 0.5);
+    }
+
+    if (failedChecklistItems > 0) {
+      score = Math.min(score, roundScore(1 - (failedChecklistItems * 0.18)));
+    }
+  } else {
+    score = Math.min(score, 0.65);
+  }
+
   return score;
 }
 
@@ -447,6 +468,28 @@ function scoreRenderingGuideQuality(context) {
 
   if (!renderingGuide) {
     return 0;
+  }
+
+  if ((renderingGuide.guidancePackVersionIds ?? []).length === 0 || (renderingGuide.sourceGuidanceProvenance ?? []).length === 0) {
+    return 0;
+  }
+
+  if (context.medicalDossier) {
+    const medicalProvenance = renderingGuide.medicalProvenance;
+
+    if (
+      !medicalProvenance
+      || medicalProvenance.sourceMode !== 'agent-medical-dossier'
+      || medicalProvenance.medicalDossierId !== context.medicalDossier.id
+      || medicalProvenance.reviewStatus !== 'approved'
+      || medicalProvenance.medicalDossierReviewDecisionId !== context.medicalDossierReviewDecision?.id
+    ) {
+      return 0;
+    }
+
+    if ((context.renderPrompts ?? []).some((/** @type {any} */ renderPrompt) => renderPrompt.medicalProvenance?.medicalDossierId !== context.medicalDossier.id)) {
+      return 0;
+    }
   }
 
   const approvedGuide = Boolean(
@@ -488,12 +531,23 @@ function scoreRenderingGuideQuality(context) {
     score -= 0.05;
   }
 
+  if (
+    context.medicalDossier
+    && visualReferencePack?.medicalProvenance?.medicalDossierId !== context.medicalDossier.id
+  ) {
+    score -= 0.2;
+  }
+
   for (const panel of renderingGuide.panels ?? []) {
     const openAiPrompt = panel.openAiImagePrompt;
     const referenceItemIds = panel.visualReferenceItemIds ?? panelReferenceMap.get(panel.panelId) ?? [];
 
     if (!openAiPrompt?.prompt) {
       score -= 0.2;
+    }
+
+    if (!(openAiPrompt?.prompt ?? '').includes('Core frozen moment') || !(openAiPrompt?.prompt ?? '').includes('Final output requirements')) {
+      score -= 0.12;
     }
 
     if (!(renderingGuide.providerTargets ?? []).includes('openai-gpt-image-2')) {
@@ -765,16 +819,21 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
   const project = store.getProject(workflowRun.projectId);
   const diseasePacket = loadLatestArtifactByType(store, workflowRun, 'disease-packet');
   const storyWorkbook = loadLatestArtifactByType(store, workflowRun, 'story-workbook');
+  const storyCraftReport = loadLatestArtifactByType(store, workflowRun, 'story-craft-report');
   const qaReports = loadArtifactsByType(store, workflowRun, 'qa-report');
   const sceneCards = loadArtifactsByType(store, workflowRun, 'scene-card');
   const panelPlans = loadArtifactsByType(store, workflowRun, 'panel-plan');
+  const panelAdaptationReport = loadLatestArtifactByType(store, workflowRun, 'panel-adaptation-report');
   const renderPrompts = loadArtifactsByType(store, workflowRun, 'render-prompt');
   const renderingGuide = loadLatestArtifactByType(store, workflowRun, 'rendering-guide');
   const visualReferencePack = loadLatestArtifactByType(store, workflowRun, 'visual-reference-pack');
   const renderGuideReviewDecision = loadLatestArtifactByType(store, workflowRun, 'render-guide-review-decision');
+  const medicalDossier = loadLatestArtifactByType(store, workflowRun, 'medical-dossier');
+  const medicalDossierReviewDecision = loadLatestArtifactByType(store, workflowRun, 'medical-dossier-review-decision');
   const letteringMaps = loadArtifactsByType(store, workflowRun, 'lettering-map');
   const renderJobs = loadArtifactsByType(store, workflowRun, 'render-job');
   const renderedAssetManifest = loadLatestArtifactByType(store, workflowRun, 'rendered-asset-manifest');
+  const renderedPanelQaDecision = loadLatestArtifactByType(store, workflowRun, 'rendered-panel-qa-decision');
   const primaryQaReport = selectPrimaryQaReport(qaReports);
   const traceabilitySummary = diseasePacket
     ? buildEvidenceTraceabilitySummary({
@@ -804,27 +863,48 @@ function buildEvaluationContext(store, workflowRun, actor, exporterService) {
     project,
     diseasePacket,
     storyWorkbook,
+    storyCraftReport,
     qaReports,
     primaryQaReport,
     sceneCards,
     panelPlans,
+    panelAdaptationReport,
     renderPrompts,
     renderingGuide,
     visualReferencePack,
     renderGuideReviewDecision,
+    medicalDossier,
+    medicalDossierReviewDecision,
     letteringMaps,
     renderJobs,
     renderedAssetManifest,
+    renderedPanelQaDecision,
     availableArtifactTypes: new Set(workflowRun.artifacts.map((/** @type {{ artifactType: string }} */ artifactReference) => artifactReference.artifactType)),
     canonicalDiseaseName: normalizeName(diseasePacket?.canonicalDiseaseName ?? workflowRun.input?.diseaseName),
     mysteryReview: storyWorkbook && diseasePacket
-      ? reviewMysteryIntegrity(storyWorkbook, diseasePacket)
+      ? (() => {
+        const workbookReview = reviewMysteryIntegrity(storyWorkbook, diseasePacket);
+        const storyCraftReview = storyCraftReport ? reviewStoryCraftReport(storyCraftReport) : { score: 0, findings: [] };
+
+        return {
+          score: storyCraftReport ? roundScore((workbookReview.score * 0.55) + (storyCraftReview.score * 0.45)) : workbookReview.score,
+          findings: [...workbookReview.findings, ...storyCraftReview.findings],
+        };
+      })()
       : { score: 0, findings: [] },
     sequencingReview: storyWorkbook && diseasePacket
       ? reviewEducationalSequencing(storyWorkbook, diseasePacket)
       : { score: 0, findings: [] },
     sceneReview: reviewSceneCards(sceneCards),
-    panelReview: reviewPanelPlans(panelPlans),
+    panelReview: (() => {
+      const panelReview = reviewPanelPlans(panelPlans);
+      const adaptationReview = panelAdaptationReport ? reviewPanelAdaptationReport(panelAdaptationReport) : { score: 0, findings: [] };
+
+      return {
+        score: panelAdaptationReport ? roundScore((panelReview.score * 0.55) + (adaptationReview.score * 0.45)) : panelReview.score,
+        findings: [...panelReview.findings, ...adaptationReview.findings],
+      };
+    })(),
     renderReview: reviewRenderPrompts(renderPrompts, letteringMaps),
     traceabilitySummary,
     releasePreview: null,

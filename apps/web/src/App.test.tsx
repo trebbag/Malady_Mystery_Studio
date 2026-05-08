@@ -35,6 +35,13 @@ const dashboardView = {
       runId: 'run.local.001',
       projectTitle: 'Community-acquired pneumonia starter project',
       diseaseName: 'Community-acquired pneumonia',
+      friendlyStatus: 'Guide is approved; panels are ready to render or review.',
+      activeStep: 'render-panels',
+      nextAction: {
+        label: 'Render panels',
+        targetPath: '/runs/run.local.001/render-panels',
+        actionId: 'render-panels',
+      },
       state: 'review',
       currentStage: 'review',
       assignees: ['Local Operator'],
@@ -263,6 +270,72 @@ const reviewRunView = {
   state: 'review',
   currentStage: 'review',
   stageTimeline: workflowRun.stages,
+  creatorWorkflow: {
+    friendlyStatus: 'Guide is approved; panels are ready to render or review.',
+    activeStep: 'render-panels',
+    primaryAction: {
+      label: 'Render panels',
+      targetPath: '/runs/run.local.001/render-panels',
+      actionId: 'render-panels',
+    },
+    steps: [
+      {
+        id: 'clinical-review',
+        label: 'Clinical review',
+        status: 'complete',
+        description: 'Confirm clinical traceability.',
+        targetPath: '/runs/run.local.001/clinical-review',
+      },
+      {
+        id: 'story-panel-plan',
+        label: 'Story and panel plan',
+        status: 'complete',
+        description: 'Check story and panels.',
+        targetPath: '/runs/run.local.001/story-panel-plan',
+      },
+      {
+        id: 'guide-review',
+        label: 'Guide review',
+        status: 'complete',
+        description: 'Approve the guide.',
+        targetPath: '/runs/run.local.001/guide-review',
+      },
+      {
+        id: 'render-panels',
+        label: 'Render panels',
+        status: 'current',
+        description: 'Create final panels.',
+        targetPath: '/runs/run.local.001/render-panels',
+      },
+      {
+        id: 'final-checks',
+        label: 'Final checks',
+        status: 'ready',
+        description: 'Run safety checks.',
+        targetPath: '/runs/run.local.001/export',
+      },
+      {
+        id: 'export',
+        label: 'Export',
+        status: 'waiting',
+        description: 'Export local package.',
+        targetPath: '/runs/run.local.001/export',
+      },
+    ],
+    blockers: [],
+    advancedLinks: [
+      {
+        label: 'Review console',
+        path: '/runs/run.local.001/advanced/review-console',
+        description: 'Assignments, comments, threads, approvals, and safety-check actions.',
+      },
+      {
+        label: 'Panels',
+        path: '/runs/run.local.001/advanced/panels',
+        description: 'Panel plans and render prompt details.',
+      },
+    ],
+  },
   clinicalPackage,
   reviewAssignments: [
     {
@@ -630,11 +703,54 @@ const artifacts = {
       },
     },
     {
+      artifactType: 'story-craft-report',
+      artifactId: 'scr.local.001',
+      status: 'generated',
+      payload: {
+        id: 'scr.local.001',
+        gateStatus: 'passed',
+        beforeCaseBaseline: 'The lung district is stable before the first clue.',
+        centralCaseQuestion: 'What is blocking gas exchange?',
+        clueLedger: [{ clueId: 'clue.local.001' }],
+        fairRevealProofChain: [{ order: 1 }],
+        repairCodaPlan: { repairAction: 'Restore gas exchange.' },
+        findings: [],
+      },
+    },
+    {
+      artifactType: 'panel-adaptation-report',
+      artifactId: 'par.local.001',
+      status: 'generated',
+      payload: {
+        id: 'par.local.001',
+        gateStatus: 'passed',
+        storySpine: 'Baseline, disruption, investigation, reveal, treatment, repair.',
+        sceneMap: [{ sceneId: 'scn.local.001' }],
+        beatMap: [{ panelId: 'pnl.local.001' }],
+        continuityLedger: {
+          characters: ['Detective Cyto Kine', 'Deputy Pip'],
+          props: ['evidence vial'],
+          locations: ['alveolar district'],
+        },
+        findings: [],
+      },
+    },
+    {
       artifactType: 'panel-plan',
       artifactId: 'pnl.local.001',
       status: 'generated',
       payload: {
         id: 'pnl.local.001',
+        panels: [
+          {
+            panelId: 'pnl.local.001',
+            pageNumber: 1,
+            storyFunction: 'opener',
+            medicalObjective: 'Bridge symptoms to the lung environment.',
+            linkedClaimIds: ['claim.local.001'],
+            continuityAnchors: ['jet packs', 'alveoli', 'case tablet'],
+          },
+        ],
       },
     },
     {
@@ -1067,16 +1183,25 @@ afterEach(() => {
 
 describe('web app routes', () => {
   it.each([
-    ['/review', 'Review Dashboard'],
+    ['/review', 'Make a disease comic'],
+    ['/runs', 'Total runs'],
     ['/review/queue', 'Review Queue'],
+    ['/sources', 'Source operations'],
+    ['/runs/run.local.001/overview', 'Next best action'],
+    ['/runs/run.local.001/clinical-review', 'Approve the disease research before the story starts'],
+    ['/runs/run.local.001/story-panel-plan', 'Check the story plan before visual approval'],
+    ['/runs/run.local.001/guide-review', 'Approve the visual plan before rendering'],
+    ['/runs/run.local.001/render-panels', 'Create the final panel art'],
+    ['/runs/run.local.001/export', 'Package the finished local files'],
+    ['/runs/run.local.001/advanced', 'Technical details'],
     ['/runs/run.local.001/pipeline', 'Pipeline Page'],
-    ['/runs/run.local.001/review', 'Review Page'],
+    ['/runs/run.local.001/review', 'Next best action'],
     ['/runs/run.local.001/packets', 'Packets Page'],
     ['/runs/run.local.001/evidence', 'Evidence Page'],
     ['/runs/run.local.001/workbooks', 'Workbooks Page'],
     ['/runs/run.local.001/scenes', 'Scenes Page'],
     ['/runs/run.local.001/panels', 'Panels Page'],
-    ['/runs/run.local.001/rendering-guide', 'Rendering Guide'],
+    ['/runs/run.local.001/rendering-guide', 'Rendering Guide Workbench'],
     ['/runs/run.local.001/sources', 'Sources Page'],
     ['/runs/run.local.001/governance', 'Governance Page'],
     ['/runs/run.local.001/evals', 'Evals Page'],
@@ -1097,6 +1222,14 @@ describe('web app routes', () => {
     expect(screen.queryByText(/Export is blocked until the latest eval run is fresh and passing/i)).not.toBeInTheDocument();
   });
 
+  it('explains the local disease-run start flow on Home', async () => {
+    renderRoute('/review');
+    await waitFor(async () => {
+      expect(await screen.findByText('What happens after you start?')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/You approve the clinical foundation and visual guide before rendering/i)).toBeInTheDocument();
+  });
+
   it('shows ClinicalEducation-compatible external runtime elements on settings', async () => {
     renderRoute('/settings');
     await waitFor(async () => {
@@ -1110,7 +1243,7 @@ describe('web app routes', () => {
   });
 
   it('shows live reviewer assignments and comments on the review page', async () => {
-    renderRoute('/runs/run.local.001/review');
+    renderRoute('/runs/run.local.001/advanced/review-console');
     await waitFor(async () => {
       expect(await screen.findByText('Review assignments')).toBeInTheDocument();
     });

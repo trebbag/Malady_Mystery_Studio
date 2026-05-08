@@ -12,7 +12,7 @@
     "state",
     "currentStage",
     "stageTimeline",
-    "clinicalPackage",
+    "creatorWorkflow",
     "reviewAssignments",
     "reviewComments",
     "workItems",
@@ -66,8 +66,81 @@
         }
       }
     },
+    "creatorWorkflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "friendlyStatus",
+        "activeStep",
+        "primaryAction",
+        "steps",
+        "blockers",
+        "advancedLinks"
+      ],
+      "properties": {
+        "friendlyStatus": {
+          "type": "string"
+        },
+        "activeStep": {
+          "type": "string",
+          "enum": [
+            "medical-research",
+            "medical-dossier-review",
+            "clinical-review",
+            "story-panel-plan",
+            "guide-review",
+            "render-panels",
+            "final-checks",
+            "export",
+            "complete"
+          ]
+        },
+        "primaryBlocker": {
+          "type": "string"
+        },
+        "primaryAction": {
+          "$ref": "#/$defs/creatorAction"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/creatorWorkflowStep"
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/creatorBlocker"
+          }
+        },
+        "advancedLinks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/advancedLink"
+          }
+        }
+      }
+    },
     "clinicalPackage": {
       "$ref": "clinical-package-view.schema.json"
+    },
+    "medicalDossier": {
+      "$ref": "medical-dossier.schema.json"
+    },
+    "medicalDossierBuildReport": {
+      "$ref": "medical-dossier-build-report.schema.json"
+    },
+    "medicalDossierQaReport": {
+      "$ref": "medical-dossier-qa-report.schema.json"
+    },
+    "sourceDiscoveryReport": {
+      "$ref": "source-discovery-report.schema.json"
+    },
+    "agentRuns": {
+      "type": "array",
+      "items": {
+        "$ref": "agent-run.schema.json"
+      }
     },
     "reviewAssignments": {
       "type": "array",
@@ -112,6 +185,119 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "creatorAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "targetPath"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "targetPath": {
+          "type": "string"
+        },
+        "actionId": {
+          "type": "string"
+        },
+        "disabledReason": {
+          "type": "string"
+        }
+      }
+    },
+    "creatorWorkflowStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "status",
+        "description",
+        "targetPath"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "current",
+            "blocked",
+            "ready",
+            "waiting"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "targetPath": {
+          "type": "string"
+        },
+        "disabledReason": {
+          "type": "string"
+        }
+      }
+    },
+    "creatorBlocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "severity",
+        "title",
+        "detail"
+      ],
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "warning",
+            "critical"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "sourceType": {
+          "type": "string"
+        },
+        "sourceId": {
+          "type": "string"
+        }
+      }
+    },
+    "advancedLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "path",
+        "description"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
       }
     }
   }

@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/agent-guidance-pack.schema.json",
+  "title": "AgentGuidancePack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "version",
+    "title",
+    "sourceDocIds",
+    "pipelineStages",
+    "summary",
+    "rules",
+    "checklists",
+    "gateCriteria"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "version": { "type": "string" },
+    "title": { "type": "string" },
+    "sourceDocIds": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+    },
+    "pipelineStages": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "summary": { "type": "string" },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "severity",
+          "pipelineStages",
+          "sourceDocIds",
+          "instruction",
+          "requiredArtifactFields",
+          "failureMessage"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "title": { "type": "string" },
+          "severity": { "type": "string", "enum": ["info", "warning", "blocking", "critical"] },
+          "pipelineStages": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "sourceDocIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          },
+          "instruction": { "type": "string" },
+          "requiredArtifactFields": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "failureMessage": { "type": "string" }
+        }
+      }
+    },
+    "checklists": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "pipelineStage", "items"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "title": { "type": "string" },
+          "pipelineStage": { "type": "string" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label", "required", "severity"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+                "label": { "type": "string" },
+                "required": { "type": "boolean" },
+                "severity": { "type": "string", "enum": ["info", "warning", "blocking", "critical"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "promptModules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "pipelineStages", "template", "negativeConstraints"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "title": { "type": "string" },
+          "pipelineStages": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "template": { "type": "string" },
+          "negativeConstraints": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "gateCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "pipelineStage", "severity", "ruleIds", "blockingWhen", "failureMessage"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "pipelineStage": { "type": "string" },
+          "severity": { "type": "string", "enum": ["info", "warning", "blocking", "critical"] },
+          "ruleIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          },
+          "blockingWhen": { "type": "string" },
+          "failureMessage": { "type": "string" }
+        }
+      }
+    }
+  }
+}

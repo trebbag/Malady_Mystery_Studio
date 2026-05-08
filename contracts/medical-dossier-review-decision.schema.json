@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/medical-dossier-review-decision.schema.json",
+  "title": "MedicalDossierReviewDecision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "medicalDossierId",
+    "decision",
+    "decidedBy",
+    "decidedByRoles",
+    "decidedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "medicalDossierId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "decision": { "type": "string", "enum": ["approved", "request-changes", "rejected"] },
+    "notes": { "type": "string" },
+    "decidedBy": { "type": "string" },
+    "decidedByRoles": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "decidedAt": { "type": "string", "format": "date-time" }
+  }
+}

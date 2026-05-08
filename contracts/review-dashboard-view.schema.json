@@ -124,6 +124,9 @@
           "runId",
           "projectTitle",
           "diseaseName",
+          "friendlyStatus",
+          "activeStep",
+          "nextAction",
           "state",
           "currentStage",
           "assignees",
@@ -145,6 +148,29 @@
           },
           "diseaseName": {
             "type": "string"
+          },
+          "friendlyStatus": {
+            "type": "string"
+          },
+          "activeStep": {
+            "type": "string",
+            "enum": [
+              "medical-research",
+              "medical-dossier-review",
+              "clinical-review",
+              "story-panel-plan",
+              "guide-review",
+              "render-panels",
+              "final-checks",
+              "export",
+              "complete"
+            ]
+          },
+          "primaryBlocker": {
+            "type": "string"
+          },
+          "nextAction": {
+            "$ref": "#/$defs/creatorAction"
           },
           "state": {
             "type": "string"
@@ -188,6 +214,30 @@
             "type": "string",
             "format": "date-time"
           }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "creatorAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "targetPath"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "targetPath": {
+          "type": "string"
+        },
+        "actionId": {
+          "type": "string"
+        },
+        "disabledReason": {
+          "type": "string"
         }
       }
     }

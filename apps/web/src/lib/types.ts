@@ -2,6 +2,10 @@ export interface DashboardRun {
   runId: string;
   projectTitle: string;
   diseaseName: string;
+  friendlyStatus: string;
+  activeStep: CreatorWorkflowStepId;
+  primaryBlocker?: string;
+  nextAction: CreatorAction;
   state: string;
   currentStage: string;
   assignees: string[];
@@ -41,6 +45,55 @@ export interface ReviewDashboardView {
     escalatedWorkItemCount: number;
   };
   runs: DashboardRun[];
+}
+
+export type CreatorWorkflowStepId =
+  | 'medical-research'
+  | 'medical-dossier-review'
+  | 'clinical-review'
+  | 'story-panel-plan'
+  | 'guide-review'
+  | 'render-panels'
+  | 'final-checks'
+  | 'export'
+  | 'complete';
+
+export interface CreatorAction {
+  label: string;
+  targetPath: string;
+  actionId?: string;
+  disabledReason?: string;
+}
+
+export interface CreatorWorkflowStep {
+  id: CreatorWorkflowStepId | string;
+  label: string;
+  status: 'complete' | 'current' | 'blocked' | 'ready' | 'waiting';
+  description: string;
+  targetPath: string;
+  disabledReason?: string;
+}
+
+export interface CreatorBlocker {
+  severity: 'info' | 'warning' | 'critical';
+  title: string;
+  detail: string;
+  sourceType?: string;
+  sourceId?: string;
+}
+
+export interface CreatorWorkflow {
+  friendlyStatus: string;
+  activeStep: CreatorWorkflowStepId;
+  primaryBlocker?: string;
+  primaryAction: CreatorAction;
+  steps: CreatorWorkflowStep[];
+  blockers: CreatorBlocker[];
+  advancedLinks: Array<{
+    label: string;
+    path: string;
+    description: string;
+  }>;
 }
 
 export interface WorkflowStage {
@@ -359,6 +412,8 @@ export interface RenderingGuide {
   canonicalDiseaseName: string;
   providerTargets: string[];
   generatedAt: string;
+  guidancePackVersionIds?: string[];
+  sourceGuidanceProvenance?: Array<Record<string, unknown>>;
   markdownDocumentId: string;
   markdownLocation: string;
   visualReferencePackId?: string;
@@ -401,6 +456,8 @@ export interface VisualReferencePack {
   tenantId: string;
   renderingGuideId: string;
   generatedAt: string;
+  guidancePackVersionIds?: string[];
+  sourceGuidanceProvenance?: Array<Record<string, unknown>>;
   approvalStatus: 'not-reviewed' | 'approved' | 'changes-requested' | 'rejected' | 'stale';
   requiredBeforeRender: boolean;
   items: VisualReferenceItem[];
@@ -473,7 +530,13 @@ export interface ReviewRunView {
   currentStage: string;
   pauseReason?: string;
   stageTimeline: WorkflowStage[];
-  clinicalPackage: ClinicalPackageView;
+  creatorWorkflow: CreatorWorkflow;
+  clinicalPackage?: ClinicalPackageView;
+  medicalDossier?: Record<string, unknown>;
+  medicalDossierBuildReport?: Record<string, unknown>;
+  medicalDossierQaReport?: Record<string, unknown>;
+  sourceDiscoveryReport?: Record<string, unknown>;
+  agentRuns?: Array<Record<string, unknown>>;
   reviewAssignments: ReviewAssignment[];
   reviewComments: ReviewComment[];
   workItems: WorkItem[];

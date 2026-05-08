@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "astep.sample.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.sample.001",
+  "agentRunId": "arun.sample.001",
+  "stepKey": "epidemiology-etiology",
+  "agentName": "Epidemiology/Etiology Agent",
+  "status": "succeeded",
+  "inputSummary": "Find high-yield epidemiology and etiology facts for the dossier.",
+  "outputSummary": "Identified prevalence context, major risk factors, and source-linked uncertainty notes.",
+  "toolSummary": ["web-search"],
+  "findings": ["Epidemiology claims require reviewer confirmation before story use."],
+  "artifactIds": ["mdos.sample.001"],
+  "startedAt": "2026-04-23T12:01:00Z",
+  "endedAt": "2026-04-23T12:02:00Z"
+}

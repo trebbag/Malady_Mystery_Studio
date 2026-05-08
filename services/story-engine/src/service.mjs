@@ -1,4 +1,9 @@
 import { createId } from '../../../packages/shared-config/src/ids.mjs';
+import {
+  buildSourceGuidanceProvenance,
+  getGuidancePackVersionIds,
+  loadAgentGuidancePacks,
+} from '../../../packages/shared-config/src/agent-guidance.mjs';
 
 const SCHEMA_VERSION = '1.0.0';
 const RUBRIC_VERSION = 'story-engine.v1';
@@ -7,6 +12,29 @@ const RENDER_READINESS_MINIMUM = 0.92;
 const DETECTIVE_LEAD_NAME = process.env.MMS_DETECTIVE_LEAD_NAME ?? 'Detective Cyto Kine';
 const DETECTIVE_DEPUTY_NAME = process.env.MMS_DETECTIVE_DEPUTY_NAME ?? 'Deputy Pip';
 const DETECTIVE_PAIR = Object.freeze([DETECTIVE_LEAD_NAME, DETECTIVE_DEPUTY_NAME]);
+const STORY_GUIDANCE_PACK_IDS = Object.freeze(['detective-mystery-craft']);
+const PANEL_GUIDANCE_PACK_IDS = Object.freeze(['comic-panel-breakdown']);
+const RENDER_GUIDANCE_PACK_IDS = Object.freeze(['chatgpt-image2-rendering']);
+const IMAGE2_PROMPT_COMPILATION_ORDER = Object.freeze([
+  'panel-id-aspect-ratio-text-policy',
+  'core-frozen-moment',
+  'continuity-anchors',
+  'composition',
+  'action-and-emotion',
+  'medical-constraints',
+  'visual-style',
+  'required-details',
+  'negative-constraints',
+  'final-output-requirements',
+]);
+const IMAGE2_PROMPT_MODULE_IDS = Object.freeze([
+  'STYLE_GLOBAL_FELT_3D',
+  'TEXT_FREE_MEDICAL',
+  'PATIENT_DIGNITY',
+  'DEVICE_ACCURACY',
+  'SLIDE_SAFE_SPACE',
+  'NO_DRIFT',
+]);
 
 const STORY_PROFILES = [
   {
@@ -234,6 +262,67 @@ function uniqueClaimIds(values) {
 }
 
 /**
+ * @param {any[]} packs
+ * @returns {string[]}
+ */
+function guidanceVersionIds(packs) {
+  return getGuidancePackVersionIds(packs ?? []);
+}
+
+/**
+ * @param {any[]} packs
+ * @returns {Array<{ guidancePackId: string, version: string, ruleIds: string[], sourceDocIds: string[] }>}
+ */
+function guidanceProvenance(packs) {
+  return buildSourceGuidanceProvenance(packs ?? []);
+}
+
+/**
+ * @param {any} medicalProvenance
+ * @returns {{ medicalProvenance: any } | {}}
+ */
+function includeMedicalProvenance(medicalProvenance) {
+  return medicalProvenance && typeof medicalProvenance === 'object'
+    ? { medicalProvenance }
+    : {};
+}
+
+/**
+ * @param {any[]} packs
+ * @param {string} ruleId
+ * @returns {{ ruleId: string, severity: string, message: string, status: string }}
+ */
+function passedGuidanceFinding(packs, ruleId) {
+  const rule = (packs ?? []).flatMap((pack) => pack.rules ?? []).find((candidate) => candidate.id === ruleId);
+
+  return {
+    ruleId,
+    severity: rule?.severity ?? 'info',
+    message: rule?.failureMessage
+      ? `Passed: ${rule.failureMessage.replace(/\.$/, '')}.`
+      : `Passed ${ruleId}.`,
+    status: 'passed',
+  };
+}
+
+/**
+ * @param {string} ruleId
+ * @param {string} severity
+ * @param {string} message
+ * @param {string} [artifactId]
+ * @returns {{ ruleId: string, severity: string, message: string, status: string, artifactId?: string }}
+ */
+function failedGuidanceFinding(ruleId, severity, message, artifactId = undefined) {
+  return {
+    ruleId,
+    severity,
+    message,
+    status: 'failed',
+    ...(artifactId ? { artifactId } : {}),
+  };
+}
+
+/**
  * @param {any} diseasePacket
  * @returns {string[]}
  */
@@ -272,9 +361,11 @@ function summarizeSymptoms(diseasePacket) {
  * @param {any} diseasePacket
  * @param {any} profile
  * @param {string[]} toneProfile
+ * @param {any[]} [guidancePacks]
+ * @param {any} [medicalProvenance]
  * @returns {any}
  */
-function createStoryWorkbook(diseasePacket, profile, toneProfile) {
+function createStoryWorkbook(diseasePacket, profile, toneProfile, guidancePacks = [], medicalProvenance = null) {
   const firstLab = diseasePacket.diagnostics.labs[0];
   const firstImaging = diseasePacket.diagnostics.imaging[0];
   const firstTherapy = diseasePacket.management.definitiveTherapies[0];
@@ -320,9 +411,12 @@ function createStoryWorkbook(diseasePacket, profile, toneProfile) {
     schemaVersion: SCHEMA_VERSION,
     id: createId('swb'),
     diseasePacketId: diseasePacket.id,
+    ...includeMedicalProvenance(medicalProvenance),
     storyTitle,
     logline: `Two alien detectives investigate ${patientPattern}, descend toward the ${profile.locationLabel}, and discover that the case is being driven by a hidden mechanistic pattern rather than the flashiest early clue.`,
     toneProfile,
+    guidancePackVersionIds: guidanceVersionIds(guidancePacks),
+    sourceGuidanceProvenance: guidanceProvenance(guidancePacks),
     openingHook: {
       setup: openingSetup,
       sideJokeSeed,
@@ -397,6 +491,213 @@ function createStoryWorkbook(diseasePacket, profile, toneProfile) {
       firstLab ? `Do not lead with ${firstLab.name} before the detectives discover why the clue matters.` : '',
       `Do not flatten ${firstTherapy?.name ?? 'the treatment climax'} into a generic fix without mechanism.`,
     ], 3),
+  };
+}
+
+/**
+ * @param {any} diseasePacket
+ * @returns {any[]}
+ */
+function buildHiddenTruthTimeline(diseasePacket) {
+  const pathophysiology = Array.isArray(diseasePacket.pathophysiology) ? diseasePacket.pathophysiology : [];
+
+  return pathophysiology.slice(0, 4).map((/** @type {any} */ event, /** @type {number} */ index) => ({
+    order: index + 1,
+    event: `${event.event}: ${event.mechanism}`,
+    linkedClaimIds: uniqueClaimIds(event.linkedClaimIds ?? []),
+  }));
+}
+
+/**
+ * @param {any} workbook
+ * @returns {any[]}
+ */
+function buildInvestigationTimeline(workbook) {
+  return (workbook.clueLadder ?? []).map((/** @type {any} */ clue) => ({
+    order: clue.order,
+    detectiveAction: `Investigate ${clue.discoveryMode} clue: ${clue.clue}`,
+    readerKnowledge: `Readers know why the clue matters later: ${clue.whyItMatters}`,
+  }));
+}
+
+/**
+ * @param {any} workbook
+ * @returns {any[]}
+ */
+function buildAudienceInterpretationTimeline(workbook) {
+  return (workbook.clueLadder ?? []).map((/** @type {any} */ clue, /** @type {number} */ index) => ({
+    order: clue.order,
+    expectedInterpretation: index < 2
+      ? `The audience treats "${clue.clue}" as important but still ambiguous.`
+      : `The audience begins connecting "${clue.clue}" to the emerging proof chain.`,
+    controlledMisread: index === 0
+      ? workbook.redHerrings?.[0]?.misleadingInterpretation ?? 'The first clue could still point to a plausible mimic.'
+      : 'The clue pressures the earlier interpretation without naming the diagnosis too early.',
+  }));
+}
+
+/**
+ * @param {any} workbook
+ * @returns {any[]}
+ */
+function buildClueLedger(workbook) {
+  return (workbook.clueLadder ?? []).map((/** @type {any} */ clue) => {
+    const clueId = `clue-${clue.order}`;
+
+    return {
+      clueId,
+      clue: clue.clue,
+      plant: `Plant as ${clue.discoveryMode} observation before diagnosis naming.`,
+      misread: workbook.redHerrings?.[0]?.misleadingInterpretation
+        ? `May be misread as ${workbook.redHerrings[0].misleadingInterpretation}.`
+        : 'May be misread as nonspecific patient noise.',
+      pressure: `Later evidence makes the first reading unstable: ${clue.whyItMatters}`,
+      retrieve: `Retrieve ${clueId} during the reveal recap.`,
+      reframe: `Reframe the clue as part of ${workbook.grandReveal.diagnosisName} mechanism logic.`,
+      revealUse: workbook.grandReveal.recapPoints?.[Math.max(0, clue.order - 1)] ?? workbook.grandReveal.revealLogic,
+      linkedClaimIds: uniqueClaimIds(clue.linkedClaimIds ?? []),
+    };
+  });
+}
+
+/**
+ * @param {any} workbook
+ * @returns {any[]}
+ */
+function buildRedHerringAudit(workbook) {
+  return (workbook.redHerrings ?? []).map((/** @type {any} */ redHerring) => ({
+    misleadingInterpretation: redHerring.misleadingInterpretation,
+    usefulness: redHerring.whyItSeemsPlausible,
+    resolution: redHerring.whyItFallsApart,
+  }));
+}
+
+/**
+ * @param {any} workbook
+ * @returns {any[]}
+ */
+function buildFairRevealProofChain(workbook) {
+  const clueIds = (workbook.clueLadder ?? []).map((/** @type {any} */ clue) => `clue-${clue.order}`);
+
+  return (workbook.grandReveal.recapPoints ?? []).map((/** @type {string} */ proofPoint, /** @type {number} */ index) => ({
+    order: index + 1,
+    proofPoint,
+    sourceClueIds: takeDistinct([clueIds[index], ...clueIds], 3),
+  }));
+}
+
+/**
+ * @param {any} storyMemory
+ * @param {any} noveltyReview
+ * @returns {any}
+ */
+function buildStoryDnaRotation(storyMemory, noveltyReview) {
+  return {
+    caseType: storyMemory?.canonicalDiseaseName ?? 'mechanism mystery',
+    openingMode: storyMemory?.openingSignature ?? 'comic prop or setting misread',
+    settingMode: storyMemory?.motifTags?.[0] ?? 'inside-body detective setting',
+    clueMode: storyMemory?.motifTags?.[2] ?? 'progressive clinical pattern',
+    suspenseEngine: storyMemory?.twistSignature ?? 'wrong interpretation pressure',
+    repairFocus: storyMemory?.endingSignature ?? 'mechanism restored and opener loop closed',
+    noveltyNotes: noveltyReview?.findings?.length
+      ? noveltyReview.findings.map((/** @type {any} */ finding) => finding.message).join(' ')
+      : 'Story DNA rotation passed against available local story memories.',
+  };
+}
+
+/**
+ * @param {any} storyWorkbook
+ * @param {any} diseasePacket
+ * @param {any} storyMemory
+ * @param {any} noveltyReview
+ * @param {any[]} guidancePacks
+ * @param {string} timestamp
+ * @returns {any}
+ */
+export function createStoryCraftReport(storyWorkbook, diseasePacket, storyMemory, noveltyReview, guidancePacks, timestamp) {
+  const hiddenTruthTimeline = buildHiddenTruthTimeline(diseasePacket);
+  const investigationTimeline = buildInvestigationTimeline(storyWorkbook);
+  const audienceInterpretationTimeline = buildAudienceInterpretationTimeline(storyWorkbook);
+  const clueLedger = buildClueLedger(storyWorkbook);
+  const fairRevealProofChain = buildFairRevealProofChain(storyWorkbook);
+  /** @type {any[]} */
+  const findings = [
+    passedGuidanceFinding(guidancePacks, 'DSG-READER-CONTRACT'),
+    passedGuidanceFinding(guidancePacks, 'DSG-THREE-TIMELINES'),
+    passedGuidanceFinding(guidancePacks, 'DSG-CLUE-LIFECYCLE'),
+    passedGuidanceFinding(guidancePacks, 'DSG-FAIR-REVEAL'),
+    passedGuidanceFinding(guidancePacks, 'DSG-TREATMENT-AS-CLIMAX'),
+    passedGuidanceFinding(guidancePacks, 'DSG-REPAIR-CODA'),
+  ].map((finding) => ({ ...finding, artifactId: storyWorkbook.id }));
+
+  if (!storyWorkbook.caseQuestion || !storyWorkbook.caseQuestion.includes('?')) {
+    findings.push(failedGuidanceFinding('DSG-READER-CONTRACT', 'blocking', 'Central case question is missing or not framed as a mystery question.', storyWorkbook.id));
+  }
+
+  if (hiddenTruthTimeline.length === 0 || investigationTimeline.length === 0 || audienceInterpretationTimeline.length === 0) {
+    findings.push(failedGuidanceFinding('DSG-THREE-TIMELINES', 'blocking', 'Story report is missing one of the three mystery timelines.', storyWorkbook.id));
+  }
+
+  if (clueLedger.some((clue) => !clue.plant || !clue.misread || !clue.pressure || !clue.retrieve || !clue.reframe || !clue.revealUse)) {
+    findings.push(failedGuidanceFinding('DSG-CLUE-LIFECYCLE', 'blocking', 'One or more clues lack a full plant/misread/pressure/retrieve/reframe/reveal lifecycle.', storyWorkbook.id));
+  }
+
+  if (fairRevealProofChain.length < 3) {
+    findings.push(failedGuidanceFinding('DSG-FAIR-REVEAL', 'critical', 'Reveal proof chain has fewer than three proof points.', storyWorkbook.id));
+  }
+
+  if (!storyWorkbook.treatmentShowdown?.whyItResolvesTheConflict) {
+    findings.push(failedGuidanceFinding('DSG-TREATMENT-AS-CLIMAX', 'blocking', 'Treatment showdown does not explain how the treatment resolves the mechanism.', storyWorkbook.id));
+  }
+
+  if (!storyWorkbook.wrapUp?.callbackToOpener || !storyWorkbook.wrapUp?.finalImage) {
+    findings.push(failedGuidanceFinding('DSG-REPAIR-CODA', 'blocking', 'Wrap-up lacks opener callback or final image.', storyWorkbook.id));
+  }
+
+  const gateStatus = findings.some((/** @type {any} */ finding) => finding.status === 'failed' && ['blocking', 'critical'].includes(finding.severity))
+    ? 'blocked'
+    : 'passed';
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('scr'),
+    storyWorkbookId: storyWorkbook.id,
+    diseasePacketId: diseasePacket.id,
+    ...includeMedicalProvenance(storyWorkbook.medicalProvenance),
+    guidancePackVersionIds: guidanceVersionIds(guidancePacks),
+    sourceGuidanceProvenance: guidanceProvenance(guidancePacks),
+    beforeCaseBaseline: storyWorkbook.openingHook?.setup ?? diseasePacket.clinicalSummary?.patientExperienceSummary,
+    centralCaseQuestion: storyWorkbook.caseQuestion,
+    hiddenTruthTimeline,
+    investigationTimeline,
+    audienceInterpretationTimeline,
+    clueLedger,
+    redHerringAudit: buildRedHerringAudit(storyWorkbook),
+    fairRevealProofChain,
+    repairCodaPlan: {
+      repairAction: storyWorkbook.treatmentShowdown?.clinicalAction ?? 'Treatment plan not specified.',
+      openerCallback: storyWorkbook.wrapUp?.callbackToOpener ?? 'No opener callback specified.',
+      finalImage: storyWorkbook.wrapUp?.finalImage ?? 'No final image specified.',
+    },
+    storyDnaRotation: buildStoryDnaRotation(storyMemory, noveltyReview),
+    findings,
+    gateStatus,
+    createdAt: timestamp,
+  };
+}
+
+/**
+ * @param {any} report
+ * @returns {{ score: number, findings: any[] }}
+ */
+export function reviewStoryCraftReport(report) {
+  const findings = Array.isArray(report?.findings) ? report.findings : [];
+  const failedCriticalOrBlocking = findings.filter((/** @type {any} */ finding) => finding.status === 'failed' && ['blocking', 'critical'].includes(finding.severity)).length;
+  const warnings = findings.filter((/** @type {any} */ finding) => finding.status === 'warning' || finding.severity === 'warning').length;
+
+  return {
+    score: roundScore(Math.max(0, 1 - (failedCriticalOrBlocking * 0.25) - (warnings * 0.05))),
+    findings,
   };
 }
 
@@ -1258,9 +1559,11 @@ function buildContinuityAnchors(sceneCard, beat, panelOrder) {
 /**
  * @param {any} sceneCard
  * @param {number} startPage
+ * @param {any[]} [guidancePacks]
+ * @param {any} [medicalProvenance]
  * @returns {any}
  */
-function createPanelPlan(sceneCard, startPage) {
+function createPanelPlan(sceneCard, startPage, guidancePacks = [], medicalProvenance = null) {
   const panels = sceneCard.beats.map((/** @type {any} */ beat, /** @type {number} */ beatIndex) => {
     const panelOrder = beatIndex + 1;
     const visualProfile = getPanelVisualProfile(sceneCard.act, panelOrder);
@@ -1310,23 +1613,28 @@ function createPanelPlan(sceneCard, startPage) {
     schemaVersion: SCHEMA_VERSION,
     id: createId('ppl'),
     sceneId: sceneCard.id,
+    ...includeMedicalProvenance(medicalProvenance),
     pageRange: {
       startPage,
       endPage: startPage,
     },
+    guidancePackVersionIds: guidanceVersionIds(guidancePacks),
+    sourceGuidanceProvenance: guidanceProvenance(guidancePacks),
     panels,
   };
 }
 
 /**
  * @param {any[]} sceneCards
+ * @param {any[]} [guidancePacks]
+ * @param {any} [medicalProvenance]
  * @returns {any[]}
  */
-function createPanelPlans(sceneCards) {
+function createPanelPlans(sceneCards, guidancePacks = [], medicalProvenance = null) {
   let nextPage = 1;
 
   return sceneCards.map((sceneCard) => {
-    const panelPlan = createPanelPlan(sceneCard, nextPage);
+    const panelPlan = createPanelPlan(sceneCard, nextPage, guidancePacks, medicalProvenance);
     nextPage = panelPlan.pageRange.endPage + 1;
     return panelPlan;
   });
@@ -1401,10 +1709,268 @@ export function reviewPanelPlans(panelPlans) {
 }
 
 /**
+ * @param {any} storyWorkbook
+ * @returns {string}
+ */
+function buildStorySpine(storyWorkbook) {
+  return [
+    storyWorkbook.openingHook?.setup,
+    storyWorkbook.caseQuestion,
+    storyWorkbook.midpointReversal,
+    storyWorkbook.grandReveal?.revealLogic,
+    storyWorkbook.treatmentShowdown?.whyItResolvesTheConflict,
+    storyWorkbook.wrapUp?.finalImage,
+  ].filter(Boolean).join(' -> ');
+}
+
+/**
+ * @param {any[]} sceneCards
+ * @returns {any[]}
+ */
+function buildSceneMap(sceneCards) {
+  return (sceneCards ?? []).map((sceneCard) => ({
+    sceneId: sceneCard.id,
+    sceneFunction: sceneCard.goal,
+    startState: sceneCard.dramaticQuestion,
+    endState: sceneCard.outputs?.at(-1) ?? sceneCard.goal,
+  }));
+}
+
+/**
+ * @param {any[]} panelPlans
+ * @returns {any[]}
+ */
+function flattenPanelsWithScene(panelPlans) {
+  return (panelPlans ?? []).flatMap((panelPlan) => (panelPlan.panels ?? []).map((/** @type {any} */ panel) => ({
+    ...panel,
+    sceneId: panelPlan.sceneId,
+  })));
+}
+
+/**
+ * @param {any[]} panelPlans
+ * @returns {any[]}
+ */
+function buildBeatMap(panelPlans) {
+  return flattenPanelsWithScene(panelPlans).map((panel) => ({
+    panelId: panel.panelId,
+    sceneId: panel.sceneId,
+    beatType: panel.storyFunction,
+    startState: `Before panel: ${panel.location} at ${panel.bodyScale} scale is not yet changed by "${panel.beatGoal}".`,
+    endState: `After panel: ${panel.actionSummary}`,
+    changeCreated: panel.actionSummary,
+    treatmentChoice: 'panel',
+  }));
+}
+
+/**
+ * @param {any[]} panelPlans
+ * @returns {any[]}
+ */
+function buildPageAllocation(panelPlans) {
+  const panelsByPage = new Map();
+
+  for (const panel of flattenPanelsWithScene(panelPlans)) {
+    const entries = panelsByPage.get(panel.pageNumber) ?? [];
+    entries.push(panel);
+    panelsByPage.set(panel.pageNumber, entries);
+  }
+
+  return [...panelsByPage.entries()].map(([pageNumber, panels]) => ({
+    pageNumber,
+    purpose: takeDistinct(panels.map((/** @type {any} */ panel) => panel.storyFunction), 3).join(', '),
+    panelIds: panels.map((/** @type {any} */ panel) => panel.panelId),
+  }));
+}
+
+/**
+ * @param {any[]} panelPlans
+ * @returns {any[]}
+ */
+function buildPageRhythm(panelPlans) {
+  return buildPageAllocation(panelPlans).map((page) => ({
+    pageNumber: page.pageNumber,
+    rhythm: page.panelIds.length === 1
+      ? 'single decisive beat'
+      : `ordered ${page.panelIds.length}-panel progression`,
+    pageEndingEffect: `Page ends after ${page.purpose || 'the current beat'} to keep the reader oriented before the next change.`,
+  }));
+}
+
+/**
+ * @param {any[]} panelPlans
+ * @returns {any[]}
+ */
+function buildPanelTransitionLogic(panelPlans) {
+  const panels = flattenPanelsWithScene(panelPlans).sort((left, right) => left.pageNumber - right.pageNumber || left.order - right.order);
+  /** @type {any[]} */
+  const transitions = [];
+
+  for (let index = 1; index < panels.length; index += 1) {
+    const previousPanel = panels[index - 1];
+    const currentPanel = panels[index];
+
+    transitions.push({
+      fromPanelId: previousPanel.panelId,
+      toPanelId: currentPanel.panelId,
+      readerInference: `The reader infers movement from "${previousPanel.storyFunction}" to "${currentPanel.storyFunction}".`,
+      causality: `The next beat follows because ${currentPanel.beatGoal}`,
+    });
+  }
+
+  return transitions;
+}
+
+/**
+ * @param {any[]} sceneCards
+ * @param {any[]} panelPlans
+ * @returns {any}
+ */
+function buildContinuityLedgerForPanels(sceneCards, panelPlans) {
+  const panels = flattenPanelsWithScene(panelPlans);
+
+  return {
+    characters: takeDistinct(panels.flatMap((/** @type {any} */ panel) => panel.charactersPresent ?? []), 12),
+    props: takeDistinct(['case tablet hologram', 'evidence vial', 'micro-scanner', 'agency badge'], 8),
+    locations: takeDistinct(sceneCards.map((sceneCard) => sceneCard.location), 12),
+    time: ['same ordered case sequence unless a panel explicitly changes time'],
+    costumes: ['Detective Cyto Kine keeps visor, badge, and evidence vial; Deputy Pip keeps badge and micro-scanner.'],
+    injuries: ['Do not invent patient injuries beyond the governed disease packet.'],
+    medicalDevices: takeDistinct([
+      ...panels.flatMap((/** @type {any} */ panel) => panel.continuityAnchors ?? []),
+      'Only show medical devices when required by the governed panel objective.',
+    ], 12),
+  };
+}
+
+/**
+ * @param {any[]} panelPlans
+ * @param {any[]} letteringMaps
+ * @returns {any[]}
+ */
+function buildTextImageRedundancyChecks(panelPlans, letteringMaps) {
+  const letteringByPanel = new Map();
+
+  for (const letteringMap of letteringMaps ?? []) {
+    for (const entry of letteringMap.entries ?? []) {
+      const entries = letteringByPanel.get(entry.panelId) ?? [];
+      entries.push(entry);
+      letteringByPanel.set(entry.panelId, entries);
+    }
+  }
+
+  return flattenPanelsWithScene(panelPlans).map((panel) => {
+    const entries = letteringByPanel.get(panel.panelId) ?? [];
+    const repeated = entries.some((/** @type {any} */ entry) => normalizeText(panel.actionSummary).includes(normalizeText(entry.text)) || normalizeText(entry.text).includes(normalizeText(panel.actionSummary)));
+
+    return {
+      panelId: panel.panelId,
+      status: repeated ? 'warning' : 'passed',
+      note: repeated
+        ? 'Lettering may repeat the image too directly; reviewer should verify the text adds interpretation.'
+        : 'Lettering adds dialogue, interpretation, or clinical trace without simply restating the image.',
+    };
+  });
+}
+
+/**
+ * @param {any} storyWorkbook
+ * @param {any[]} sceneCards
+ * @param {any[]} panelPlans
+ * @param {any[]} letteringMaps
+ * @param {any[]} guidancePacks
+ * @param {string} timestamp
+ * @returns {any}
+ */
+export function createPanelAdaptationReport(storyWorkbook, sceneCards, panelPlans, letteringMaps, guidancePacks, timestamp) {
+  const beatMap = buildBeatMap(panelPlans);
+  const panelTransitionLogic = buildPanelTransitionLogic(panelPlans);
+  const textImageRedundancyChecks = buildTextImageRedundancyChecks(panelPlans, letteringMaps);
+  /** @type {any[]} */
+  const findings = [
+    passedGuidanceFinding(guidancePacks, 'CPB-ADAPT-BEATS'),
+    passedGuidanceFinding(guidancePacks, 'CPB-ONE-DOMINANT-CHANGE'),
+    passedGuidanceFinding(guidancePacks, 'CPB-PAGE-RHYTHM'),
+    passedGuidanceFinding(guidancePacks, 'CPB-GUTTER-INFERENCE'),
+    passedGuidanceFinding(guidancePacks, 'CPB-CONTINUITY-LEDGER'),
+    passedGuidanceFinding(guidancePacks, 'CPB-TEXT-IMAGE-REDUNDANCY'),
+  ];
+
+  if (beatMap.length === 0) {
+    findings.push(failedGuidanceFinding('CPB-ADAPT-BEATS', 'blocking', 'Panel adaptation has no beat map.'));
+  }
+
+  for (const panel of flattenPanelsWithScene(panelPlans)) {
+    if (!panel.actionSummary || normalizeText(panel.actionSummary) === normalizeText(panel.storyFunction)) {
+      findings.push(failedGuidanceFinding('CPB-ONE-DOMINANT-CHANGE', 'blocking', 'Panel lacks a dominant visible change.', panel.panelId));
+    }
+
+    if (!Array.isArray(panel.continuityAnchors) || panel.continuityAnchors.length < 2) {
+      findings.push(failedGuidanceFinding('CPB-CONTINUITY-LEDGER', 'blocking', 'Panel lacks enough continuity anchors for repeated visual consistency.', panel.panelId));
+    }
+  }
+
+  if (panelTransitionLogic.length === 0 && beatMap.length > 1) {
+    findings.push(failedGuidanceFinding('CPB-GUTTER-INFERENCE', 'blocking', 'Panel adaptation has no transition logic for multi-panel flow.'));
+  }
+
+  if (textImageRedundancyChecks.some((check) => check.status === 'warning')) {
+    findings.push({
+      ruleId: 'CPB-TEXT-IMAGE-REDUNDANCY',
+      severity: 'warning',
+      message: 'One or more panels may use lettering that repeats the visible action.',
+      status: 'warning',
+    });
+  }
+
+  const gateStatus = findings.some((finding) => finding.status === 'failed' && ['blocking', 'critical'].includes(finding.severity))
+    ? 'blocked'
+    : 'passed';
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('par'),
+    storyWorkbookId: storyWorkbook.id,
+    ...includeMedicalProvenance(storyWorkbook.medicalProvenance),
+    guidancePackVersionIds: guidanceVersionIds(guidancePacks),
+    sourceGuidanceProvenance: guidanceProvenance(guidancePacks),
+    storySpine: buildStorySpine(storyWorkbook),
+    sceneMap: buildSceneMap(sceneCards),
+    beatMap,
+    pageAllocation: buildPageAllocation(panelPlans),
+    pageRhythm: buildPageRhythm(panelPlans),
+    panelTransitionLogic,
+    continuityLedger: buildContinuityLedgerForPanels(sceneCards, panelPlans),
+    textImageRedundancyChecks,
+    revisionNotes: gateStatus === 'passed'
+      ? ['Panel adaptation passed deterministic guidance checks.']
+      : ['Panel adaptation has blocking guidance checks and must be regenerated or edited before render prep.'],
+    findings,
+    gateStatus,
+    createdAt: timestamp,
+  };
+}
+
+/**
+ * @param {any} report
+ * @returns {{ score: number, findings: any[] }}
+ */
+export function reviewPanelAdaptationReport(report) {
+  const findings = Array.isArray(report?.findings) ? report.findings : [];
+  const failedCriticalOrBlocking = findings.filter((/** @type {any} */ finding) => finding.status === 'failed' && ['blocking', 'critical'].includes(finding.severity)).length;
+  const warnings = findings.filter((/** @type {any} */ finding) => finding.status === 'warning' || finding.severity === 'warning').length;
+
+  return {
+    score: roundScore(Math.max(0, 1 - (failedCriticalOrBlocking * 0.25) - (warnings * 0.04))),
+    findings,
+  };
+}
+
+/**
  * @param {any} panel
  * @param {any} storyWorkbook
  * @param {any} diseasePacket
- * @param {{ styleProfile?: string }} options
+ * @param {{ styleProfile?: string, guidancePacks?: any[], medicalProvenance?: any }} options
  * @returns {any}
  */
 function createRenderPrompt(panel, storyWorkbook, diseasePacket, options) {
@@ -1436,9 +2002,25 @@ function createRenderPrompt(panel, storyWorkbook, diseasePacket, options) {
     schemaVersion: SCHEMA_VERSION,
     id: createId('rpr'),
     panelId: panel.panelId,
+    ...includeMedicalProvenance(options.medicalProvenance ?? storyWorkbook.medicalProvenance),
     modelFamily: 'openai-gpt-image-2',
     aspectRatio: panel.storyFunction === 'diagnosis reveal' ? '16:9' : '4:3',
-    positivePrompt: `Create a premium cinematic 3D animated felt-toy comic panel illustration. Scene and background: ${panel.location} at ${panel.bodyScale} scale. Subject and action: ${panel.actionSummary}. Key medical details: ${panel.medicalObjective}. Story purpose: ${panel.storyFunction}. Camera and composition: ${panel.cameraFraming}, ${panel.cameraAngle}, ${panel.compositionNotes}. Lighting: ${panel.lightingMood}. Preserve soft tactile fibers, stable character silhouettes, warm feature-animation lighting, and consistent approved visual references while keeping ${panel.renderIntent.toLowerCase()} and no visible text.`,
+    guidancePackVersionIds: guidanceVersionIds(options.guidancePacks ?? []),
+    sourceGuidanceProvenance: guidanceProvenance(options.guidancePacks ?? []),
+    promptModulesApplied: [...IMAGE2_PROMPT_MODULE_IDS],
+    promptCompilationOrder: [...IMAGE2_PROMPT_COMPILATION_ORDER],
+    positivePrompt: [
+      `Create final image for panel ${panel.panelId} in ${panel.storyFunction === 'diagnosis reveal' ? '16:9' : '4:3'} aspect ratio; do not render any visible text.`,
+      `Core frozen moment: ${panel.actionSummary}.`,
+      `Continuity anchors: ${panel.continuityAnchors.join('; ')}; approved visual reference item ids: ${visualReferenceItemIds.join(', ')}.`,
+      `Composition: ${panel.cameraFraming}, ${panel.cameraAngle}, ${panel.compositionNotes}.`,
+      `Action and emotion: ${panel.renderIntent}; lighting mood is ${panel.lightingMood}.`,
+      `Medical constraints: ${panel.medicalObjective}; preserve ${diseasePacket.diseaseCategory} logic in the environment${panel.clueRevealed ? ` and show clue: ${panel.clueRevealed}` : ''}.`,
+      `Visual style: premium cinematic 3D animated felt-toy rendering, warm feature-animation lighting, soft tactile fibers, expressive eyes, stable silhouettes, accurate approachable anatomy environments.`,
+      'Required details: Detective Cyto Kine and Deputy Pip stay visually and personality consistent whenever present; preserve approved props, set pieces, body scale, and patient dignity.',
+      'Negative constraints: no speech bubbles, captions, labels, medical chart overlays, fake clinical text, body horror, generic sci-fi replacement setting, duplicate characters, anatomy contradictions, or unapproved visual redesign.',
+      'Final output requirements: one polished panel image only, slide-safe empty space for separate lettering, no typography baked into the artwork.',
+    ].join(' '),
     negativePrompt: 'no speech bubbles, no captions, no labels, no medical chart overlays, no large text blocks, no duplicate characters, no anatomy contradictions, no generic sci-fi background, no illegible signage',
     continuityAnchors: panel.continuityAnchors,
     linkedClaimIds: panel.linkedClaimIds ?? [],
@@ -1466,7 +2048,7 @@ function createRenderPrompt(panel, storyWorkbook, diseasePacket, options) {
  * @param {any[]} panelPlans
  * @param {any} storyWorkbook
  * @param {any} diseasePacket
- * @param {{ styleProfile?: string }} options
+ * @param {{ styleProfile?: string, guidancePacks?: any[], medicalProvenance?: any }} options
  * @returns {any[]}
  */
 function createRenderPrompts(panelPlans, storyWorkbook, diseasePacket, options) {
@@ -1725,9 +2307,18 @@ export function createQaReportFromNarrativeReviewTrace(reviewTrace, workbook, di
 
 export class StoryEngineService {
   /**
+   * @param {{ rootDir?: string, guidancePacks?: { story?: any[], panel?: any[], render?: any[] } }} [options]
+   */
+  constructor(options = {}) {
+    this.storyGuidancePacks = options.guidancePacks?.story ?? loadAgentGuidancePacks(STORY_GUIDANCE_PACK_IDS, options.rootDir);
+    this.panelGuidancePacks = options.guidancePacks?.panel ?? loadAgentGuidancePacks(PANEL_GUIDANCE_PACK_IDS, options.rootDir);
+    this.renderGuidancePacks = options.guidancePacks?.render ?? loadAgentGuidancePacks(RENDER_GUIDANCE_PACK_IDS, options.rootDir);
+  }
+
+  /**
    * @param {any} diseasePacket
-   * @param {{ audienceTier?: string, styleProfile?: string, workflowRunId?: string, existingStoryMemories?: any[], timestamp: string }} options
-   * @returns {{ storyWorkbook: any, storyMemory: any, narrativeReviewTrace: any, qaReport: any }}
+   * @param {{ audienceTier?: string, styleProfile?: string, workflowRunId?: string, existingStoryMemories?: any[], medicalProvenance?: any, timestamp: string }} options
+   * @returns {{ storyWorkbook: any, storyCraftReport: any, storyMemory: any, narrativeReviewTrace: any, qaReport: any }}
    */
   generateStoryWorkbookPackage(diseasePacket, options) {
     const profile = selectStoryProfile(diseasePacket);
@@ -1735,7 +2326,7 @@ export class StoryEngineService {
       ? options.styleProfile.split('-')
       : ['whimsical', 'mystery', 'clinical wonder'];
     const toneProfile = takeDistinct([...styleTone, 'mystery', 'adventure'], 4);
-    const storyWorkbook = createStoryWorkbook(diseasePacket, profile, toneProfile);
+    const storyWorkbook = createStoryWorkbook(diseasePacket, profile, toneProfile, this.storyGuidancePacks, options.medicalProvenance);
     const storyMemory = createStoryMemory(storyWorkbook, {
       workflowRunId: options.workflowRunId,
       canonicalDiseaseName: diseasePacket.canonicalDiseaseName,
@@ -1747,11 +2338,29 @@ export class StoryEngineService {
     const sequencingReview = reviewEducationalSequencing(storyWorkbook, diseasePacket);
     const noveltyReview = compareStoryMemories(storyMemory, options.existingStoryMemories ?? []);
     const franchiseReview = reviewFranchiseCompliance(storyWorkbook);
+    const storyCraftReport = createStoryCraftReport(
+      storyWorkbook,
+      diseasePacket,
+      storyMemory,
+      noveltyReview,
+      this.storyGuidancePacks,
+      options.timestamp,
+    );
+    const storyCraftReview = reviewStoryCraftReport(storyCraftReport);
     const findings = [
       ...mysteryReview.findings,
       ...sequencingReview.findings,
       ...noveltyReview.findings,
       ...franchiseReview.findings,
+      ...storyCraftReview.findings
+        .filter((/** @type {any} */ finding) => finding.status === 'failed' || finding.status === 'warning')
+        .map((/** @type {any} */ finding) => ({
+          category: 'story-craft-guidance',
+          severity: finding.severity === 'critical' ? 'blocking' : finding.severity,
+          ruleId: finding.ruleId,
+          message: finding.message,
+          evidence: `Story craft report ${storyCraftReport.id}`,
+        })),
     ];
     const blockingFindingCount = findings.filter((/** @type {{ severity: string }} */ finding) => finding.severity === 'blocking').length;
     const warningFindingCount = findings.filter((/** @type {{ severity: string }} */ finding) => finding.severity === 'warning').length;
@@ -1779,8 +2388,19 @@ export class StoryEngineService {
       options.timestamp,
     );
 
+    if (storyCraftReport.gateStatus === 'blocked') {
+      qaReport.verdict = 'fail';
+      qaReport.blockingIssues = takeDistinct([
+        ...qaReport.blockingIssues,
+        ...storyCraftReport.findings
+          .filter((/** @type {any} */ finding) => finding.status === 'failed' && ['blocking', 'critical'].includes(finding.severity))
+          .map((/** @type {any} */ finding) => `${finding.ruleId}: ${finding.message}`),
+      ], 8);
+    }
+
     return {
       storyWorkbook,
+      storyCraftReport,
       storyMemory,
       narrativeReviewTrace,
       qaReport,
@@ -1791,31 +2411,67 @@ export class StoryEngineService {
    * @param {any} diseasePacket
    * @param {any} storyWorkbook
    * @param {any} workbookQaReport
-   * @param {{ workflowRunId: string, styleProfile?: string, timestamp: string }} options
-   * @returns {{ sceneCards: any[], panelPlans: any[], renderPrompts: any[], letteringMaps: any[], qaReport: any }}
+   * @param {{ workflowRunId: string, styleProfile?: string, medicalProvenance?: any, timestamp: string }} options
+   * @returns {{ sceneCards: any[], panelPlans: any[], panelAdaptationReport: any, renderPrompts: any[], letteringMaps: any[], qaReport: any }}
    */
   generateVisualPlanningPackage(diseasePacket, storyWorkbook, workbookQaReport, options) {
     const sceneCards = createSceneCards(storyWorkbook, diseasePacket);
-    const panelPlans = createPanelPlans(sceneCards);
+    const panelPlans = createPanelPlans(sceneCards, this.panelGuidancePacks, options.medicalProvenance ?? storyWorkbook.medicalProvenance);
     const renderPrompts = createRenderPrompts(panelPlans, storyWorkbook, diseasePacket, {
       styleProfile: options.styleProfile,
+      guidancePacks: this.renderGuidancePacks,
+      medicalProvenance: options.medicalProvenance ?? storyWorkbook.medicalProvenance,
     });
     const letteringMaps = createLetteringMaps(sceneCards, panelPlans, storyWorkbook);
+    const panelAdaptationReport = createPanelAdaptationReport(
+      storyWorkbook,
+      sceneCards,
+      panelPlans,
+      letteringMaps,
+      this.panelGuidancePacks,
+      options.timestamp,
+    );
     const sceneReview = reviewSceneCards(sceneCards);
     const panelReview = reviewPanelPlans(panelPlans);
+    const panelAdaptationReview = reviewPanelAdaptationReport(panelAdaptationReport);
     const renderReview = reviewRenderPrompts(renderPrompts, letteringMaps);
     const qaReport = createWorkflowQaReportFromVisualReviews(
       workbookQaReport,
       options.workflowRunId,
       sceneReview,
-      panelReview,
+      {
+        score: roundScore((panelReview.score * 0.6) + (panelAdaptationReview.score * 0.4)),
+        findings: [
+          ...panelReview.findings,
+          ...panelAdaptationReview.findings
+            .filter((/** @type {any} */ finding) => finding.status === 'failed' || finding.status === 'warning')
+            .map((/** @type {any} */ finding) => ({
+              category: 'panel-adaptation-guidance',
+              severity: finding.severity === 'critical' ? 'blocking' : finding.severity,
+              ruleId: finding.ruleId,
+              message: finding.message,
+              evidence: `Panel adaptation report ${panelAdaptationReport.id}`,
+            })),
+        ],
+      },
       renderReview,
       options.timestamp,
     );
 
+    if (panelAdaptationReport.gateStatus === 'blocked') {
+      qaReport.verdict = 'fail';
+      qaReport.blockingIssues = takeDistinct([
+        ...qaReport.blockingIssues,
+        ...panelAdaptationReport.findings
+          .filter((/** @type {any} */ finding) => finding.status === 'failed' && ['blocking', 'critical'].includes(finding.severity))
+          .map((/** @type {any} */ finding) => `${finding.ruleId}: ${finding.message}`),
+      ], 8);
+    }
+
     return {
       sceneCards,
       panelPlans,
+      panelAdaptationReport,
       renderPrompts,
       letteringMaps,
       qaReport,
@@ -1823,6 +2479,6 @@ export class StoryEngineService {
   }
 }
 
-export function createStoryEngineService() {
-  return new StoryEngineService();
+export function createStoryEngineService(options = {}) {
+  return new StoryEngineService(options);
 }

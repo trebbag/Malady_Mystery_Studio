@@ -1,0 +1,199 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "detective-mystery-craft",
+  "version": "1.0.0",
+  "title": "Detective Mystery Craft and Series Variety",
+  "sourceDocIds": [
+    "detective-series-master-guide"
+  ],
+  "pipelineStages": [
+    "story-workbook",
+    "mystery-integrity",
+    "franchise-variety"
+  ],
+  "summary": "Rules for building a fair, clue-driven detective story where diagnosis is earned, treatment is the climax, and series variety is actively rotated.",
+  "rules": [
+    {
+      "id": "DSG-READER-CONTRACT",
+      "title": "Honor the reader contract",
+      "severity": "blocking",
+      "pipelineStages": [
+        "story-workbook"
+      ],
+      "sourceDocIds": [
+        "detective-series-master-guide"
+      ],
+      "instruction": "The story must make the central case question clear early while withholding the diagnosis until the clue chain earns it.",
+      "requiredArtifactFields": [
+        "caseQuestion",
+        "clueLadder",
+        "grandReveal"
+      ],
+      "failureMessage": "The workbook does not establish a fair central mystery before the diagnosis reveal."
+    },
+    {
+      "id": "DSG-THREE-TIMELINES",
+      "title": "Track hidden truth, investigation, and audience interpretation",
+      "severity": "blocking",
+      "pipelineStages": [
+        "story-workbook",
+        "mystery-integrity"
+      ],
+      "sourceDocIds": [
+        "detective-series-master-guide"
+      ],
+      "instruction": "Maintain a hidden truth timeline, an investigation timeline, and an audience interpretation timeline so clue timing and reader knowledge are controlled.",
+      "requiredArtifactFields": [
+        "storyCraft.hiddenTruthTimeline",
+        "storyCraft.investigationTimeline",
+        "storyCraft.audienceInterpretationTimeline"
+      ],
+      "failureMessage": "The mystery lacks one or more timelines needed for fair clue control."
+    },
+    {
+      "id": "DSG-CLUE-LIFECYCLE",
+      "title": "Every major clue has a lifecycle",
+      "severity": "blocking",
+      "pipelineStages": [
+        "story-workbook",
+        "mystery-integrity"
+      ],
+      "sourceDocIds": [
+        "detective-series-master-guide"
+      ],
+      "instruction": "Important clues should be planted, misread, pressured, retrieved, reframed, and used in the reveal rather than merely listed.",
+      "requiredArtifactFields": [
+        "clueLadder",
+        "storyCraft.clueLedger"
+      ],
+      "failureMessage": "A clinically important clue is missing a lifecycle step."
+    },
+    {
+      "id": "DSG-FAIR-REVEAL",
+      "title": "Reveal by proof chain, not confession",
+      "severity": "critical",
+      "pipelineStages": [
+        "story-workbook",
+        "mystery-integrity"
+      ],
+      "sourceDocIds": [
+        "detective-series-master-guide"
+      ],
+      "instruction": "The diagnosis reveal must cite prior clues and medical mechanism logic before naming the condition.",
+      "requiredArtifactFields": [
+        "grandReveal.revealLogic",
+        "grandReveal.recapPoints"
+      ],
+      "failureMessage": "The diagnosis reveal is unsupported by a prior proof chain."
+    },
+    {
+      "id": "DSG-TREATMENT-AS-CLIMAX",
+      "title": "Treatment resolves the case mechanism",
+      "severity": "blocking",
+      "pipelineStages": [
+        "story-workbook",
+        "educational-sequencing"
+      ],
+      "sourceDocIds": [
+        "detective-series-master-guide"
+      ],
+      "instruction": "Treatment should be the action climax and should resolve the mechanism uncovered in the reveal.",
+      "requiredArtifactFields": [
+        "treatmentShowdown.clinicalAction",
+        "treatmentShowdown.whyItResolvesTheConflict"
+      ],
+      "failureMessage": "Treatment is not connected to the revealed mechanism."
+    },
+    {
+      "id": "DSG-REPAIR-CODA",
+      "title": "Close with repair and an opener callback",
+      "severity": "blocking",
+      "pipelineStages": [
+        "story-workbook"
+      ],
+      "sourceDocIds": [
+        "detective-series-master-guide"
+      ],
+      "instruction": "The ending must show repair or salvage and close the opener loop.",
+      "requiredArtifactFields": [
+        "wrapUp.closingScene",
+        "wrapUp.callbackToOpener",
+        "wrapUp.finalImage"
+      ],
+      "failureMessage": "The story does not include a repair/coda loop back to the opener."
+    },
+    {
+      "id": "DSG-STORY-DNA-ROTATION",
+      "title": "Avoid repeated story DNA",
+      "severity": "warning",
+      "pipelineStages": [
+        "franchise-variety"
+      ],
+      "sourceDocIds": [
+        "detective-series-master-guide"
+      ],
+      "instruction": "Rotate case type, structure, opening, setting, clue mode, suspense engine, and repair focus against prior story memories.",
+      "requiredArtifactFields": [
+        "storyMemory.motifTags",
+        "storyCraft.storyDnaRotation"
+      ],
+      "failureMessage": "The story repeats too much prior story DNA without a purposeful variation."
+    }
+  ],
+  "checklists": [
+    {
+      "id": "DSG-STORY-CRAFT-CHECKLIST",
+      "title": "Story Craft Gate",
+      "pipelineStage": "story-workbook",
+      "items": [
+        {
+          "id": "case-question-present",
+          "label": "Central case question appears before diagnostic naming.",
+          "required": true,
+          "severity": "blocking"
+        },
+        {
+          "id": "clue-ledger-complete",
+          "label": "Clue ledger includes plant, misread, pressure, retrieve, reframe, and reveal use.",
+          "required": true,
+          "severity": "blocking"
+        },
+        {
+          "id": "proof-before-diagnosis",
+          "label": "Reveal logic cites prior clues before diagnosis naming.",
+          "required": true,
+          "severity": "critical"
+        },
+        {
+          "id": "treatment-climax",
+          "label": "Treatment action resolves the revealed mechanism.",
+          "required": true,
+          "severity": "blocking"
+        },
+        {
+          "id": "repair-coda",
+          "label": "Wrap-up shows repair and calls back to the opener.",
+          "required": true,
+          "severity": "blocking"
+        }
+      ]
+    }
+  ],
+  "gateCriteria": [
+    {
+      "id": "DSG-GATE-STORY-CRAFT",
+      "pipelineStage": "story-workbook",
+      "severity": "critical",
+      "ruleIds": [
+        "DSG-READER-CONTRACT",
+        "DSG-THREE-TIMELINES",
+        "DSG-CLUE-LIFECYCLE",
+        "DSG-FAIR-REVEAL",
+        "DSG-TREATMENT-AS-CLIMAX",
+        "DSG-REPAIR-CODA"
+      ],
+      "blockingWhen": "Any required checklist item fails.",
+      "failureMessage": "Story workbook cannot proceed downstream until blocking story craft issues are resolved."
+    }
+  ]
+}

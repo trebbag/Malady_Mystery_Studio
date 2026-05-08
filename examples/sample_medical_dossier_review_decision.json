@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "mdrd.sample.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.sample.001",
+  "medicalDossierId": "mdos.sample.001",
+  "decision": "approved",
+  "notes": "Approved for mystery-story transformation with source governance still visible downstream.",
+  "decidedBy": "local-operator",
+  "decidedByRoles": ["Local Operator"],
+  "decidedAt": "2026-04-23T12:10:00Z"
+}

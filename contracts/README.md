@@ -36,3 +36,11 @@ This directory contains machine-readable schemas for the platform’s major arti
 - `user-account.schema.json`
 - `auth-session.schema.json`
 - `source-record.schema.json`
+- `medical-dossier.schema.json`
+- `medical-dossier-build-report.schema.json`
+- `medical-dossier-qa-report.schema.json`
+- `medical-dossier-review-decision.schema.json`
+- `artifact-medical-provenance.schema.json`
+- `source-discovery-report.schema.json`
+- `agent-run.schema.json`
+- `agent-step.schema.json`

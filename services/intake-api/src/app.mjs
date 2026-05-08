@@ -23,7 +23,7 @@ import {
   createWorkflowArtifactListView,
 } from '../../../apps/web/src/view-model-adapters.mjs';
 import { createClinicalRetrievalService } from '../../clinical-retrieval/src/service.mjs';
-import { createResearchAssemblyService } from '../../clinical-retrieval/src/research-assembly.mjs';
+import { createResearchAssemblyService, normalizeCompiledResearchAssembly } from '../../clinical-retrieval/src/research-assembly.mjs';
 import { normalizeDiseaseInput } from '../../clinical-retrieval/src/ontology-adapter.mjs';
 import {
   buildRenderingGuide,
@@ -97,9 +97,9 @@ import { PlatformStore } from './store.mjs';
 
 const SCHEMA_VERSION = '1.0.0';
 const WEB_ROUTE_ARTIFACT_GROUPS = Object.freeze({
-  workbooks: ['story-workbook', 'narrative-review-trace', 'qa-report'],
+  workbooks: ['story-workbook', 'story-craft-report', 'narrative-review-trace', 'qa-report'],
   scenes: ['scene-card'],
-  panels: ['panel-plan', 'render-prompt', 'render-job', 'render-attempt', 'rendered-asset', 'rendered-asset-manifest', 'rendering-guide', 'visual-reference-pack', 'render-guide-review-decision', 'lettering-map', 'qa-report'],
+  panels: ['panel-plan', 'panel-adaptation-report', 'render-prompt', 'render-job', 'render-attempt', 'rendered-asset', 'rendered-asset-manifest', 'rendering-guide', 'visual-reference-pack', 'render-guide-review-decision', 'lettering-map', 'qa-report'],
 });
 const MANUAL_RENDER_TARGET_PROFILE_ID = 'rtp.external-manual';
 const FRONTEND_READINESS_SNAPSHOT = Object.freeze({
@@ -315,6 +315,51 @@ function matchWorkflowRunVisualReferencePackRegeneratePath(pathname) {
 function matchWorkflowRunResearchBriefPath(pathname) {
   const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/research-brief$/);
   return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunMedicalDossierPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/medical-dossier$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunMedicalDossierReviewDecisionPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/medical-dossier\/review-decisions$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunAgentResearchPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/agent-runs\/research$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ runId: string } | null}
+ */
+function matchWorkflowRunAgentRunsPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/agent-runs$/);
+  return match ? { runId: decodeURIComponent(match[1]) } : null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {{ agentRunId: string } | null}
+ */
+function matchAgentRunPath(pathname) {
+  const match = pathname.match(/^\/api\/v1\/agent-runs\/([^/]+)$/);
+  return match ? { agentRunId: decodeURIComponent(match[1]) } : null;
 }
 
 /**
@@ -625,9 +670,12 @@ function matchLegacyExportReviewPath(pathname) {
  */
 function isSpaShellPath(pathname) {
   return pathname === '/review'
+    || pathname === '/runs'
     || pathname === '/review/queue'
+    || pathname === '/sources'
     || pathname === '/settings'
-    || /^\/runs\/[^/]+\/(pipeline|review|packets|evidence|workbooks|scenes|panels|sources|governance|evals|bundles|rendering-guide)$/.test(pathname);
+    || /^\/runs\/[^/]+\/(overview|clinical-review|guide-review|render-panels|export|advanced|pipeline|review|packets|evidence|workbooks|scenes|panels|sources|governance|evals|bundles|rendering-guide)$/.test(pathname)
+    || /^\/runs\/[^/]+\/advanced\/(pipeline|review-console|packets|evidence|workbooks|scenes|panels|sources|governance|evals|bundles)$/.test(pathname);
 }
 
 /**
@@ -1715,6 +1763,7 @@ function collectArtifactsForRun(store, workflowRun) {
  *   panelPlans: any[],
  *   renderPrompts: any[],
  *   letteringMaps: any[],
+ *   medicalProvenance?: any,
  * }} options
  * @returns {{ workflowRun: any, renderingGuide: any, visualReferencePack: any, markdown: string }}
  */
@@ -1733,6 +1782,7 @@ function generateAndPersistRenderingGuide(options) {
     panelPlans: options.panelPlans,
     renderPrompts: options.renderPrompts,
     letteringMaps: options.letteringMaps,
+    medicalProvenance: options.medicalProvenance,
     generatedAt,
   });
   const visualReferencePack = buildVisualReferencePack({
@@ -2474,17 +2524,22 @@ function persistArtifact(store, schemaRegistry, workflowRun, artifactType, schem
  * @returns {any}
  */
 function transitionWorkflow(store, schemaRegistry, workflowSpec, workflowRun, eventInput) {
-  return persistTransition(
-    store,
-    schemaRegistry,
-    applyWorkflowEvent(
-      workflowSpec,
-      workflowRun,
-      eventInput,
-      createId('evt'),
-      new Date().toISOString(),
-    ),
-  );
+  try {
+    return persistTransition(
+      store,
+      schemaRegistry,
+      applyWorkflowEvent(
+        workflowSpec,
+        workflowRun,
+        eventInput,
+        createId('evt'),
+        new Date().toISOString(),
+      ),
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${message} event=${eventInput.eventType} stage=${workflowRun.currentStage} actor=${eventInput.actor?.id ?? 'unknown'}`);
+  }
 }
 
 /**
@@ -2905,7 +2960,218 @@ function requiresKnowledgePackDecision(store, workflowRun) {
   }
 
   const latestDecision = getLatestKnowledgePackPromotionDecision(store, workflowRun);
-  return !latestDecision || latestDecision.decision === 'rejected';
+  return !latestDecision
+    || latestDecision.knowledgePackId !== knowledgePack.id
+    || latestDecision.decision === 'rejected';
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {any | null}
+ */
+function getLatestMedicalDossierReviewDecision(store, workflowRun) {
+  return loadLatestArtifact(store, workflowRun, 'medical-dossier-review-decision');
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @returns {boolean}
+ */
+function requiresMedicalDossierDecision(store, workflowRun) {
+  const medicalDossier = loadLatestArtifact(store, workflowRun, 'medical-dossier');
+
+  if (!medicalDossier) {
+    return false;
+  }
+
+  const latestDecision = getLatestMedicalDossierReviewDecision(store, workflowRun);
+  return !latestDecision
+    || latestDecision.medicalDossierId !== medicalDossier.id
+    || latestDecision.decision !== 'approved';
+}
+
+/**
+ * @param {PlatformStore} store
+ * @param {any} workflowRun
+ * @param {any | null} diseasePacket
+ * @returns {any}
+ */
+function buildMedicalProvenanceForRun(store, workflowRun, diseasePacket = null) {
+  const medicalDossier = loadLatestArtifact(store, workflowRun, 'medical-dossier');
+  const latestDecision = getLatestMedicalDossierReviewDecision(store, workflowRun);
+  const decisionAppliesToLatestDossier = Boolean(
+    medicalDossier
+    && latestDecision
+    && latestDecision.medicalDossierId === medicalDossier.id,
+  );
+  const agentRun = loadLatestArtifact(store, workflowRun, 'agent-run');
+  const sourceDiscoveryReport = loadLatestArtifact(store, workflowRun, 'source-discovery-report');
+  const knowledgePack = loadLatestArtifact(store, workflowRun, 'disease-knowledge-pack');
+  const reviewStatus = medicalDossier
+    ? (decisionAppliesToLatestDossier ? (latestDecision.decision === 'request-changes' ? 'changes-requested' : latestDecision.decision) : 'review-required')
+    : 'not-required';
+
+  return {
+    sourceMode: medicalDossier ? 'agent-medical-dossier' : 'governed-library',
+    ...(medicalDossier ? { medicalDossierId: medicalDossier.id } : {}),
+    ...(decisionAppliesToLatestDossier ? {
+      medicalDossierReviewDecisionId: latestDecision.id,
+      reviewedBy: latestDecision.decidedBy,
+      reviewedAt: latestDecision.decidedAt,
+    } : {}),
+    ...(agentRun ? { agentRunId: agentRun.id } : {}),
+    ...(sourceDiscoveryReport ? { sourceDiscoveryReportId: sourceDiscoveryReport.id } : {}),
+    ...(knowledgePack ? { diseaseKnowledgePackId: knowledgePack.id } : {}),
+    ...(diseasePacket ? { diseasePacketId: diseasePacket.id } : {}),
+    reviewStatus,
+    capturedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * @param {{
+ *   store: PlatformStore,
+ *   schemaRegistry: any,
+ *   workflowRun: any,
+ *   actor: any,
+ *   decision: 'approved' | 'request-changes' | 'rejected',
+ *   notes?: string,
+ * }} options
+ * @returns {{ workflowRun: any, decision: any, medicalDossier: any }}
+ */
+function saveMedicalDossierReviewDecision(options) {
+  const medicalDossier = loadLatestArtifact(options.store, options.workflowRun, 'medical-dossier');
+
+  if (!medicalDossier) {
+    throw createHttpError(409, 'A medical dossier is required before a reviewer can approve disease research.');
+  }
+
+  const timestamp = new Date().toISOString();
+  const decision = {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('mdrd'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    medicalDossierId: medicalDossier.id,
+    decision: options.decision,
+    ...(typeof options.notes === 'string' && options.notes ? { notes: options.notes } : {}),
+    decidedBy: options.actor.id,
+    decidedByRoles: [...(options.actor.roles ?? [])],
+    decidedAt: timestamp,
+  };
+  assertSchema(options.schemaRegistry, 'contracts/medical-dossier-review-decision.schema.json', decision);
+  options.store.saveArtifact('medical-dossier-review-decision', decision.id, decision, {
+    tenantId: options.workflowRun.tenantId,
+  });
+
+  const updatedDossier = {
+    ...medicalDossier,
+    reviewStatus: options.decision === 'approved'
+      ? 'approved'
+      : (options.decision === 'request-changes' ? 'changes-requested' : 'rejected'),
+  };
+  assertSchema(options.schemaRegistry, 'contracts/medical-dossier.schema.json', updatedDossier);
+  options.store.saveArtifact('medical-dossier', updatedDossier.id, updatedDossier, {
+    tenantId: options.workflowRun.tenantId,
+  });
+
+  let workflowRun = upsertArtifactReference(options.workflowRun, {
+    artifactType: 'medical-dossier-review-decision',
+    artifactId: decision.id,
+    status: options.decision === 'approved' ? 'approved' : 'rejected',
+  });
+  workflowRun = upsertArtifactReference(workflowRun, {
+    artifactType: 'medical-dossier',
+    artifactId: updatedDossier.id,
+    status: options.decision === 'approved' ? 'approved' : 'generated',
+  });
+  workflowRun = saveWorkflowRunRecord(
+    options.store,
+    options.schemaRegistry,
+    withPauseReason(
+      workflowRun,
+      options.decision === 'approved' ? undefined : 'medical-dossier-review-required',
+    ),
+  );
+
+  appendAuditLog(
+    options.store,
+    options.schemaRegistry,
+    options.actor,
+    'medical-dossier.decision',
+    'workflow-run',
+    workflowRun.id,
+    'success',
+    `Recorded ${options.decision} for medical dossier ${medicalDossier.id}.`,
+    {
+      decisionId: decision.id,
+      medicalDossierId: medicalDossier.id,
+    },
+  );
+
+  return {
+    workflowRun,
+    decision,
+    medicalDossier: updatedDossier,
+  };
+}
+
+/**
+ * @param {{ store: PlatformStore, schemaRegistry: any, workflowRun: any, actor?: any }} options
+ * @returns {any}
+ */
+function ensureMedicalDossierReviewWorkItem(options) {
+  if (!requiresMedicalDossierDecision(options.store, options.workflowRun)) {
+    return options.workflowRun;
+  }
+
+  const medicalDossier = loadLatestArtifact(options.store, options.workflowRun, 'medical-dossier');
+
+  if (!medicalDossier) {
+    return options.workflowRun;
+  }
+
+  const existingWorkItem = listWorkItemsForRun(options.store, options.workflowRun).find((workItem) => (
+    workItem.subjectType === 'medical-dossier'
+    && workItem.subjectId === medicalDossier.id
+    && workItem.status !== 'completed'
+    && workItem.status !== 'cancelled'
+  ));
+  const workItem = buildWorkItem({
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    workType: 'run-review',
+    queueName: 'review-queue',
+    subjectType: 'medical-dossier',
+    subjectId: medicalDossier.id,
+    reason: 'medical-dossier-review-required',
+    priority: 'critical',
+    originType: 'medical-dossier',
+    originId: medicalDossier.id,
+    notes: [
+      `Medical dossier for ${medicalDossier.canonicalDiseaseName} must be approved before the mystery story, panels, rendering, evals, or export can continue.`,
+    ],
+    existingWorkItem,
+  });
+  assertSchema(options.schemaRegistry, 'contracts/work-item.schema.json', workItem);
+  options.store.saveArtifact('work-item', workItem.id, workItem, {
+    tenantId: options.workflowRun.tenantId,
+  });
+
+  return saveWorkflowRunRecord(
+    options.store,
+    options.schemaRegistry,
+    withPauseReason(
+      upsertArtifactReference(options.workflowRun, {
+        artifactType: 'work-item',
+        artifactId: workItem.id,
+        status: 'generated',
+      }),
+      'medical-dossier-review-required',
+    ),
+  );
 }
 
 /**
@@ -3292,11 +3558,13 @@ function resetWorkflowForClinicalRebuild(workflowSpec, workflowRun, timestamp, n
  */
 function continueStoryPipeline(options) {
   let workflowRun = withPauseReason(options.workflowRun, undefined);
+  const medicalProvenance = buildMedicalProvenanceForRun(options.store, workflowRun, options.diseasePacket);
   const storyWorkbookPackage = options.storyEngineService.generateStoryWorkbookPackage(options.diseasePacket, {
     audienceTier: options.workflowInput.audienceTier,
     styleProfile: options.workflowInput.styleProfile,
     workflowRunId: workflowRun.id,
     existingStoryMemories: listTenantArtifactsByType(options.store, 'story-memory', workflowRun.tenantId),
+    medicalProvenance,
     timestamp: new Date().toISOString(),
   });
 
@@ -3307,6 +3575,15 @@ function continueStoryPipeline(options) {
     'story-workbook',
     'contracts/story-workbook.schema.json',
     storyWorkbookPackage.storyWorkbook,
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'story-craft-report',
+    'contracts/story-craft-report.schema.json',
+    storyWorkbookPackage.storyCraftReport,
+    storyWorkbookPackage.storyCraftReport.gateStatus === 'blocked' ? 'rejected' : 'generated',
   );
   workflowRun = persistArtifact(
     options.store,
@@ -3348,6 +3625,7 @@ function continueStoryPipeline(options) {
         },
         payload: {
           storyWorkbookId: storyWorkbookPackage.storyWorkbook.id,
+          storyCraftReportId: storyWorkbookPackage.storyCraftReport.id,
           reviewTraceId: storyWorkbookPackage.narrativeReviewTrace.id,
           qaReportId: storyWorkbookPackage.qaReport.id,
         },
@@ -3369,6 +3647,7 @@ function continueStoryPipeline(options) {
       },
       payload: {
         storyWorkbookId: storyWorkbookPackage.storyWorkbook.id,
+        storyCraftReportId: storyWorkbookPackage.storyCraftReport.id,
         storyMemoryId: storyWorkbookPackage.storyMemory.id,
         reviewTraceId: storyWorkbookPackage.narrativeReviewTrace.id,
         qaReportId: storyWorkbookPackage.qaReport.id,
@@ -3384,6 +3663,7 @@ function continueStoryPipeline(options) {
     {
       workflowRunId: workflowRun.id,
       styleProfile: options.workflowInput.styleProfile,
+      medicalProvenance,
       timestamp: new Date().toISOString(),
     },
   );
@@ -3427,6 +3707,47 @@ function continueStoryPipeline(options) {
       panelPlan,
     );
   }
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'panel-adaptation-report',
+    'contracts/panel-adaptation-report.schema.json',
+    visualPlanningPackage.panelAdaptationReport,
+    visualPlanningPackage.panelAdaptationReport.gateStatus === 'blocked' ? 'rejected' : 'generated',
+  );
+
+  if (visualPlanningPackage.panelAdaptationReport.gateStatus === 'blocked') {
+    workflowRun = persistArtifact(
+      options.store,
+      options.schemaRegistry,
+      workflowRun,
+      'qa-report',
+      'contracts/qa-report.schema.json',
+      visualPlanningPackage.qaReport,
+      'rejected',
+    );
+
+    return transitionWorkflow(
+      options.store,
+      options.schemaRegistry,
+      options.workflowSpec,
+      workflowRun,
+      {
+        eventType: 'STAGE_FAILED',
+        actor: {
+          type: 'system',
+          id: 'panel-planning-stage',
+        },
+        payload: {
+          panelAdaptationReportId: visualPlanningPackage.panelAdaptationReport.id,
+          qaReportId: visualPlanningPackage.qaReport.id,
+          blockingIssues: visualPlanningPackage.qaReport.blockingIssues,
+        },
+        notes: visualPlanningPackage.qaReport.blockingIssues.join(' ') || 'Panel adaptation failed expert guidance checks.',
+      },
+    );
+  }
 
   workflowRun = transitionWorkflow(
     options.store,
@@ -3441,8 +3762,9 @@ function continueStoryPipeline(options) {
       },
       payload: {
         panelPlanIds: visualPlanningPackage.panelPlans.map((/** @type {{ id: string }} */ panelPlan) => panelPlan.id),
+        panelAdaptationReportId: visualPlanningPackage.panelAdaptationReport.id,
       },
-      notes: `Generated ${visualPlanningPackage.panelPlans.length} panel plans with starter redundancy checks.`,
+      notes: `Generated ${visualPlanningPackage.panelPlans.length} panel plans with expert adaptation checks.`,
     },
   );
 
@@ -3485,6 +3807,7 @@ function continueStoryPipeline(options) {
     panelPlans: visualPlanningPackage.panelPlans,
     renderPrompts: visualPlanningPackage.renderPrompts,
     letteringMaps: visualPlanningPackage.letteringMaps,
+    medicalProvenance,
   }).workflowRun;
 
   workflowRun = persistArtifact(
@@ -3753,6 +4076,134 @@ function continueResolvedPipeline(options) {
  * @param {{
  *   store: PlatformStore,
  *   schemaRegistry: any,
+ *   workflowRun: any,
+ *   researchAssembly: any,
+ *   canonicalDisease: any,
+ * }} options
+ * @returns {any}
+ */
+function persistResearchAssemblyArtifacts(options) {
+  let workflowRun = options.workflowRun;
+
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'research-brief',
+    'contracts/research-brief.schema.json',
+    options.researchAssembly.researchBrief,
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'source-harvest',
+    'contracts/source-harvest.schema.json',
+    options.researchAssembly.sourceHarvest,
+  );
+
+  if (options.researchAssembly.sourceDiscoveryReport) {
+    workflowRun = persistArtifact(
+      options.store,
+      options.schemaRegistry,
+      workflowRun,
+      'source-discovery-report',
+      'contracts/source-discovery-report.schema.json',
+      options.researchAssembly.sourceDiscoveryReport,
+    );
+  }
+
+  for (const agentStep of options.researchAssembly.agentSteps ?? []) {
+    workflowRun = persistArtifact(
+      options.store,
+      options.schemaRegistry,
+      workflowRun,
+      'agent-step',
+      'contracts/agent-step.schema.json',
+      agentStep,
+    );
+  }
+
+  if (options.researchAssembly.agentRun) {
+    workflowRun = persistArtifact(
+      options.store,
+      options.schemaRegistry,
+      workflowRun,
+      'agent-run',
+      'contracts/agent-run.schema.json',
+      options.researchAssembly.agentRun,
+    );
+  }
+
+  if (options.researchAssembly.medicalDossier) {
+    workflowRun = persistArtifact(
+      options.store,
+      options.schemaRegistry,
+      workflowRun,
+      'medical-dossier',
+      'contracts/medical-dossier.schema.json',
+      options.researchAssembly.medicalDossier,
+    );
+  }
+
+  if (options.researchAssembly.medicalDossierBuildReport) {
+    workflowRun = persistArtifact(
+      options.store,
+      options.schemaRegistry,
+      workflowRun,
+      'medical-dossier-build-report',
+      'contracts/medical-dossier-build-report.schema.json',
+      options.researchAssembly.medicalDossierBuildReport,
+      options.researchAssembly.medicalDossierBuildReport.status === 'blocked' ? 'rejected' : 'generated',
+    );
+  }
+
+  if (options.researchAssembly.medicalDossierQaReport) {
+    workflowRun = persistArtifact(
+      options.store,
+      options.schemaRegistry,
+      workflowRun,
+      'medical-dossier-qa-report',
+      'contracts/medical-dossier-qa-report.schema.json',
+      options.researchAssembly.medicalDossierQaReport,
+      options.researchAssembly.medicalDossierQaReport.status === 'failed' ? 'rejected' : 'generated',
+    );
+  }
+
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'knowledge-pack-build-report',
+    'contracts/knowledge-pack-build-report.schema.json',
+    options.researchAssembly.buildReport,
+    options.researchAssembly.buildReport.status === 'blocked' ? 'rejected' : 'generated',
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'disease-knowledge-pack',
+    'contracts/disease-knowledge-pack.schema.json',
+    options.researchAssembly.knowledgePack,
+    'generated',
+  );
+  workflowRun = persistArtifact(
+    options.store,
+    options.schemaRegistry,
+    workflowRun,
+    'canonical-disease',
+    'contracts/canonical-disease.schema.json',
+    options.canonicalDisease,
+  );
+
+  return workflowRun;
+}
+
+/**
+ * @param {{
+ *   store: PlatformStore,
+ *   schemaRegistry: any,
  *   workflowSpec: any,
  *   workflowRun: any,
  *   workflowInput: WorkflowInput,
@@ -3786,90 +4237,33 @@ async function continueNewDiseasePipeline(options) {
     },
   );
 
-  const researchAssembly = await options.researchAssemblyService.compileProvisionalKnowledgePack({
+  let researchAssembly = await options.researchAssemblyService.compileProvisionalKnowledgePack({
     workflowRun,
     workflowInput: options.workflowInput,
     canonicalDisease: options.canonicalDisease,
     actor: options.actor,
   });
-
-  workflowRun = persistArtifact(
-    options.store,
-    options.schemaRegistry,
+  researchAssembly = normalizeCompiledResearchAssembly(researchAssembly, {
     workflowRun,
-    'research-brief',
-    'contracts/research-brief.schema.json',
-    researchAssembly.researchBrief,
-  );
-  workflowRun = persistArtifact(
-    options.store,
-    options.schemaRegistry,
-    workflowRun,
-    'source-harvest',
-    'contracts/source-harvest.schema.json',
-    researchAssembly.sourceHarvest,
-  );
-  workflowRun = persistArtifact(
-    options.store,
-    options.schemaRegistry,
-    workflowRun,
-    'knowledge-pack-build-report',
-    'contracts/knowledge-pack-build-report.schema.json',
-    researchAssembly.buildReport,
-    researchAssembly.buildReport.status === 'blocked' ? 'rejected' : 'generated',
-  );
-  workflowRun = persistArtifact(
-    options.store,
-    options.schemaRegistry,
-    workflowRun,
-    'disease-knowledge-pack',
-    'contracts/disease-knowledge-pack.schema.json',
-    researchAssembly.knowledgePack,
-    'generated',
-  );
+    workflowInput: options.workflowInput,
+    canonicalDisease: options.canonicalDisease,
+  }, {
+    model: process.env.OPENAI_RESEARCH_MODEL ?? process.env.MMS_MODEL ?? 'gpt-5.2',
+    allowedDomains: [],
+  });
 
   const resolvedCanonicalDisease = options.clinicalService.buildCanonicalDiseaseFromKnowledgePack(
     researchAssembly.knowledgePack,
     options.workflowInput.diseaseName,
   );
 
-  workflowRun = persistArtifact(
-    options.store,
-    options.schemaRegistry,
+  workflowRun = persistResearchAssemblyArtifacts({
+    store: options.store,
+    schemaRegistry: options.schemaRegistry,
     workflowRun,
-    'canonical-disease',
-    'contracts/canonical-disease.schema.json',
-    resolvedCanonicalDisease,
-  );
-
-  if (!researchAssembly.buildReport.fitForStoryContinuation || researchAssembly.buildReport.status === 'blocked') {
-    workflowRun = transitionWorkflow(
-      options.store,
-      options.schemaRegistry,
-      options.workflowSpec,
-      workflowRun,
-      {
-        eventType: 'STAGE_FAILED',
-        actor: {
-          type: 'system',
-          id: 'research-assembly-stage',
-        },
-        payload: {
-          researchBriefId: researchAssembly.researchBrief.id,
-          sourceHarvestId: researchAssembly.sourceHarvest.id,
-          buildReportId: researchAssembly.buildReport.id,
-          knowledgePackId: researchAssembly.knowledgePack.id,
-        },
-        notes: researchAssembly.buildReport.blockingIssues.join(' ') || 'Research assembly could not produce a safe provisional knowledge pack.',
-      },
-    );
-
-    return saveWorkflowRunRecord(
-      options.store,
-      options.schemaRegistry,
-      withPauseReason(workflowRun, 'clinical-governance-review-required'),
-    );
-  }
+    researchAssembly,
+    canonicalDisease: resolvedCanonicalDisease,
+  });
 
   workflowRun = transitionWorkflow(
     options.store,
@@ -3877,7 +4271,7 @@ async function continueNewDiseasePipeline(options) {
     options.workflowSpec,
     workflowRun,
     {
-      eventType: 'STAGE_PASSED',
+      eventType: 'REQUEST_REVIEW',
       actor: {
         type: 'system',
         id: 'research-assembly-stage',
@@ -3885,24 +4279,26 @@ async function continueNewDiseasePipeline(options) {
       payload: {
         researchBriefId: researchAssembly.researchBrief.id,
         sourceHarvestId: researchAssembly.sourceHarvest.id,
+        sourceDiscoveryReportId: researchAssembly.sourceDiscoveryReport?.id,
+        agentRunId: researchAssembly.agentRun?.id,
+        medicalDossierId: researchAssembly.medicalDossier?.id,
+        medicalDossierQaReportId: researchAssembly.medicalDossierQaReport?.id,
         buildReportId: researchAssembly.buildReport.id,
         knowledgePackId: researchAssembly.knowledgePack.id,
+        pauseReason: 'medical-dossier-review-required',
       },
-      notes: `Research assembly compiled a provisional knowledge pack for ${researchAssembly.knowledgePack.canonicalDiseaseName}.`,
+      notes: `Research agents compiled a medical dossier for ${researchAssembly.knowledgePack.canonicalDiseaseName}. Story generation is paused until local dossier approval.`,
     },
   );
 
-  return continueClinicalStage({
+  return ensureMedicalDossierReviewWorkItem({
     store: options.store,
     schemaRegistry: options.schemaRegistry,
-    workflowSpec: options.workflowSpec,
-    workflowRun,
-    workflowInput: options.workflowInput,
-    canonicalDisease: resolvedCanonicalDisease,
-    clinicalService: options.clinicalService,
-    storyEngineService: options.storyEngineService,
-    knowledgePack: researchAssembly.knowledgePack,
-    allowReviewRequiredStoryContinuation: true,
+    workflowRun: saveWorkflowRunRecord(
+      options.store,
+      options.schemaRegistry,
+      withPauseReason(workflowRun, 'medical-dossier-review-required'),
+    ),
     actor: options.actor,
   });
 }
@@ -4221,6 +4617,18 @@ function buildReviewArtifactGroups(store, workflowRun) {
 
   return [
     {
+      title: 'Medical dossier and agent research',
+      description: 'High-yield source-traceable disease dossier, source discovery, agent run provenance, and dossier QA gate.',
+      artifacts: [
+        ...(groupedArtifacts.get('medical-dossier') ?? []),
+        ...(groupedArtifacts.get('medical-dossier-build-report') ?? []),
+        ...(groupedArtifacts.get('medical-dossier-qa-report') ?? []),
+        ...(groupedArtifacts.get('source-discovery-report') ?? []),
+        ...(groupedArtifacts.get('agent-run') ?? []),
+        ...(groupedArtifacts.get('agent-step') ?? []),
+      ],
+    },
+    {
       title: 'Disease packet summary',
       description: 'Canonical disease context and the persisted packet summary.',
       artifacts: [
@@ -4249,9 +4657,10 @@ function buildReviewArtifactGroups(store, workflowRun) {
     },
     {
       title: 'Story workbook and narrative review trace',
-      description: 'Workbook logic, novelty memory, and automated narrative review.',
+      description: 'Workbook logic, expert story craft report, novelty memory, and automated narrative review.',
       artifacts: [
         ...(groupedArtifacts.get('story-workbook') ?? []),
+        ...(groupedArtifacts.get('story-craft-report') ?? []),
         ...(groupedArtifacts.get('story-memory') ?? []),
         ...(groupedArtifacts.get('narrative-review-trace') ?? []),
       ],
@@ -4262,7 +4671,11 @@ function buildReviewArtifactGroups(store, workflowRun) {
     },
     {
       title: 'Panel plans',
-      artifacts: groupedArtifacts.get('panel-plan') ?? [],
+      description: 'Panel plans plus expert beat-adaptation, continuity, gutter, and page-rhythm checks.',
+      artifacts: [
+        ...(groupedArtifacts.get('panel-plan') ?? []),
+        ...(groupedArtifacts.get('panel-adaptation-report') ?? []),
+      ],
     },
     {
       title: 'Render prompts',
@@ -4270,7 +4683,7 @@ function buildReviewArtifactGroups(store, workflowRun) {
     },
     {
       title: 'Rendering guide',
-      description: 'Provider-fitted master handoff guide with one-panel-per-slide external rendering instructions.',
+      description: 'OpenAI gpt-image-2 rendering guide with approved visual-reference provenance and guidance pack versions.',
       artifacts: groupedArtifacts.get('rendering-guide') ?? [],
     },
     {
@@ -4432,7 +4845,10 @@ function buildReviewDashboardContext(options) {
         overdueWorkItemCount: workItems.filter((workItem) => isWorkItemOverdue(workItem)).length,
         threadCount: getThreadCount(options.store, workflowRun),
         reviewAssignments,
+        reviewComments,
         workItems,
+        renderingGuide: loadLatestArtifact(options.store, workflowRun, 'rendering-guide'),
+        renderJobs: listRenderJobsForRun(options.store, workflowRun),
       };
     })(),
   ]));
@@ -4458,7 +4874,7 @@ function buildReviewDashboardContext(options) {
 
 /**
  * @param {{ store: PlatformStore, schemaRegistry: any, clinicalService: any, actor: any, runId: string }} options
- * @returns {{ workflowRun: any, project: any, canonicalDisease: any, clinicalPackage: any, approvableRoles: string[], latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[], auditLogs: any[], artifactGroups: any[], reviewAssignments: any[], reviewComments: any[], workItems: any[], reviewThreads: any[], renderJobs: any[], renderingGuide: any | null }}
+ * @returns {{ workflowRun: any, project: any, canonicalDisease: any, clinicalPackage: any | null, medicalDossier: any | null, medicalDossierBuildReport: any | null, medicalDossierQaReport: any | null, sourceDiscoveryReport: any | null, agentRuns: any[], approvableRoles: string[], latestEvalRun: any | null, latestEvalStatus: string, exportHistory: any[], auditLogs: any[], artifactGroups: any[], reviewAssignments: any[], reviewComments: any[], workItems: any[], reviewThreads: any[], renderJobs: any[], renderingGuide: any | null }}
  */
 function buildReviewRunContext(options) {
   let workflowRun = options.store.getWorkflowRun(options.runId);
@@ -4508,6 +4924,12 @@ function buildReviewRunContext(options) {
     project,
     canonicalDisease,
     clinicalPackage,
+    medicalDossier: loadLatestArtifact(options.store, workflowRun, 'medical-dossier'),
+    medicalDossierBuildReport: loadLatestArtifact(options.store, workflowRun, 'medical-dossier-build-report'),
+    medicalDossierQaReport: loadLatestArtifact(options.store, workflowRun, 'medical-dossier-qa-report'),
+    sourceDiscoveryReport: loadLatestArtifact(options.store, workflowRun, 'source-discovery-report'),
+    agentRuns: listTenantArtifactsByType(options.store, 'agent-run', getTenantId(workflowRun))
+      .filter((agentRun) => agentRun.workflowRunId === workflowRun.id),
     approvableRoles: workflowRun.requiredApprovalRoles.filter(
       (/** @type {string} */ role) => canSubmitApproval(options.actor, role),
     ),
@@ -6803,6 +7225,14 @@ function exportWorkflowRun(options) {
     throw createHttpError(404, 'Disease packet artifact could not be loaded.');
   }
 
+  if (requiresKnowledgePackDecision(options.store, options.workflowRun)) {
+    throw createHttpError(409, 'Export requires reviewer approval or promotion of the provisional disease knowledge pack.');
+  }
+
+  if (requiresMedicalDossierDecision(options.store, options.workflowRun)) {
+    throw createHttpError(409, 'Export requires reviewer approval of the latest medical dossier used to create the story and rendered panels.');
+  }
+
   const latestEvalRun = getLatestEvalRun(options.store, options.workflowRun);
   const latestEvalStatus = deriveEvalStatus(latestEvalRun, options.store, options.workflowRun);
 
@@ -6816,10 +7246,6 @@ function exportWorkflowRun(options) {
 
   if (latestEvalStatus !== 'passed') {
     throw createHttpError(409, 'Export requires the latest eval run to pass all applicable thresholds.');
-  }
-
-  if (requiresKnowledgePackDecision(options.store, options.workflowRun)) {
-    throw createHttpError(409, 'Export requires reviewer approval or promotion of the provisional disease knowledge pack.');
   }
 
   const qaReports = options.workflowRun.artifacts
@@ -7027,7 +7453,7 @@ export async function createApp(options = {}) {
     apiKey: options.openaiApiKey,
     model: options.researchModel,
   });
-  const storyEngineService = createStoryEngineService();
+  const storyEngineService = createStoryEngineService({ rootDir });
   const exporterService = createExporterService();
   const renderExecutionService = createRenderExecutionService({
     provider: options.renderProvider,
@@ -7187,22 +7613,22 @@ export async function createApp(options = {}) {
         const legacyExportPath = matchLegacyExportReviewPath(pathname);
 
         if (legacyReviewRunPath) {
-          redirect(response, `/runs/${encodeURIComponent(legacyReviewRunPath.runId)}/review`, 302);
+          redirect(response, `/runs/${encodeURIComponent(legacyReviewRunPath.runId)}/overview`, 302);
           return;
         }
 
         if (legacyClinicalPackagePath) {
-          redirect(response, `/runs/${encodeURIComponent(legacyClinicalPackagePath.runId)}/evidence`, 302);
+          redirect(response, `/runs/${encodeURIComponent(legacyClinicalPackagePath.runId)}/clinical-review`, 302);
           return;
         }
 
         if (legacyEvaluationPath) {
-          redirect(response, `/runs/${encodeURIComponent(legacyEvaluationPath.runId)}/evals`, 302);
+          redirect(response, `/runs/${encodeURIComponent(legacyEvaluationPath.runId)}/export`, 302);
           return;
         }
 
         if (legacyExportPath) {
-          redirect(response, `/runs/${encodeURIComponent(legacyExportPath.runId)}/bundles`, 302);
+          redirect(response, `/runs/${encodeURIComponent(legacyExportPath.runId)}/export`, 302);
           return;
         }
 
@@ -7730,6 +8156,11 @@ export async function createApp(options = {}) {
       const workflowRunRenderingGuideReviewDecisionPath = matchWorkflowRunRenderingGuideReviewDecisionPath(pathname);
       const workflowRunVisualReferencePackRegeneratePath = matchWorkflowRunVisualReferencePackRegeneratePath(pathname);
       const workflowRunResearchBriefPath = matchWorkflowRunResearchBriefPath(pathname);
+      const workflowRunMedicalDossierPath = matchWorkflowRunMedicalDossierPath(pathname);
+      const workflowRunMedicalDossierReviewDecisionPath = matchWorkflowRunMedicalDossierReviewDecisionPath(pathname);
+      const workflowRunAgentResearchPath = matchWorkflowRunAgentResearchPath(pathname);
+      const workflowRunAgentRunsPath = matchWorkflowRunAgentRunsPath(pathname);
+      const agentRunPath = matchAgentRunPath(pathname);
       const workflowRunKnowledgePackBuildReportPath = matchWorkflowRunKnowledgePackBuildReportPath(pathname);
       const workflowRunKnowledgePackRegeneratePath = matchWorkflowRunKnowledgePackRegeneratePath(pathname);
       const workflowRunKnowledgePackApprovePath = matchWorkflowRunKnowledgePackApprovePath(pathname);
@@ -7744,14 +8175,15 @@ export async function createApp(options = {}) {
           runId: workflowRunReviewViewPath.runId,
         });
 
-        if (!reviewRunContext.clinicalPackage) {
-          throw createHttpError(409, 'No clinical package is available for this workflow run yet.');
-        }
-
         const reviewRunView = createReviewRunView({
           project: reviewRunContext.project,
           workflowRun: reviewRunContext.workflowRun,
           clinicalPackage: reviewRunContext.clinicalPackage,
+          medicalDossier: reviewRunContext.medicalDossier,
+          medicalDossierBuildReport: reviewRunContext.medicalDossierBuildReport,
+          medicalDossierQaReport: reviewRunContext.medicalDossierQaReport,
+          sourceDiscoveryReport: reviewRunContext.sourceDiscoveryReport,
+          agentRuns: reviewRunContext.agentRuns,
           reviewAssignments: reviewRunContext.reviewAssignments,
           reviewComments: reviewRunContext.reviewComments,
           workItems: reviewRunContext.workItems,
@@ -7783,6 +8215,251 @@ export async function createApp(options = {}) {
 
         assertSchema(schemaRegistry, 'contracts/research-brief.schema.json', researchBrief);
         sendJson(response, 200, researchBrief);
+        return;
+      }
+
+      if (method === 'GET' && workflowRunMedicalDossierPath) {
+        const workflowRun = store.getWorkflowRun(workflowRunMedicalDossierPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'medical-dossier.view', 'workflow-run', workflowRun.id);
+        const medicalDossier = loadLatestArtifact(store, workflowRun, 'medical-dossier');
+
+        if (!medicalDossier) {
+          throw createHttpError(404, 'No medical dossier is stored for this workflow run.');
+        }
+
+        assertSchema(schemaRegistry, 'contracts/medical-dossier.schema.json', medicalDossier);
+        sendJson(response, 200, medicalDossier);
+        return;
+      }
+
+      if (method === 'POST' && workflowRunMedicalDossierReviewDecisionPath) {
+        let workflowRun = store.getWorkflowRun(workflowRunMedicalDossierReviewDecisionPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'medical-dossier.review', 'workflow-run', workflowRun.id);
+        const body = await readJsonBody(request);
+
+        if (!isRecord(body) || !['approved', 'request-changes', 'rejected'].includes(String(body.decision))) {
+          throw createHttpError(400, 'Medical dossier review requires decision approved, request-changes, or rejected.');
+        }
+
+        const result = saveMedicalDossierReviewDecision({
+          store,
+          schemaRegistry,
+          workflowRun,
+          actor,
+          decision: /** @type {'approved' | 'request-changes' | 'rejected'} */ (body.decision),
+          notes: typeof body.notes === 'string' ? body.notes : undefined,
+        });
+        workflowRun = result.workflowRun;
+
+        if (body.decision !== 'approved') {
+          sendJson(response, 200, workflowRun);
+          return;
+        }
+
+        const knowledgePack = loadLatestKnowledgePackForRun(store, workflowRun);
+        const canonicalDisease = loadLatestArtifact(store, workflowRun, 'canonical-disease');
+
+        if (!knowledgePack || !canonicalDisease) {
+          throw createHttpError(409, 'Approved medical dossier is missing the normalized knowledge pack or canonical disease needed to continue.');
+        }
+
+        workflowRun = transitionWorkflow(
+          store,
+          schemaRegistry,
+          workflowSpec,
+          workflowRun,
+          {
+            eventType: 'RESUME_STAGE',
+            actor: {
+              type: 'system',
+              id: 'medical-dossier-stage',
+            },
+            payload: {
+              medicalDossierId: result.medicalDossier.id,
+            },
+            notes: 'Medical dossier approved. Resuming research assembly completion.',
+          },
+        );
+        workflowRun = transitionWorkflow(
+          store,
+          schemaRegistry,
+          workflowSpec,
+          workflowRun,
+          {
+            eventType: 'STAGE_PASSED',
+            actor: {
+              type: 'system',
+              id: 'research-assembly-stage',
+            },
+            payload: {
+              medicalDossierId: result.medicalDossier.id,
+              knowledgePackId: knowledgePack.id,
+            },
+            notes: 'Medical dossier approval unlocked downstream clinical package generation.',
+          },
+        );
+        workflowRun = continueClinicalStage({
+          store,
+          schemaRegistry,
+          workflowSpec,
+          workflowRun,
+          workflowInput: clone(workflowRun.input),
+          canonicalDisease,
+          clinicalService,
+          storyEngineService,
+          knowledgePack,
+          allowReviewRequiredStoryContinuation: false,
+          actor,
+        });
+        sendJson(response, 200, workflowRun);
+        return;
+      }
+
+      if (method === 'GET' && workflowRunAgentRunsPath) {
+        const workflowRun = store.getWorkflowRun(workflowRunAgentRunsPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'agent-run.view', 'workflow-run', workflowRun.id);
+        const agentRuns = listTenantArtifactsByType(store, 'agent-run', getTenantId(workflowRun))
+          .filter((agentRun) => agentRun.workflowRunId === workflowRun.id);
+        agentRuns.forEach((agentRun) => assertSchema(schemaRegistry, 'contracts/agent-run.schema.json', agentRun));
+        sendJson(response, 200, agentRuns);
+        return;
+      }
+
+      if (method === 'GET' && agentRunPath) {
+        const agentRun = store.getArtifact('agent-run', agentRunPath.agentRunId);
+
+        if (!agentRun) {
+          throw createHttpError(404, 'Agent run not found.');
+        }
+
+        assertTenantAccess(actor, agentRun.tenantId, store, schemaRegistry, 'agent-run.view', 'agent-run', agentRun.id);
+        const steps = listTenantArtifactsByType(store, 'agent-step', agentRun.tenantId)
+          .filter((agentStep) => agentStep.agentRunId === agentRun.id);
+        assertSchema(schemaRegistry, 'contracts/agent-run.schema.json', agentRun);
+        steps.forEach((agentStep) => assertSchema(schemaRegistry, 'contracts/agent-step.schema.json', agentStep));
+        sendJson(response, 200, {
+          ...agentRun,
+          steps,
+        });
+        return;
+      }
+
+      if (method === 'POST' && workflowRunAgentResearchPath) {
+        let workflowRun = store.getWorkflowRun(workflowRunAgentResearchPath.runId);
+
+        if (!workflowRun) {
+          throw createHttpError(404, 'Workflow run not found.');
+        }
+
+        assertTenantAccess(actor, getTenantId(workflowRun), store, schemaRegistry, 'agent-run.research', 'workflow-run', workflowRun.id);
+
+        if (loadLatestArtifact(store, workflowRun, 'story-workbook')) {
+          throw createHttpError(409, 'Research regeneration is blocked after story generation. Rebuild from intake or reset downstream artifacts first.');
+        }
+
+        let researchAssembly = await researchAssemblyService.compileProvisionalKnowledgePack({
+          workflowRun,
+          workflowInput: clone(workflowRun.input),
+          canonicalDisease: {
+            schemaVersion: SCHEMA_VERSION,
+            id: createId('can'),
+            rawInput: workflowRun.input.diseaseName,
+            normalizedInput: normalizeDiseaseInput(workflowRun.input.diseaseName),
+            resolutionStatus: 'new-disease',
+            confidence: 0.56,
+            canonicalDiseaseName: workflowRun.input.diseaseName,
+            candidateMatches: [],
+          },
+          actor,
+        });
+        researchAssembly = normalizeCompiledResearchAssembly(researchAssembly, {
+          workflowRun,
+          workflowInput: clone(workflowRun.input),
+          canonicalDisease: {
+            schemaVersion: SCHEMA_VERSION,
+            id: createId('can'),
+            rawInput: workflowRun.input.diseaseName,
+            normalizedInput: normalizeDiseaseInput(workflowRun.input.diseaseName),
+            resolutionStatus: 'new-disease',
+            confidence: 0.56,
+            canonicalDiseaseName: workflowRun.input.diseaseName,
+            candidateMatches: [],
+          },
+        }, {
+          model: process.env.OPENAI_RESEARCH_MODEL ?? process.env.MMS_MODEL ?? 'gpt-5.2',
+          allowedDomains: [],
+        });
+        const resolvedCanonicalDisease = clinicalService.buildCanonicalDiseaseFromKnowledgePack(
+          researchAssembly.knowledgePack,
+          workflowRun.input.diseaseName,
+        );
+        workflowRun = persistResearchAssemblyArtifacts({
+          store,
+          schemaRegistry,
+          workflowRun,
+          researchAssembly,
+          canonicalDisease: resolvedCanonicalDisease,
+        });
+        if (workflowRun.state === 'review') {
+          workflowRun = transitionWorkflow(
+            store,
+            schemaRegistry,
+            workflowSpec,
+            workflowRun,
+            {
+              eventType: 'REJECT_TO_STAGE',
+              actor: {
+                type: 'system',
+                id: 'medical-dossier-stage',
+              },
+              payload: {
+                targetStage: 'research-assembly',
+              },
+              notes: 'Returned the run to research assembly for medical dossier regeneration.',
+            },
+          );
+        }
+
+        workflowRun = transitionWorkflow(
+          store,
+          schemaRegistry,
+          workflowSpec,
+          workflowRun,
+          {
+            eventType: 'REQUEST_REVIEW',
+            actor: {
+              type: 'system',
+              id: 'medical-dossier-stage',
+            },
+            payload: {
+              medicalDossierId: researchAssembly.medicalDossier?.id,
+              pauseReason: 'medical-dossier-review-required',
+            },
+            notes: 'Regenerated medical dossier research and paused for reviewer approval.',
+          },
+        );
+        workflowRun = ensureMedicalDossierReviewWorkItem({
+          store,
+          schemaRegistry,
+          workflowRun: saveWorkflowRunRecord(store, schemaRegistry, withPauseReason(workflowRun, 'medical-dossier-review-required')),
+          actor,
+        });
+        sendJson(response, 200, workflowRun);
         return;
       }
 
@@ -7861,7 +8538,7 @@ export async function createApp(options = {}) {
           throw createHttpError(409, 'Only provisional knowledge packs can be regenerated through research assembly.');
         }
 
-        const researchAssembly = await researchAssemblyService.compileProvisionalKnowledgePack({
+        let researchAssembly = await researchAssemblyService.compileProvisionalKnowledgePack({
           workflowRun,
           workflowInput: clone(workflowRun.input),
           canonicalDisease: {
@@ -7876,60 +8553,76 @@ export async function createApp(options = {}) {
           },
           actor,
         });
-        let updatedWorkflowRun = persistArtifact(
+        researchAssembly = normalizeCompiledResearchAssembly(researchAssembly, {
+          workflowRun,
+          workflowInput: clone(workflowRun.input),
+          canonicalDisease: {
+            schemaVersion: SCHEMA_VERSION,
+            id: createId('can'),
+            rawInput: workflowRun.input.diseaseName,
+            normalizedInput: normalizeDiseaseInput(workflowRun.input.diseaseName),
+            resolutionStatus: 'new-disease',
+            confidence: 0.56,
+            canonicalDiseaseName: existingKnowledgePack.canonicalDiseaseName,
+            candidateMatches: [],
+          },
+        }, {
+          model: process.env.OPENAI_RESEARCH_MODEL ?? process.env.MMS_MODEL ?? 'gpt-5.2',
+          allowedDomains: [],
+        });
+        const resolvedCanonicalDisease = clinicalService.buildCanonicalDiseaseFromKnowledgePack(
+          researchAssembly.knowledgePack,
+          workflowRun.input.diseaseName,
+        );
+        let updatedWorkflowRun = persistResearchAssemblyArtifacts({
           store,
           schemaRegistry,
           workflowRun,
-          'research-brief',
-          'contracts/research-brief.schema.json',
-          researchAssembly.researchBrief,
-        );
-        updatedWorkflowRun = persistArtifact(
-          store,
-          schemaRegistry,
-          updatedWorkflowRun,
-          'source-harvest',
-          'contracts/source-harvest.schema.json',
-          researchAssembly.sourceHarvest,
-        );
-        updatedWorkflowRun = persistArtifact(
-          store,
-          schemaRegistry,
-          updatedWorkflowRun,
-          'knowledge-pack-build-report',
-          'contracts/knowledge-pack-build-report.schema.json',
-          researchAssembly.buildReport,
-          researchAssembly.buildReport.status === 'blocked' ? 'rejected' : 'generated',
-        );
-        updatedWorkflowRun = persistArtifact(
-          store,
-          schemaRegistry,
-          updatedWorkflowRun,
-          'disease-knowledge-pack',
-          'contracts/disease-knowledge-pack.schema.json',
-          researchAssembly.knowledgePack,
-          'generated',
-        );
-
-        updatedWorkflowRun = rebuildClinicalPackageForRun({
-          store,
-          schemaRegistry,
-          workflowSpec,
-          clinicalService,
-          storyEngineService,
-          workflowRun: updatedWorkflowRun,
-          actor,
-          reason: 'Regenerated the provisional knowledge pack from research assembly and rebuilt the clinical package.',
+          researchAssembly,
+          canonicalDisease: resolvedCanonicalDisease,
         });
-        updatedWorkflowRun = await resumeRenderExecutionIfReady({
+        if (updatedWorkflowRun.state === 'review') {
+          updatedWorkflowRun = transitionWorkflow(
+            store,
+            schemaRegistry,
+            workflowSpec,
+            updatedWorkflowRun,
+            {
+              eventType: 'REJECT_TO_STAGE',
+              actor: {
+                type: 'system',
+                id: 'medical-dossier-stage',
+              },
+              payload: {
+                targetStage: 'research-assembly',
+              },
+              notes: 'Returned the run to research assembly after knowledge-pack regeneration.',
+            },
+          );
+        }
+        updatedWorkflowRun = transitionWorkflow(
           store,
           schemaRegistry,
           workflowSpec,
-          queueAdapter: platformRuntime.queueAdapter,
-          renderExecutionService,
-          workflowRun: updatedWorkflowRun,
+          updatedWorkflowRun,
+          {
+            eventType: 'REQUEST_REVIEW',
+            actor: {
+              type: 'system',
+              id: 'medical-dossier-stage',
+            },
+            payload: {
+              medicalDossierId: researchAssembly.medicalDossier?.id,
+              pauseReason: 'medical-dossier-review-required',
+            },
+            notes: 'Regenerated research outputs and paused for medical dossier approval.',
+          },
+        );
+        updatedWorkflowRun = ensureMedicalDossierReviewWorkItem({
+          store,
+          schemaRegistry,
+          workflowRun: saveWorkflowRunRecord(store, schemaRegistry, withPauseReason(updatedWorkflowRun, 'medical-dossier-review-required')),
           actor,
-          telemetry: platformRuntime.telemetry,
         });
         sendJson(response, 200, updatedWorkflowRun);
         return;

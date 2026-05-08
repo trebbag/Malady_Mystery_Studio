@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "scr_sample",
+  "storyWorkbookId": "swb_sample",
+  "diseasePacketId": "dp_sample",
+  "guidancePackVersionIds": [
+    "detective-mystery-craft:1.0.0"
+  ],
+  "sourceGuidanceProvenance": [
+    {
+      "guidancePackId": "detective-mystery-craft",
+      "version": "1.0.0",
+      "ruleIds": [
+        "DSG-READER-CONTRACT",
+        "DSG-FAIR-REVEAL"
+      ],
+      "sourceDocIds": [
+        "detective-series-master-guide"
+      ]
+    }
+  ],
+  "beforeCaseBaseline": "The body system starts in a stable baseline before the case disruption appears.",
+  "centralCaseQuestion": "What hidden mechanism explains the patient clues?",
+  "hiddenTruthTimeline": [
+    {
+      "order": 1,
+      "event": "The disease mechanism begins before the detectives understand it.",
+      "linkedClaimIds": [
+        "claim_sample"
+      ]
+    }
+  ],
+  "investigationTimeline": [
+    {
+      "order": 1,
+      "detectiveAction": "Detectives inspect the first clue.",
+      "readerKnowledge": "Readers see a clue but not the diagnosis."
+    }
+  ],
+  "audienceInterpretationTimeline": [
+    {
+      "order": 1,
+      "expectedInterpretation": "Readers suspect a plausible but incomplete explanation.",
+      "controlledMisread": "The clue is intentionally framed as ambiguous."
+    }
+  ],
+  "clueLedger": [
+    {
+      "clueId": "clue-1",
+      "clue": "A pattern that points to the disease mechanism.",
+      "plant": "Shown early as an observation.",
+      "misread": "Initially interpreted as a decoy.",
+      "pressure": "Repeated clues make the first reading unstable.",
+      "retrieve": "Detectives return to the clue before the reveal.",
+      "reframe": "The clue becomes evidence of the real mechanism.",
+      "revealUse": "Used in the final proof chain.",
+      "linkedClaimIds": [
+        "claim_sample"
+      ]
+    }
+  ],
+  "redHerringAudit": [
+    {
+      "misleadingInterpretation": "A plausible alternate explanation.",
+      "usefulness": "Teaches why the wrong path is tempting.",
+      "resolution": "Falls apart when the proof chain is complete."
+    }
+  ],
+  "fairRevealProofChain": [
+    {
+      "order": 1,
+      "proofPoint": "The clue chain supports the diagnosis.",
+      "sourceClueIds": [
+        "clue-1"
+      ]
+    }
+  ],
+  "repairCodaPlan": {
+    "repairAction": "Treatment resolves the mechanism.",
+    "openerCallback": "The final beat echoes the opener.",
+    "finalImage": "The detectives watch the restored system stabilize."
+  },
+  "storyDnaRotation": {
+    "caseType": "mechanism mystery",
+    "openingMode": "comic prop misread",
+    "settingMode": "inside-body district",
+    "clueMode": "clinical pattern",
+    "suspenseEngine": "wrong interpretation pressure",
+    "repairFocus": "mechanism restored",
+    "noveltyNotes": "Uses a different prop and setting than the prior story."
+  },
+  "findings": [
+    {
+      "ruleId": "DSG-FAIR-REVEAL",
+      "severity": "critical",
+      "message": "Reveal proof chain is present.",
+      "status": "passed",
+      "artifactId": "swb_sample"
+    }
+  ],
+  "gateStatus": "passed",
+  "createdAt": "2026-05-05T12:00:00.000Z"
+}

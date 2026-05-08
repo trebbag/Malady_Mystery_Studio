@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/panel-adaptation-report.schema.json",
+  "title": "PanelAdaptationReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "storyWorkbookId",
+    "guidancePackVersionIds",
+    "sourceGuidanceProvenance",
+    "storySpine",
+    "sceneMap",
+    "beatMap",
+    "pageAllocation",
+    "pageRhythm",
+    "panelTransitionLogic",
+    "continuityLedger",
+    "textImageRedundancyChecks",
+    "revisionNotes",
+    "findings",
+    "gateStatus",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "storyWorkbookId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "medicalProvenance": {
+      "$ref": "artifact-medical-provenance.schema.json"
+    },
+    "guidancePackVersionIds": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+    },
+    "sourceGuidanceProvenance": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["guidancePackId", "version", "ruleIds", "sourceDocIds"],
+        "properties": {
+          "guidancePackId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "version": { "type": "string" },
+          "ruleIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          },
+          "sourceDocIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          }
+        }
+      }
+    },
+    "storySpine": { "type": "string" },
+    "sceneMap": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sceneId", "sceneFunction", "startState", "endState"],
+        "properties": {
+          "sceneId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "sceneFunction": { "type": "string" },
+          "startState": { "type": "string" },
+          "endState": { "type": "string" }
+        }
+      }
+    },
+    "beatMap": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "sceneId", "beatType", "startState", "endState", "changeCreated", "treatmentChoice"],
+        "properties": {
+          "panelId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "sceneId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "beatType": { "type": "string" },
+          "startState": { "type": "string" },
+          "endState": { "type": "string" },
+          "changeCreated": { "type": "string" },
+          "treatmentChoice": { "type": "string", "enum": ["panel", "gutter", "montage", "caption", "omit"] }
+        }
+      }
+    },
+    "pageAllocation": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pageNumber", "purpose", "panelIds"],
+        "properties": {
+          "pageNumber": { "type": "integer", "minimum": 1 },
+          "purpose": { "type": "string" },
+          "panelIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          }
+        }
+      }
+    },
+    "pageRhythm": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pageNumber", "rhythm", "pageEndingEffect"],
+        "properties": {
+          "pageNumber": { "type": "integer", "minimum": 1 },
+          "rhythm": { "type": "string" },
+          "pageEndingEffect": { "type": "string" }
+        }
+      }
+    },
+    "panelTransitionLogic": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fromPanelId", "toPanelId", "readerInference", "causality"],
+        "properties": {
+          "fromPanelId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "toPanelId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "readerInference": { "type": "string" },
+          "causality": { "type": "string" }
+        }
+      }
+    },
+    "continuityLedger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["characters", "props", "locations", "time", "costumes", "injuries", "medicalDevices"],
+      "properties": {
+        "characters": { "type": "array", "items": { "type": "string" } },
+        "props": { "type": "array", "items": { "type": "string" } },
+        "locations": { "type": "array", "items": { "type": "string" } },
+        "time": { "type": "array", "items": { "type": "string" } },
+        "costumes": { "type": "array", "items": { "type": "string" } },
+        "injuries": { "type": "array", "items": { "type": "string" } },
+        "medicalDevices": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "textImageRedundancyChecks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "status", "note"],
+        "properties": {
+          "panelId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "status": { "type": "string", "enum": ["passed", "warning", "failed"] },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "revisionNotes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ruleId", "severity", "message", "status"],
+        "properties": {
+          "ruleId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "severity": { "type": "string", "enum": ["info", "warning", "blocking", "critical"] },
+          "message": { "type": "string" },
+          "status": { "type": "string", "enum": ["passed", "warning", "failed"] },
+          "artifactId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+        }
+      }
+    },
+    "gateStatus": { "type": "string", "enum": ["passed", "blocked"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

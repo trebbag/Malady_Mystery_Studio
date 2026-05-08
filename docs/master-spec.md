@@ -308,14 +308,16 @@ A serious commercial product will require:
 
 1. User enters disease name and optional generation constraints.
 2. System canonicalizes disease and retrieves clinical knowledge.
-3. System builds disease packet and clue ladder.
-4. Story architecture agent generates mystery workbook.
-5. User optionally reviews or edits workbook.
-6. System generates scene outline.
-7. System expands scenes to pages and panels.
-8. System generates render prompts and lettering map.
-9. QA services score medical accuracy, continuity, and narrative integrity.
-10. User reviews flagged issues.
+3. For unseen diseases, live research agents compile a required high-yield `medical-dossier` covering epidemiology, etiology, pathophysiology, clinical features, history, exam, labs, imaging, diagnostic criteria, differential diagnosis, treatment, management, complications, prognosis, teaching points, visual anchors, and claim-level sources.
+4. A local reviewer approves the medical dossier before the disease is reframed as the mystery culprit.
+5. System builds disease packet and clue ladder.
+6. Story architecture agent generates mystery workbook from the approved dossier, with `artifact-medical-provenance` recorded for audit.
+7. User optionally reviews or edits workbook.
+8. System generates scene outline.
+9. System expands scenes to pages and panels.
+10. System generates render prompts, lettering map, rendering guide, and visual reference pack while preserving the approved dossier and agent-run lineage.
+11. QA services score medical accuracy, continuity, narrative integrity, rendering-guide quality, and stale-provenance risks.
+12. User reviews flagged issues.
 11. User approves export package.
 12. Assets are exported to rendering pipeline and publication workspace.
 
@@ -607,6 +609,7 @@ This catalog uses MUST/SHOULD/MAY language. “Must” items are required for pr
 **FR-STY-005** The system MUST make treatment part of the climax.  
 **FR-STY-006** The system SHOULD expose “why this clue appears now” reasoning to reviewers.  
 **FR-STY-007** The system MUST support selective regeneration at workbook, scene, and panel levels.
+**FR-STY-008** The system MUST generate a `story-craft-report` that records expert detective-story guidance provenance, hidden truth timeline, investigation timeline, audience interpretation timeline, clue ledger, fair reveal proof chain, repair/coda plan, and story DNA rotation.
 
 ### 13.4 Scene and panel planning
 
@@ -616,6 +619,7 @@ This catalog uses MUST/SHOULD/MAY language. “Must” items are required for pr
 **FR-PNL-004** The system MUST preserve continuity of character placement, props, injuries, lab specimens, and body route.  
 **FR-PNL-005** The system SHOULD recommend page turns and splash pages.  
 **FR-PNL-006** The system MUST support a page budget or panel budget constraint.
+**FR-PNL-007** The system MUST generate a `panel-adaptation-report` that records expert comic-adaptation guidance provenance, story spine, scene map, beat map, page rhythm, gutter inference, continuity ledger, text-image redundancy checks, and blocking adaptation findings.
 
 ### 13.5 Rendering preparation
 
@@ -624,6 +628,7 @@ This catalog uses MUST/SHOULD/MAY language. “Must” items are required for pr
 **FR-RND-003** The system MUST support negative prompts and exclusions.  
 **FR-RND-004** The system SHOULD support multiple render-target profiles if the image model changes.  
 **FR-RND-005** The system MUST label panels that are high-risk for poor renderability and suggest simplifications.
+**FR-RND-006** The system MUST record expert `gpt-image-2` prompt guidance provenance and compile each panel prompt from structured panel-card inputs, continuity anchors, medical constraints, prompt modules, and a text-free image policy.
 
 ### 13.6 Review, approval, and audit
 
@@ -853,6 +858,8 @@ Because current official guidance emphasizes strong instruction following and st
 - avoid asking the image model to embed dense educational text,
 - generate panel art with either no text or only minimal nonessential diegetic text,
 - use structured panel inputs and continuity anchors instead of long free-form story dumps.
+
+The app also maintains a local expert-guidance source layer: original approved story, panel, and Image2 guidance documents are preserved for audit, while agents consume compact versioned guidance packs with rule IDs, checklist items, prompt modules, and gate criteria. Generated story, panel, render, visual-reference, QA, eval, and bundle artifacts should expose guidance pack version IDs when those rules influence the output.
 
 Because panel continuity and medical consistency remain product responsibilities rather than model guarantees, the platform shall:
 - maintain locked character sheets,

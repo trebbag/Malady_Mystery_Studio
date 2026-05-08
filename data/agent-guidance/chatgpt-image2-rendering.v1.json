@@ -1,0 +1,314 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "chatgpt-image2-rendering",
+  "version": "1.0.0",
+  "title": "ChatGPT Image2 Prompt Compilation and Rendered Panel QA",
+  "sourceDocIds": [
+    "chatgpt-image2-slide-deck-playbook"
+  ],
+  "pipelineStages": [
+    "render-prep",
+    "rendering-guide",
+    "render-execution",
+    "render-output-qa"
+  ],
+  "summary": "Rules for compiling panel cards into gpt-image-2 prompts, preserving visual continuity, keeping text out of generated art, and QA-scoring rendered panel output.",
+  "rules": [
+    {
+      "id": "I2-PANEL-CARD-FIRST",
+      "title": "Prompt from panel cards, not raw prose",
+      "severity": "blocking",
+      "pipelineStages": [
+        "render-prep",
+        "rendering-guide"
+      ],
+      "sourceDocIds": [
+        "chatgpt-image2-slide-deck-playbook"
+      ],
+      "instruction": "Each prompt must be compiled from a structured panel card with panel ID, aspect ratio, frozen moment, continuity anchors, medical constraints, and text policy.",
+      "requiredArtifactFields": [
+        "renderPrompt.panelId",
+        "renderPrompt.aspectRatio",
+        "renderPrompt.positivePrompt",
+        "renderPrompt.continuityAnchors",
+        "renderPrompt.anatomyLocks",
+        "renderPrompt.textLayerPolicy"
+      ],
+      "failureMessage": "A render prompt is missing required panel-card inputs."
+    },
+    {
+      "id": "I2-PROMPT-ORDER",
+      "title": "Use the Image2 prompt order",
+      "severity": "blocking",
+      "pipelineStages": [
+        "render-prep",
+        "rendering-guide"
+      ],
+      "sourceDocIds": [
+        "chatgpt-image2-slide-deck-playbook"
+      ],
+      "instruction": "Prompts should state panel ID/aspect ratio/text policy, frozen moment, continuity anchors, composition, action and emotion, medical constraints, style, required details, negative constraints, and final output requirements.",
+      "requiredArtifactFields": [
+        "renderPrompt.positivePrompt",
+        "renderingGuide.panels.openAiImagePrompt"
+      ],
+      "failureMessage": "A gpt-image-2 prompt is missing the required compilation order."
+    },
+    {
+      "id": "I2-TEXT-FREE-ART",
+      "title": "Keep lettering out of image generation",
+      "severity": "critical",
+      "pipelineStages": [
+        "render-prep",
+        "render-execution",
+        "render-output-qa"
+      ],
+      "sourceDocIds": [
+        "chatgpt-image2-slide-deck-playbook"
+      ],
+      "instruction": "Generated panel art must not include dialogue, captions, labels, educational text, or fake medical text. Lettering belongs in separate overlays.",
+      "requiredArtifactFields": [
+        "renderPrompt.textLayerPolicy",
+        "letteringMap.entries",
+        "renderedPanelQaDecision.checklist.noVisibleText"
+      ],
+      "failureMessage": "Visible text appears in an image prompt or rendered asset QA decision."
+    },
+    {
+      "id": "I2-CONTINUITY-BIBLE",
+      "title": "Use continuity bible and stable visual IDs",
+      "severity": "blocking",
+      "pipelineStages": [
+        "rendering-guide",
+        "render-execution",
+        "render-output-qa"
+      ],
+      "sourceDocIds": [
+        "chatgpt-image2-slide-deck-playbook"
+      ],
+      "instruction": "Repeated characters, props, devices, set pieces, anatomy environments, and style locks must be represented by stable visual reference IDs.",
+      "requiredArtifactFields": [
+        "visualReferencePack.items",
+        "renderPrompt.visualReferenceItemIds",
+        "renderingGuide.panels.visualReferenceItemIds"
+      ],
+      "failureMessage": "A recurring visual element is not covered by a stable reference item."
+    },
+    {
+      "id": "I2-MEDICAL-TRUTH-LEDGER",
+      "title": "Preserve medical truth ledger links",
+      "severity": "critical",
+      "pipelineStages": [
+        "rendering-guide",
+        "render-output-qa"
+      ],
+      "sourceDocIds": [
+        "chatgpt-image2-slide-deck-playbook"
+      ],
+      "instruction": "Clinically meaningful visual decisions must stay connected to claim references and must-not-show constraints.",
+      "requiredArtifactFields": [
+        "renderingGuide.panels.claimReferences",
+        "renderPrompt.linkedClaimIds",
+        "renderedPanelQaDecision.checklist.anatomyFidelity"
+      ],
+      "failureMessage": "A clinically material panel lacks traceable claim references or medical fidelity checks."
+    },
+    {
+      "id": "I2-QA-DOMAINS",
+      "title": "QA rendered panels across all Image2 domains",
+      "severity": "critical",
+      "pipelineStages": [
+        "render-output-qa"
+      ],
+      "sourceDocIds": [
+        "chatgpt-image2-slide-deck-playbook"
+      ],
+      "instruction": "Rendered-panel QA must cover source fidelity, character continuity, prop/device continuity, scene continuity, medical accuracy, style compliance, slide usability, and text hygiene.",
+      "requiredArtifactFields": [
+        "renderedPanelQaDecision.checklist"
+      ],
+      "failureMessage": "Rendered-panel QA is missing one or more critical quality domains."
+    }
+  ],
+  "checklists": [
+    {
+      "id": "I2-PROMPT-COMPILATION-CHECKLIST",
+      "title": "Image2 Prompt Compilation Gate",
+      "pipelineStage": "render-prep",
+      "items": [
+        {
+          "id": "panel-id-aspect-ratio-policy",
+          "label": "Prompt includes panel ID, aspect ratio, and no-visible-text policy.",
+          "required": true,
+          "severity": "blocking"
+        },
+        {
+          "id": "frozen-moment",
+          "label": "Prompt names the single frozen moment to render.",
+          "required": true,
+          "severity": "blocking"
+        },
+        {
+          "id": "continuity-anchors",
+          "label": "Prompt includes continuity anchors and approved reference IDs.",
+          "required": true,
+          "severity": "blocking"
+        },
+        {
+          "id": "medical-constraints",
+          "label": "Prompt includes clinically relevant anatomy/mechanism constraints.",
+          "required": true,
+          "severity": "critical"
+        },
+        {
+          "id": "lettering-separated",
+          "label": "Visible text is excluded from image prompts and handled in lettering maps.",
+          "required": true,
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "id": "I2-RENDERED-PANEL-QA-CHECKLIST",
+      "title": "Rendered Panel QA Gate",
+      "pipelineStage": "render-output-qa",
+      "items": [
+        {
+          "id": "source-fidelity",
+          "label": "Rendered panel matches approved panel card and guide/reference provenance.",
+          "required": true,
+          "severity": "critical"
+        },
+        {
+          "id": "character-continuity",
+          "label": "Cyto and Pip remain visually and personality-consistent.",
+          "required": true,
+          "severity": "critical"
+        },
+        {
+          "id": "medical-accuracy",
+          "label": "Anatomy, devices, and mechanisms match the medical truth ledger.",
+          "required": true,
+          "severity": "critical"
+        },
+        {
+          "id": "text-hygiene",
+          "label": "No generated speech, captions, fake labels, or fake clinical text appear in art.",
+          "required": true,
+          "severity": "critical"
+        }
+      ]
+    }
+  ],
+  "promptModules": [
+    {
+      "id": "STYLE_GLOBAL_FELT_3D",
+      "title": "Global Felt 3D Style",
+      "pipelineStages": [
+        "render-prep",
+        "rendering-guide"
+      ],
+      "template": "premium cinematic 3D animated felt-toy rendering, warm feature-animation lighting, soft tactile fibers, expressive eyes, stable silhouettes, accurate approachable anatomy environments",
+      "negativeConstraints": [
+        "no generic sci-fi replacement setting",
+        "no character silhouette drift"
+      ]
+    },
+    {
+      "id": "TEXT_FREE_MEDICAL",
+      "title": "Text-Free Medical Art",
+      "pipelineStages": [
+        "render-prep",
+        "render-execution"
+      ],
+      "template": "leave clean slide-safe space for later lettering; do not render dialogue, captions, labels, medical text, monitor text, or educational copy inside the image",
+      "negativeConstraints": [
+        "visible text",
+        "fake labels",
+        "fake medical readings"
+      ]
+    },
+    {
+      "id": "PATIENT_DIGNITY",
+      "title": "Patient Dignity",
+      "pipelineStages": [
+        "render-prep",
+        "render-output-qa"
+      ],
+      "template": "depict patient experience with warmth, dignity, and no ridicule; make illness understandable without blaming the patient",
+      "negativeConstraints": [
+        "body horror",
+        "shaming",
+        "stigmatizing expression"
+      ]
+    },
+    {
+      "id": "DEVICE_ACCURACY",
+      "title": "Device Accuracy",
+      "pipelineStages": [
+        "render-prep",
+        "render-output-qa"
+      ],
+      "template": "show medical devices only when specified by the approved panel card and keep placement anatomically plausible",
+      "negativeConstraints": [
+        "wrong device placement",
+        "invented device"
+      ]
+    },
+    {
+      "id": "SLIDE_SAFE_SPACE",
+      "title": "Slide-Safe Space",
+      "pipelineStages": [
+        "render-prep",
+        "rendering-guide"
+      ],
+      "template": "preserve unobstructed areas for post-generation lettering overlays without weakening the focal action",
+      "negativeConstraints": [
+        "crowded composition",
+        "text baked into artwork"
+      ]
+    },
+    {
+      "id": "NO_DRIFT",
+      "title": "No-Drift Continuity",
+      "pipelineStages": [
+        "rendering-guide",
+        "render-execution"
+      ],
+      "template": "reuse approved visual reference IDs and previous approved panels to keep character proportions, props, costumes, set pieces, palette, and medical environment stable",
+      "negativeConstraints": [
+        "identity drift",
+        "prop drift",
+        "unapproved visual redesign"
+      ]
+    }
+  ],
+  "gateCriteria": [
+    {
+      "id": "I2-GATE-RENDER-PREP",
+      "pipelineStage": "render-prep",
+      "severity": "critical",
+      "ruleIds": [
+        "I2-PANEL-CARD-FIRST",
+        "I2-PROMPT-ORDER",
+        "I2-TEXT-FREE-ART",
+        "I2-CONTINUITY-BIBLE",
+        "I2-MEDICAL-TRUTH-LEDGER"
+      ],
+      "blockingWhen": "Any render prompt lacks prompt-order fields, reference IDs, medical constraints, or text separation.",
+      "failureMessage": "Rendering cannot proceed until prompt compilation and visual consistency guidance checks pass."
+    },
+    {
+      "id": "I2-GATE-RENDERED-PANEL-QA",
+      "pipelineStage": "render-output-qa",
+      "severity": "critical",
+      "ruleIds": [
+        "I2-QA-DOMAINS",
+        "I2-TEXT-FREE-ART",
+        "I2-MEDICAL-TRUTH-LEDGER"
+      ],
+      "blockingWhen": "Any critical rendered-panel QA domain fails.",
+      "failureMessage": "Export cannot proceed with rendered-panel QA critical failures."
+    }
+  ]
+}

@@ -14,6 +14,13 @@ What is here:
 
 Goals of the active app:
 - keep the Figma Make route and component structure visible in code
-- replace placeholder/demo text with real workflow, clinical, eval, export, and governance data
+- make the default UX a creator-operator workflow instead of an internal pipeline dashboard
+- replace placeholder/demo text with real workflow, clinical, safety-check, export, and governance data
+- expose story craft and panel adaptation in a friendly `Story & Panels` step before the full technical panel pages
 - keep loading, blocked, stale, disabled, empty, and error states explicit
+- keep raw artifact JSON and technical pages behind advanced/developer details by default
 - preserve the prep manifests so future builders can still see the intended structure quickly
+
+The next Figma Make source prompt for the simplified creator workflow lives at [figma-make-creator-operator-ui.md](/Users/gregorygabbert/Documents/GitHub/MaladyMysteryStudio/docs/prompts/figma-make-creator-operator-ui.md).
+
+The current Figma design file and implemented visual direction are documented at [creator-operator-figma-design.md](/Users/gregorygabbert/Documents/GitHub/MaladyMysteryStudio/docs/ui/creator-operator-figma-design.md).

@@ -17,6 +17,64 @@ const DEFAULT_ALLOWED_DOMAINS = Object.freeze([
 ]);
 const ALLOWED_SOURCE_TYPES = new Set(['guideline', 'review', 'trial', 'textbook', 'reference']);
 const SAFE_ID_PATTERN = /^[A-Za-z0-9._:-]+$/u;
+const MEDICAL_DOSSIER_SECTION_KEYS = Object.freeze([
+  'epidemiology',
+  'etiology',
+  'pathophysiology',
+  'clinicalFeatures',
+  'history',
+  'exam',
+  'labs',
+  'imaging',
+  'diagnosticCriteria',
+  'differentialDiagnosis',
+  'treatment',
+  'management',
+  'complications',
+  'prognosis',
+  'teachingPoints',
+  'visualAnchors',
+]);
+const MEDICAL_DOSSIER_SECTION_TITLES = Object.freeze({
+  epidemiology: 'Epidemiology',
+  etiology: 'Etiology',
+  pathophysiology: 'Pathophysiology',
+  clinicalFeatures: 'Clinical Features',
+  history: 'History',
+  exam: 'Exam',
+  labs: 'Labs',
+  imaging: 'Imaging',
+  diagnosticCriteria: 'Diagnostic Criteria',
+  differentialDiagnosis: 'Differential Diagnosis',
+  treatment: 'Treatment',
+  management: 'Management',
+  complications: 'Complications',
+  prognosis: 'Prognosis',
+  teachingPoints: 'Teaching Points',
+  visualAnchors: 'Visual Anchors',
+});
+const RESEARCH_AGENT_DEFINITIONS = Object.freeze([
+  ['canonicalization', 'Disease Canonicalization Agent'],
+  ['source-discovery', 'Medical Source Discovery Agent'],
+  ['epidemiology-etiology', 'Epidemiology/Etiology Agent'],
+  ['pathophysiology', 'Pathophysiology Agent'],
+  ['clinical-features', 'Clinical Features Agent'],
+  ['exam-lab-imaging', 'Exam/Lab/Imaging Agent'],
+  ['diagnostics-differential', 'Diagnostic Criteria/Differential Agent'],
+  ['treatment-management', 'Treatment/Management Agent'],
+  ['complications-prognosis', 'Complications/Prognosis Agent'],
+  ['evidence-synthesis', 'Evidence Synthesis Agent'],
+  ['contradiction-governance', 'Contradiction/Governance Agent'],
+  ['medical-dossier-qa', 'Medical Dossier QA Agent'],
+]);
+
+/**
+ * @param {string} sectionKey
+ * @returns {string}
+ */
+function sectionTitle(sectionKey) {
+  return /** @type {Record<string, string>} */ (MEDICAL_DOSSIER_SECTION_TITLES)[sectionKey] ?? sectionKey;
+}
 
 /**
  * @param {unknown} value
@@ -56,6 +114,14 @@ function toStringArray(value) {
   return value
     .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
     .filter(Boolean);
+}
+
+/**
+ * @param {string[]} values
+ * @returns {string[]}
+ */
+function uniqueStrings(values) {
+  return [...new Set(values.filter(Boolean))];
 }
 
 /**
@@ -600,6 +666,354 @@ function buildSourceHarvest(responseSources, knowledgePack, options) {
 }
 
 /**
+ * @param {any[]} steps
+ * @param {{ workflowRun: any, model: string, status: 'succeeded' | 'review-required' | 'failed', startedAt: string, endedAt: string, producedArtifactIds?: string[], blockedReason?: string, id?: string }} options
+ * @returns {any}
+ */
+function buildAgentRun(steps, options) {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: options.id ?? createId('arun'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    purpose: 'research-disease-medical-dossier',
+    status: options.status,
+    model: options.model,
+    orchestration: 'openai-agents-sdk',
+    tooling: ['structured-json', 'web-search', ...(process.env.KB_VECTOR_STORE_ID ? ['file-search'] : [])],
+    stepIds: steps.map((step) => step.id),
+    producedArtifactIds: options.producedArtifactIds ?? [],
+    summary: 'Compiled a high-yield medical dossier for local reviewer approval before story generation.',
+    ...(options.blockedReason ? { blockedReason: options.blockedReason } : {}),
+    startedAt: options.startedAt,
+    endedAt: options.endedAt,
+  };
+}
+
+/**
+ * @param {{ workflowRun: any, agentRunId: string, stepKey: string, agentName: string, status?: 'succeeded' | 'review-required' | 'failed', inputSummary: string, outputSummary: string, timestamp: string, findings?: string[], artifactIds?: string[] }} options
+ * @returns {any}
+ */
+function buildAgentStep(options) {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('astep'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    agentRunId: options.agentRunId,
+    stepKey: options.stepKey,
+    agentName: options.agentName,
+    status: options.status ?? 'succeeded',
+    inputSummary: options.inputSummary,
+    outputSummary: options.outputSummary,
+    toolSummary: ['structured-json'],
+    findings: options.findings ?? [],
+    artifactIds: options.artifactIds ?? [],
+    startedAt: options.timestamp,
+    endedAt: options.timestamp,
+  };
+}
+
+/**
+ * @param {{ workflowRun: any, agentRunId: string, canonicalDiseaseName: string, sourceHarvest: any, allowedDomains: string[], timestamp: string, gaps?: string[] }} options
+ * @returns {any}
+ */
+function buildSourceDiscoveryReport(options) {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('sdr'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    targetCanonicalDiseaseName: options.canonicalDiseaseName,
+    agentRunId: options.agentRunId,
+    searchStrategy: 'Prioritize guideline, review, trial, public-health, and curated knowledge-base sources; preserve uncertainty for reviewer governance.',
+    allowedDomains: options.allowedDomains,
+    sources: (options.sourceHarvest.sources ?? []).map((/** @type {any} */ source) => ({
+      sourceId: source.sourceId,
+      sourceLabel: source.sourceLabel,
+      sourceType: source.sourceType,
+      origin: source.origin,
+      ...(source.sourceUrl ? { sourceUrl: source.sourceUrl } : {}),
+      status: source.status,
+      topics: [],
+    })),
+    droppedSources: options.sourceHarvest.droppedSources ?? [],
+    gaps: options.gaps ?? [],
+    generatedAt: options.timestamp,
+  };
+}
+
+/**
+ * @param {string} sectionKey
+ * @param {any} knowledgePack
+ * @returns {any[]}
+ */
+function findClaimsForSection(sectionKey, knowledgePack) {
+  const evidence = /** @type {any[]} */ (knowledgePack.evidence ?? []);
+  /** @type {Record<string, string[]>} */
+  const keywordsBySection = {
+    epidemiology: ['epidemiology', 'prevalence', 'incidence', 'risk'],
+    etiology: ['etiology', 'cause', 'risk', 'trigger'],
+    pathophysiology: ['pathophysiology', 'mechanism', 'physiology'],
+    clinicalFeatures: ['clinical', 'symptom', 'presentation', 'feature'],
+    history: ['history', 'symptom', 'presentation'],
+    exam: ['exam', 'finding', 'physical'],
+    labs: ['lab', 'test', 'biomarker'],
+    imaging: ['imaging', 'radiology', 'x-ray', 'ct', 'mri', 'ultrasound'],
+    diagnosticCriteria: ['diagnostic', 'criteria', 'diagnosis'],
+    differentialDiagnosis: ['differential', 'mimic', 'red herring'],
+    treatment: ['treatment', 'therapy', 'medication'],
+    management: ['management', 'monitoring', 'follow-up'],
+    complications: ['complication', 'adverse', 'risk'],
+    prognosis: ['prognosis', 'outcome', 'course'],
+    teachingPoints: ['teaching', 'high-yield', 'lesson'],
+    visualAnchors: ['visual', 'anchor', 'image'],
+  };
+  const keywords = keywordsBySection[sectionKey] ?? [sectionKey.toLowerCase()];
+  const matches = evidence.filter((record) => {
+    const haystack = [
+      record.claimType,
+      record.claimText,
+      record.applicability,
+      record.diseaseStageApplicability,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return keywords.some((/** @type {string} */ keyword) => haystack.includes(keyword));
+  });
+
+  return matches.length > 0 ? matches : evidence.slice(0, 1);
+}
+
+/**
+ * @param {string} sectionKey
+ * @param {any} knowledgePack
+ * @returns {string}
+ */
+function summarizeKnowledgePackSection(sectionKey, knowledgePack) {
+  if (sectionKey === 'pathophysiology' && Array.isArray(knowledgePack.pathophysiology) && knowledgePack.pathophysiology.length > 0) {
+    return knowledgePack.pathophysiology.map((/** @type {any} */ entry) => entry.mechanism ?? entry.event).filter(Boolean).join(' ');
+  }
+
+  if (sectionKey === 'clinicalFeatures') {
+    return [
+      ...(knowledgePack.presentation?.hallmarkSymptoms ?? []),
+      ...(knowledgePack.presentation?.redFlags ?? []),
+    ].filter(Boolean).join(' ') || knowledgePack.clinicalSummary?.patientExperienceSummary;
+  }
+
+  if (sectionKey === 'history') {
+    return (knowledgePack.presentation?.historyClues ?? []).join(' ') || knowledgePack.presentation?.typicalTimecourse;
+  }
+
+  if (sectionKey === 'exam') {
+    return (knowledgePack.presentation?.examFindings ?? []).join(' ') || 'Exam findings must remain traceable to the dossier evidence.';
+  }
+
+  if (sectionKey === 'labs') {
+    return (knowledgePack.diagnostics?.firstLineTests ?? []).join(' ') || 'Laboratory testing details require evidence links.';
+  }
+
+  if (sectionKey === 'imaging') {
+    return (knowledgePack.diagnostics?.confirmatoryTests ?? []).join(' ') || 'Imaging is included when clinically relevant and marked as not applicable when absent.';
+  }
+
+  if (sectionKey === 'diagnosticCriteria') {
+    return (knowledgePack.diagnostics?.diagnosticLogic ?? []).join(' ') || 'Diagnostic criteria must be earned from the clue ledger.';
+  }
+
+  if (sectionKey === 'treatment') {
+    return (knowledgePack.management?.diseaseDirectedCare ?? []).join(' ') || 'Treatment details require source-backed management claims.';
+  }
+
+  if (sectionKey === 'management') {
+    return [
+      ...(knowledgePack.management?.stabilization ?? []),
+      ...(knowledgePack.management?.monitoring ?? []),
+    ].filter(Boolean).join(' ') || 'Management includes stabilization, monitoring, and follow-up.';
+  }
+
+  if (sectionKey === 'teachingPoints') {
+    return (knowledgePack.clinicalTeachingPoints ?? []).map((/** @type {any} */ point) => point.teachingPoint).filter(Boolean).join(' ');
+  }
+
+  if (sectionKey === 'visualAnchors') {
+    return (knowledgePack.visualAnchors ?? []).map((/** @type {any} */ anchor) => anchor.description).filter(Boolean).join(' ');
+  }
+
+  return knowledgePack.clinicalSummary?.oneSentence
+    ?? `${knowledgePack.canonicalDiseaseName} requires source-traceable ${sectionTitle(sectionKey)} review.`;
+}
+
+/**
+ * @param {any} knowledgePack
+ * @param {{ workflowRun: any, agentRunId: string, sourceDiscoveryReportId: string, timestamp: string }} options
+ * @returns {any}
+ */
+function buildMedicalDossierFromKnowledgePack(knowledgePack, options) {
+  const sourceIds = (knowledgePack.sourceCatalog ?? []).map((/** @type {any} */ source) => source.id);
+  const fallbackSourceId = sourceIds[0] ?? `src.${normalizeId(knowledgePack.canonicalDiseaseName)}.agent-provisional`;
+  /** @type {Record<string, any>} */
+  const sections = {};
+
+  for (const sectionKey of MEDICAL_DOSSIER_SECTION_KEYS) {
+    const claims = findClaimsForSection(sectionKey, knowledgePack);
+    const linkedClaimIds = claims.map((claim) => claim.claimId);
+    sections[sectionKey] = {
+      sectionKey,
+      title: sectionTitle(sectionKey),
+      summary: summarizeKnowledgePackSection(sectionKey, knowledgePack) || `${sectionTitle(sectionKey)} requires reviewer confirmation.`,
+      highYieldFacts: claims.map((claim) => ({
+        claimId: claim.claimId,
+        statement: claim.claimText,
+        sourceIds: [claim.sourceId ?? fallbackSourceId],
+      })),
+      linkedClaimIds,
+      reviewNotes: [],
+    };
+  }
+
+  const claims = (knowledgePack.evidence ?? []).map((/** @type {any} */ claim) => {
+    const sectionKeys = MEDICAL_DOSSIER_SECTION_KEYS.filter((sectionKey) => sections[sectionKey].linkedClaimIds.includes(claim.claimId));
+    return {
+      claimId: claim.claimId,
+      claimText: claim.claimText,
+      sectionKeys: sectionKeys.length > 0 ? sectionKeys : ['pathophysiology'],
+      sourceIds: [claim.sourceId ?? fallbackSourceId],
+      confidence: normalizeConfidence(claim.confidence),
+    };
+  });
+  const missingSections = MEDICAL_DOSSIER_SECTION_KEYS.filter((/** @type {string} */ sectionKey) => (sections[sectionKey].linkedClaimIds ?? []).length === 0);
+  const completedSectionCount = MEDICAL_DOSSIER_SECTION_KEYS.length - missingSections.length;
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('mdos'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    canonicalDiseaseName: knowledgePack.canonicalDiseaseName,
+    aliases: knowledgePack.aliases ?? [knowledgePack.canonicalDiseaseName],
+    ontologyId: knowledgePack.ontologyId,
+    diseaseCategory: knowledgePack.diseaseCategory,
+    sourceDiscoveryReportId: options.sourceDiscoveryReportId,
+    agentRunId: options.agentRunId,
+    knowledgePackId: knowledgePack.id,
+    sections,
+    claims,
+    sourceIds,
+    contradictions: (knowledgePack.evidenceRelationships ?? [])
+      .filter((/** @type {any} */ relationship) => relationship.relationshipType === 'contradicts')
+      .map((/** @type {any} */ relationship) => ({
+        fromClaimId: relationship.fromClaimId,
+        toClaimId: relationship.toClaimId,
+        status: relationship.status,
+        ...(relationship.notes ? { notes: relationship.notes } : {}),
+      })),
+    completeness: {
+      requiredSectionCount: MEDICAL_DOSSIER_SECTION_KEYS.length,
+      completedSectionCount,
+      missingSections,
+      traceabilityScore: claims.length === 0 ? 0 : claims.filter((/** @type {any} */ claim) => claim.sourceIds.length > 0).length / claims.length,
+    },
+    reviewStatus: 'review-required',
+    guidancePackVersionIds: [],
+    generatedAt: options.timestamp,
+    generatedBy: knowledgePack.generationMode === 'local-fixture' ? 'local-fixture-research-assembly' : 'openai-agents-sdk',
+  };
+}
+
+/**
+ * @param {{ workflowRun: any, medicalDossier: any, knowledgePack: any, buildReport: any, agentRunId: string, timestamp: string }} options
+ * @returns {any}
+ */
+function buildMedicalDossierQaReport(options) {
+  const blockingIssues = [
+    ...toStringArray(options.buildReport?.blockingIssues),
+    ...options.medicalDossier.completeness.missingSections.map((/** @type {string} */ sectionKey) => `Missing required medical dossier section: ${sectionKey}.`),
+  ];
+  const sourceGovernanceStatus = options.knowledgePack.generationMode === 'local-fixture'
+    ? 'blocked'
+    : (options.knowledgePack.sourceCatalog ?? []).some((/** @type {any} */ source) => source.reviewState === 'suspended')
+    ? 'blocked'
+    : 'review-required';
+  const contradictionStatus = (options.medicalDossier.contradictions ?? []).some((/** @type {any} */ contradiction) => contradiction.status === 'blocking')
+    ? 'blocking'
+    : ((options.medicalDossier.contradictions ?? []).length > 0 ? 'monitor' : 'clear');
+  const status = blockingIssues.length > 0 || sourceGovernanceStatus === 'blocked' || contradictionStatus === 'blocking'
+    ? 'failed'
+    : 'review-required';
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('mdq'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    medicalDossierId: options.medicalDossier.id,
+    agentRunId: options.agentRunId,
+    status,
+    completenessScore: options.medicalDossier.completeness.completedSectionCount / Math.max(1, options.medicalDossier.completeness.requiredSectionCount),
+    traceabilityScore: options.medicalDossier.completeness.traceabilityScore,
+    sourceGovernanceStatus,
+    contradictionStatus,
+    checks: [
+      {
+        checkId: 'medical-dossier.required-sections',
+        status: options.medicalDossier.completeness.missingSections.length === 0 ? 'passed' : 'failed',
+        message: options.medicalDossier.completeness.missingSections.length === 0
+          ? 'All required high-yield medical sections are present.'
+          : `Missing sections: ${options.medicalDossier.completeness.missingSections.join(', ')}.`,
+      },
+      {
+        checkId: 'medical-dossier.traceability',
+        status: options.medicalDossier.completeness.traceabilityScore >= 0.95 ? 'passed' : 'failed',
+        message: 'Every clinically meaningful claim must link to source records before story generation.',
+      },
+      {
+        checkId: 'medical-dossier.reviewer-gate',
+        status: 'warning',
+        message: 'Reviewer approval is required before the disease can be transformed into a mystery story.',
+      },
+    ],
+    blockingIssues,
+    warnings: [
+      ...toStringArray(options.buildReport?.warnings),
+      'Medical dossier review is required before story, panel, guide, render, eval, or export work can continue.',
+    ],
+    generatedAt: options.timestamp,
+  };
+}
+
+/**
+ * @param {{ workflowRun: any, canonicalDiseaseName: string, medicalDossier: any, buildReport: any, agentRunId: string, timestamp: string }} options
+ * @returns {any}
+ */
+function buildMedicalDossierBuildReport(options) {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: createId('mdb'),
+    tenantId: options.workflowRun.tenantId,
+    workflowRunId: options.workflowRun.id,
+    targetCanonicalDiseaseName: options.canonicalDiseaseName,
+    medicalDossierId: options.medicalDossier.id,
+    agentRunId: options.agentRunId,
+    status: options.buildReport.status,
+    sectionCoverage: {
+      required: options.medicalDossier.completeness.requiredSectionCount,
+      completed: options.medicalDossier.completeness.completedSectionCount,
+    },
+    claimCount: options.medicalDossier.claims.length,
+    sourceCount: options.medicalDossier.sourceIds.length,
+    blockingIssues: toStringArray(options.buildReport.blockingIssues),
+    warnings: [
+      ...toStringArray(options.buildReport.warnings),
+      'Story generation is disabled until a local reviewer approves the medical dossier.',
+    ],
+    missingSections: options.medicalDossier.completeness.missingSections,
+    traceabilityScore: options.medicalDossier.completeness.traceabilityScore,
+    fitForStoryContinuation: false,
+    generatedAt: options.timestamp,
+  };
+}
+
+/**
  * @param {any} buildReport
  * @param {any} knowledgePack
  * @param {{ workflowRun: any, canonicalDiseaseName: string, timestamp: string }} options
@@ -626,6 +1040,99 @@ function normalizeBuildReport(buildReport, knowledgePack, options) {
     missingEvidenceAreas: toStringArray(buildReport?.missingEvidenceAreas),
     fitForStoryContinuation,
     generatedAt: options.timestamp,
+  };
+}
+
+/**
+ * @param {{ workflowRun: any, workflowInput: any, canonicalDisease: any, researchBrief: any, sourceHarvest: any, knowledgePack: any, buildReport: any, responseSources?: any[], agentRunId?: string, agentSteps?: any[], stepSummaries?: Array<{ stepKey: string, agentName: string, outputSummary: string, findings: string[] }>, model: string, timestamp: string, allowedDomains: string[] }} options
+ * @returns {any}
+ */
+function assembleResearchArtifacts(options) {
+  const agentRunId = options.agentRunId ?? createId('arun');
+  const stepSummaries = options.stepSummaries ?? RESEARCH_AGENT_DEFINITIONS.map(([stepKey, agentName]) => ({
+    stepKey,
+    agentName,
+    outputSummary: `${agentName} was represented in the deterministic local assembly path.`,
+    findings: ['No live specialist call was made in this path.'],
+  }));
+  const sourceDiscoveryReport = buildSourceDiscoveryReport({
+    workflowRun: options.workflowRun,
+    agentRunId,
+    canonicalDiseaseName: options.knowledgePack.canonicalDiseaseName,
+    sourceHarvest: options.sourceHarvest,
+    allowedDomains: options.allowedDomains,
+    timestamp: options.timestamp,
+    gaps: options.buildReport.missingEvidenceAreas,
+  });
+  const medicalDossier = buildMedicalDossierFromKnowledgePack(options.knowledgePack, {
+    workflowRun: options.workflowRun,
+    agentRunId,
+    sourceDiscoveryReportId: sourceDiscoveryReport.id,
+    timestamp: options.timestamp,
+  });
+  const medicalDossierBuildReport = buildMedicalDossierBuildReport({
+    workflowRun: options.workflowRun,
+    canonicalDiseaseName: options.knowledgePack.canonicalDiseaseName,
+    medicalDossier,
+    buildReport: options.buildReport,
+    agentRunId,
+    timestamp: options.timestamp,
+  });
+  const medicalDossierQaReport = buildMedicalDossierQaReport({
+    workflowRun: options.workflowRun,
+    medicalDossier,
+    knowledgePack: options.knowledgePack,
+    buildReport: options.buildReport,
+    agentRunId,
+    timestamp: options.timestamp,
+  });
+  const agentSteps = (options.agentSteps ?? stepSummaries.map((stepSummary) => buildAgentStep({
+    workflowRun: options.workflowRun,
+    agentRunId,
+    stepKey: stepSummary.stepKey,
+    agentName: stepSummary.agentName,
+    status: medicalDossierQaReport.status === 'failed' ? 'review-required' : 'succeeded',
+    inputSummary: `Compile ${stepSummary.agentName} contribution for ${options.workflowInput.diseaseName}.`,
+    outputSummary: stepSummary.outputSummary,
+    findings: stepSummary.findings,
+    artifactIds: [medicalDossier.id],
+    timestamp: options.timestamp,
+  })));
+  const agentRun = buildAgentRun(agentSteps, {
+    id: agentRunId,
+    workflowRun: options.workflowRun,
+    model: options.model,
+    status: medicalDossierQaReport.status === 'failed' ? 'review-required' : 'review-required',
+    startedAt: options.timestamp,
+    endedAt: options.timestamp,
+    producedArtifactIds: [
+      sourceDiscoveryReport.id,
+      medicalDossier.id,
+      medicalDossierBuildReport.id,
+      medicalDossierQaReport.id,
+      options.knowledgePack.id,
+    ],
+  });
+
+  return {
+    researchBrief: options.researchBrief,
+    sourceHarvest: options.sourceHarvest,
+    sourceDiscoveryReport,
+    knowledgePack: options.knowledgePack,
+    buildReport: {
+      ...options.buildReport,
+      fitForStoryContinuation: false,
+      warnings: uniqueStrings([
+        ...toStringArray(options.buildReport.warnings),
+        'Medical dossier review is required before story generation.',
+      ]),
+    },
+    medicalDossier,
+    medicalDossierBuildReport,
+    medicalDossierQaReport,
+    agentRun,
+    agentSteps,
+    responseSources: options.responseSources ?? [],
   };
 }
 
@@ -667,15 +1174,17 @@ function parseJsonObject(promptJson) {
 function buildResearchPrompt(diseaseName) {
   return [
     'Return JSON only.',
-    'Research the named disease using the configured file-search knowledge base and allowed web sources, then compile a medically cautious provisional disease knowledge pack.',
+    'Research the named disease using the configured file-search knowledge base and allowed web sources, then compile a medically cautious provisional disease knowledge pack and the source material needed for a high-yield medical dossier.',
     `Disease input: ${diseaseName}.`,
     'You must preserve medical traceability. Every clinically meaningful claim must map to a source catalog entry.',
     'Do not invent unsupported details. If evidence is weak, say so in buildReport.blockingIssues or buildReport.warnings.',
+    'Cover these high-yield sections explicitly in the evidence and clinical summary: epidemiology, etiology, pathophysiology, clinical features, history, exam, labs, imaging, diagnostic criteria, differential diagnosis, treatment, management, complications, prognosis, teaching points, and visual anchors.',
     'Return an object with keys knowledgePack and buildReport.',
     'knowledgePack must include canonicalDiseaseName, aliases, ontologyId, diseaseCategory, educationalFocus, clinicalSummary, physiologyPrerequisites, pathophysiology, presentation, diagnostics, management, evidence, sourceCatalog, clinicalTeachingPoints, visualAnchors, and evidenceRelationships.',
     'Each sourceCatalog entry must include sourceLabel, sourceType, sourceTier, sourceUrl, governanceNotes, and reviewState.',
     'Each evidence entry must include claimText, sourceId, sourceLabel, sourceType, sourceLocator, confidence, claimType, certaintyLevel, diseaseStageApplicability, patientSubgroupApplicability, and importanceRank.',
     'buildReport must include status, fitForStoryContinuation, blockingIssues, warnings, and missingEvidenceAreas. buildReport.status must be one of ready, review-required, or blocked.',
+    'Even if the draft is complete, fitForStoryContinuation must be false until the app records a local reviewer approval of the generated medical dossier.',
   ].join(' ');
 }
 
@@ -721,6 +1230,146 @@ function buildResearchIncludes(knowledgeBaseVectorStoreId, allowedDomains) {
     ...(allowedDomains.length > 0 ? ['web_search_call.action.sources'] : []),
     ...(knowledgeBaseVectorStoreId ? ['output[*].file_search_call.search_results'] : []),
   ];
+}
+
+/**
+ * @param {{ allowedDomains: string[], knowledgeBaseVectorStoreId: string }} options
+ * @returns {Promise<any[]>}
+ */
+async function buildAgentsSdkTools(options) {
+  const { webSearchTool, fileSearchTool } = await import('@openai/agents');
+  return [
+    ...(options.knowledgeBaseVectorStoreId
+      ? [fileSearchTool([options.knowledgeBaseVectorStoreId], {
+        maxNumResults: 8,
+        includeSearchResults: true,
+      })]
+      : []),
+    ...(options.allowedDomains.length > 0
+      ? [webSearchTool({
+        filters: {
+          allowedDomains: options.allowedDomains,
+        },
+        searchContextSize: 'high',
+        userLocation: {
+          type: 'approximate',
+          country: 'US',
+          timezone: 'America/New_York',
+        },
+      })]
+      : []),
+  ];
+}
+
+/**
+ * @param {{ apiKey: string, model: string, allowedDomains: string[], knowledgeBaseVectorStoreId: string, diseaseName: string, canonicalDiseaseName: string }} options
+ * @returns {Promise<{ parsed: Record<string, unknown>, stepSummaries: Array<{ stepKey: string, agentName: string, outputSummary: string, findings: string[] }> }>}
+ */
+async function runAgentsSdkResearchAssembly(options) {
+  const {
+    Agent,
+    run,
+    setDefaultOpenAIKey,
+    setTracingDisabled,
+  } = await import('@openai/agents');
+  setDefaultOpenAIKey(options.apiKey);
+  setTracingDisabled(process.env.OPENAI_AGENTS_DISABLE_TRACING !== 'false');
+
+  const tools = await buildAgentsSdkTools({
+    allowedDomains: options.allowedDomains,
+    knowledgeBaseVectorStoreId: options.knowledgeBaseVectorStoreId,
+  });
+  const specialistSummaries = [];
+
+  for (const [stepKey, agentName] of RESEARCH_AGENT_DEFINITIONS.slice(0, -2)) {
+    const agent = new Agent({
+      name: agentName,
+      model: options.model,
+      tools,
+      modelSettings: {
+        reasoning: { effort: 'low' },
+        text: { verbosity: 'low' },
+      },
+      instructions: [
+        'You are a medical education research specialist inside a local reviewer-gated pipeline.',
+        'Use only reliable medical sources from the configured tools. Do not invent clinical facts.',
+        'Return compact JSON only: {"findings":["..."],"warnings":["..."],"sourceNotes":["..."]}.',
+        'Every finding should be high-yield and should name the clinical section it supports.',
+      ].join(' '),
+    });
+    const result = await run(agent, [
+      `Disease: ${options.diseaseName}.`,
+      `Canonical target: ${options.canonicalDiseaseName}.`,
+      `Specialist step: ${agentName}.`,
+      'Find high-yield facts for the medical dossier. Preserve uncertainty and source needs.',
+    ].join('\n'), {
+      maxTurns: 4,
+    });
+    const outputText = String(result.finalOutput ?? '').trim();
+    /** @type {Record<string, unknown>} */
+    let outputJson = {};
+
+    try {
+      outputJson = parseJsonObject(outputText);
+    } catch {
+      outputJson = { findings: [outputText.slice(0, 800)], warnings: ['Specialist output required JSON normalization.'] };
+    }
+
+    specialistSummaries.push({
+      stepKey,
+      agentName,
+      outputSummary: toStringArray(outputJson.findings).slice(0, 3).join(' ') || outputText.slice(0, 240),
+      findings: [
+        ...toStringArray(outputJson.findings),
+        ...toStringArray(outputJson.warnings),
+      ].slice(0, 8),
+    });
+  }
+
+  const synthesisAgent = new Agent({
+    name: 'Evidence Synthesis Agent',
+    model: options.model,
+    tools,
+    modelSettings: {
+      reasoning: { effort: 'medium' },
+      text: { verbosity: 'medium' },
+    },
+    instructions: [
+      'You compile source-traceable medical education dossiers for a comic mystery pipeline.',
+      'Return JSON only with keys knowledgePack and buildReport.',
+      'knowledgePack must include canonicalDiseaseName, aliases, ontologyId, diseaseCategory, educationalFocus, clinicalSummary, physiologyPrerequisites, pathophysiology, presentation, diagnostics, management, evidence, sourceCatalog, clinicalTeachingPoints, visualAnchors, and evidenceRelationships.',
+      'Every evidence claim must link to a sourceCatalog id. Make claims specific enough for story, panel, and render planning.',
+      'Cover epidemiology, etiology, pathophysiology, clinical features, history, exam, labs, imaging, diagnostic criteria, differential diagnosis, treatment, management, complications, prognosis, teaching points, and visual anchors.',
+      'buildReport.status must be ready, review-required, or blocked. buildReport.fitForStoryContinuation must be false until reviewer approval.',
+    ].join(' '),
+  });
+  const synthesisResult = await run(synthesisAgent, [
+    buildResearchPrompt(options.diseaseName),
+    'Specialist summaries:',
+    JSON.stringify(specialistSummaries, null, 2),
+  ].join('\n'), {
+    maxTurns: 6,
+  });
+  const synthesisText = String(synthesisResult.finalOutput ?? '').trim();
+  const parsed = parseJsonObject(synthesisText);
+
+  specialistSummaries.push({
+    stepKey: 'evidence-synthesis',
+    agentName: 'Evidence Synthesis Agent',
+    outputSummary: 'Compiled the normalized disease knowledge pack draft and dossier inputs.',
+    findings: ['Generated source-linked knowledge pack JSON for deterministic dossier compilation.'],
+  });
+  specialistSummaries.push({
+    stepKey: 'medical-dossier-qa',
+    agentName: 'Medical Dossier QA Agent',
+    outputSummary: 'Deterministic dossier QA runs after schema normalization and before reviewer approval.',
+    findings: ['The app will block story generation until the dossier is reviewed locally.'],
+  });
+
+  return {
+    parsed,
+    stepSummaries: specialistSummaries,
+  };
 }
 
 /**
@@ -797,6 +1446,64 @@ async function repairResearchJson(options) {
 
   const payload = await response.json();
   return parseJsonObject(extractOutputText(payload));
+}
+
+/**
+ * @param {any} compiled
+ * @param {{ workflowRun: any, workflowInput: any, canonicalDisease: any }} options
+ * @param {{ model: string, allowedDomains: string[] }} context
+ * @returns {any}
+ */
+export function normalizeCompiledResearchAssembly(compiled, options, context) {
+  if (compiled?.medicalDossier && compiled?.medicalDossierBuildReport && compiled?.medicalDossierQaReport && compiled?.agentRun) {
+    return {
+      ...compiled,
+      buildReport: {
+        ...compiled.buildReport,
+        fitForStoryContinuation: false,
+      },
+    };
+  }
+
+  const timestamp = compiled?.buildReport?.generatedAt ?? compiled?.knowledgePack?.generatedAt ?? new Date().toISOString();
+  const canonicalDiseaseName = compiled?.knowledgePack?.canonicalDiseaseName
+    ?? options.canonicalDisease.canonicalDiseaseName
+    ?? toCanonicalDiseaseLabel(options.workflowInput.diseaseName);
+  const knowledgePack = normalizeKnowledgePack(compiled?.knowledgePack ?? {}, {
+    canonicalDiseaseName,
+    workflowRunId: options.workflowRun.id,
+    timestamp,
+  });
+  const sourceHarvest = compiled?.sourceHarvest ?? buildSourceHarvest(compiled?.responseSources ?? [], knowledgePack, {
+    workflowRun: options.workflowRun,
+    canonicalDiseaseName: knowledgePack.canonicalDiseaseName,
+    timestamp,
+  });
+  const buildReport = normalizeBuildReport(compiled?.buildReport ?? {}, knowledgePack, {
+    workflowRun: options.workflowRun,
+    canonicalDiseaseName: knowledgePack.canonicalDiseaseName,
+    timestamp,
+  });
+  const researchBrief = compiled?.researchBrief ?? buildResearchBrief({
+    workflowRun: options.workflowRun,
+    workflowInput: options.workflowInput,
+    canonicalDisease: options.canonicalDisease,
+    allowedDomains: context.allowedDomains,
+  });
+
+  return assembleResearchArtifacts({
+    workflowRun: options.workflowRun,
+    workflowInput: options.workflowInput,
+    canonicalDisease: options.canonicalDisease,
+    researchBrief,
+    sourceHarvest,
+    knowledgePack,
+    buildReport,
+    model: context.model,
+    timestamp,
+    allowedDomains: context.allowedDomains,
+    responseSources: compiled?.responseSources ?? [],
+  });
 }
 
 /**
@@ -984,8 +1691,10 @@ function compileLocalFixtureKnowledgePack(options) {
   };
   const buildReport = normalizeBuildReport({
     status: 'review-required',
-    fitForStoryContinuation: true,
-    blockingIssues: [],
+    fitForStoryContinuation: false,
+    blockingIssues: [
+      'Local fixture mode did not perform live medical research and cannot proceed to story generation without reviewer-approved dossier completion.',
+    ],
     warnings: [
       'No OpenAI API key was configured, so no live medical research was performed.',
       'This provisional pack is suitable for local workflow testing only until reviewer-approved evidence is added or accepted.',
@@ -1002,13 +1711,19 @@ function compileLocalFixtureKnowledgePack(options) {
     timestamp,
   });
 
-  return {
+  return assembleResearchArtifacts({
+    workflowRun: options.workflowRun,
+    workflowInput: options.workflowInput,
+    canonicalDisease: options.canonicalDisease,
     researchBrief,
     sourceHarvest,
     knowledgePack,
     buildReport,
+    model: 'local-fixture',
+    timestamp,
+    allowedDomains: [],
     responseSources: [],
-  };
+  });
 }
 
 export class ResearchAssemblyService {
@@ -1017,6 +1732,7 @@ export class ResearchAssemblyService {
    */
   constructor(options = {}) {
     this.apiKey = options.apiKey ?? process.env.OPENAI_API_KEY ?? '';
+    this.hasCustomFetchImpl = typeof options.fetchImpl === 'function';
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.model = options.model ?? readNonEmptyEnv(process.env.OPENAI_RESEARCH_MODEL) ?? readNonEmptyEnv(process.env.MMS_MODEL) ?? 'gpt-5.2';
     this.allowedDomains = options.allowedDomains ?? DEFAULT_ALLOWED_DOMAINS;
@@ -1030,7 +1746,11 @@ export class ResearchAssemblyService {
    */
   async compileProvisionalKnowledgePack(options) {
     if (typeof this.compiler === 'function') {
-      return this.compiler(options);
+      const compiled = await this.compiler(options);
+      return normalizeCompiledResearchAssembly(compiled, options, {
+        model: this.model,
+        allowedDomains: [...this.allowedDomains],
+      });
     }
 
     if (!this.apiKey) {
@@ -1045,48 +1765,64 @@ export class ResearchAssemblyService {
       knowledgeBaseVectorStoreId: this.knowledgeBaseVectorStoreId,
     });
     const timestamp = new Date().toISOString();
-    const tools = buildResearchTools([...this.allowedDomains], this.knowledgeBaseVectorStoreId);
-    const input = buildResearchPrompt(options.workflowInput.diseaseName);
-    const response = await this.fetchImpl('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${this.apiKey}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(buildResponsesRequestBody(
-        this.model,
-        tools,
-        buildResearchIncludes(this.knowledgeBaseVectorStoreId, [...this.allowedDomains]),
-        input,
-      )),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Research assembly request failed: ${response.status} ${response.statusText}. ${text}`);
-    }
-
-    const payload = await response.json();
-    const outputText = extractOutputText(payload);
     let parsed;
+    let stepSummaries;
+    let responseSources = [];
 
-    try {
-      parsed = parseJsonObject(outputText);
-    } catch (error) {
-      parsed = await repairResearchJson({
+    if (!this.hasCustomFetchImpl) {
+      const agentResult = await runAgentsSdkResearchAssembly({
         apiKey: this.apiKey,
-        fetchImpl: this.fetchImpl,
         model: this.model,
+        allowedDomains: [...this.allowedDomains],
+        knowledgeBaseVectorStoreId: this.knowledgeBaseVectorStoreId,
         diseaseName: options.workflowInput.diseaseName,
-        originalText: outputText,
+        canonicalDiseaseName: options.canonicalDisease.canonicalDiseaseName ?? toCanonicalDiseaseLabel(options.workflowInput.diseaseName),
       });
+      parsed = agentResult.parsed;
+      stepSummaries = agentResult.stepSummaries;
+    } else {
+      const tools = buildResearchTools([...this.allowedDomains], this.knowledgeBaseVectorStoreId);
+      const input = buildResearchPrompt(options.workflowInput.diseaseName);
+      const response = await this.fetchImpl('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(buildResponsesRequestBody(
+          this.model,
+          tools,
+          buildResearchIncludes(this.knowledgeBaseVectorStoreId, [...this.allowedDomains]),
+          input,
+        )),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Research assembly request failed: ${response.status} ${response.statusText}. ${text}`);
+      }
+
+      const payload = await response.json();
+      const outputText = extractOutputText(payload);
+      responseSources = collectResponseSources(payload);
+
+      try {
+        parsed = parseJsonObject(outputText);
+      } catch (error) {
+        parsed = await repairResearchJson({
+          apiKey: this.apiKey,
+          fetchImpl: this.fetchImpl,
+          model: this.model,
+          diseaseName: options.workflowInput.diseaseName,
+          originalText: outputText,
+        });
+      }
     }
     const knowledgePack = normalizeKnowledgePack(parsed.knowledgePack, {
       canonicalDiseaseName: options.canonicalDisease.canonicalDiseaseName ?? toCanonicalDiseaseLabel(options.workflowInput.diseaseName),
       workflowRunId: options.workflowRun.id,
       timestamp,
     });
-    const responseSources = collectResponseSources(payload);
     const sourceHarvest = buildSourceHarvest(responseSources, knowledgePack, {
       workflowRun: options.workflowRun,
       canonicalDiseaseName: knowledgePack.canonicalDiseaseName,
@@ -1098,13 +1834,20 @@ export class ResearchAssemblyService {
       timestamp,
     });
 
-    return {
+    return assembleResearchArtifacts({
+      workflowRun: options.workflowRun,
+      workflowInput: options.workflowInput,
+      canonicalDisease: options.canonicalDisease,
       researchBrief,
       sourceHarvest,
       knowledgePack,
       buildReport,
+      model: this.model,
+      timestamp,
+      allowedDomains: [...this.allowedDomains],
+      stepSummaries,
       responseSources,
-    };
+    });
   }
 }
 

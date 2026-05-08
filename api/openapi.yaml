@@ -264,6 +264,112 @@ paths:
             application/json:
               schema:
                 $ref: '../contracts/research-brief.schema.json'
+  /api/v1/workflow-runs/{runId}/medical-dossier:
+    get:
+      summary: Get the high-yield medical dossier for a workflow run
+      operationId: getWorkflowRunMedicalDossier
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Medical dossier
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/medical-dossier.schema.json'
+  /api/v1/workflow-runs/{runId}/medical-dossier/review-decisions:
+    post:
+      summary: Record a local reviewer decision for the latest medical dossier
+      operationId: reviewWorkflowRunMedicalDossier
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - decision
+              properties:
+                decision:
+                  type: string
+                  enum:
+                    - approved
+                    - request-changes
+                    - rejected
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Updated workflow run
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/workflow-run.schema.json'
+  /api/v1/workflow-runs/{runId}/agent-runs/research:
+    post:
+      summary: Run or rerun the disease research agent graph for a workflow run
+      operationId: runWorkflowRunResearchAgents
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated workflow run paused for medical dossier review
+          content:
+            application/json:
+              schema:
+                $ref: '../contracts/workflow-run.schema.json'
+  /api/v1/workflow-runs/{runId}/agent-runs:
+    get:
+      summary: List agent runs for a workflow run
+      operationId: listWorkflowRunAgentRuns
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../contracts/agent-run.schema.json'
+  /api/v1/agent-runs/{agentRunId}:
+    get:
+      summary: Get one agent run and its step details
+      operationId: getAgentRun
+      parameters:
+        - in: path
+          name: agentRunId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent run detail
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '../contracts/agent-run.schema.json'
   /api/v1/workflow-runs/{runId}/knowledge-pack-build-report:
     get:
       summary: Get the provisional knowledge-pack build report for a workflow run

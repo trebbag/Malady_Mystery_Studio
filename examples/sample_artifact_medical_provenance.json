@@ -1,0 +1,13 @@
+{
+  "sourceMode": "agent-medical-dossier",
+  "medicalDossierId": "mds.hcc.001",
+  "medicalDossierReviewDecisionId": "mdrd.hcc.001",
+  "agentRunId": "agr.hcc.001",
+  "sourceDiscoveryReportId": "sdr.hcc.001",
+  "diseaseKnowledgePackId": "dkp.hcc.001",
+  "diseasePacketId": "dpk.hcc.001",
+  "reviewStatus": "approved",
+  "reviewedBy": "local-operator",
+  "reviewedAt": "2026-05-08T12:00:00.000Z",
+  "capturedAt": "2026-05-08T12:01:00.000Z"
+}

@@ -28,6 +28,13 @@
       "runId": "run.cap.001",
       "projectTitle": "Community-acquired pneumonia starter project",
       "diseaseName": "Community-acquired pneumonia",
+      "friendlyStatus": "Local release bundle is available.",
+      "activeStep": "complete",
+      "nextAction": {
+        "label": "Open latest export",
+        "targetPath": "/runs/run.cap.001/export",
+        "actionId": "open-export"
+      },
       "state": "approved",
       "currentStage": "export",
       "assignees": [
@@ -45,6 +52,15 @@
       "runId": "run.meningitis.001",
       "projectTitle": "Bacterial meningitis starter project",
       "diseaseName": "Bacterial meningitis",
+      "friendlyStatus": "Clinical review is required before story generation can continue.",
+      "activeStep": "clinical-review",
+      "primaryBlocker": "Clinical review is required before story generation can continue.",
+      "nextAction": {
+        "label": "Review clinical package",
+        "targetPath": "/runs/run.meningitis.001/clinical-review",
+        "actionId": "clinical-review",
+        "disabledReason": "Clinical review is required before story generation can continue."
+      },
       "state": "review",
       "currentStage": "disease-packet",
       "assignees": [

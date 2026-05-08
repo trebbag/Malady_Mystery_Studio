@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +11,10 @@ import {
   getExamplePathForSchema,
   listContractFiles,
 } from '../packages/shared-config/src/schema-registry.mjs';
+import {
+  loadGuidanceIndex,
+  validateGuidanceIndex,
+} from '../packages/shared-config/src/agent-guidance.mjs';
 import { findRepoRoot } from '../packages/shared-config/src/repo-paths.mjs';
 import { createSeedDiseaseLibrary } from '../services/clinical-retrieval/src/disease-library.mjs';
 
@@ -20,12 +25,14 @@ const REQUIRED_FILES = [
   'api/openapi.yaml',
   'docs/backlog/milestone-plan.md',
   'docs/master-spec.md',
+  'docs/expert-guidance/README.md',
   'docs/repo-map.md',
   'docs/prompts/codex-plan.md',
   'evals/registry.yaml',
   'evals/thresholds.yaml',
   'package.json',
   'pnpm-workspace.yaml',
+  'data/agent-guidance/guidance-index.json',
   'services/orchestrator/workflow-state-machine.yaml',
   'tsconfig.json',
 ];
@@ -56,6 +63,38 @@ const JSONL_DATASETS = [
  */
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'));
+}
+
+/**
+ * @param {string} rootDir
+ * @param {Awaited<ReturnType<typeof createSchemaRegistry>>} schemaRegistry
+ * @returns {{ failures: string[], validatedGuidancePacks: number }}
+ */
+function validateAgentGuidance(rootDir, schemaRegistry) {
+  const failures = [];
+  const index = loadGuidanceIndex(rootDir);
+  failures.push(...validateGuidanceIndex(index, rootDir));
+  let validatedGuidancePacks = 0;
+
+  for (const packEntry of Array.isArray(index.guidancePacks) ? index.guidancePacks : []) {
+    try {
+      const pack = JSON.parse(readFileSync(resolveFromRoot(rootDir, packEntry.path), 'utf8'));
+      const result = schemaRegistry.validateBySchemaId('contracts/agent-guidance-pack.schema.json', pack);
+
+      if (!result.valid) {
+        failures.push(`Agent guidance pack validation failed for ${packEntry.path}\n${formatValidationErrors(result.errors)}`);
+      } else {
+        validatedGuidancePacks += 1;
+      }
+    } catch (error) {
+      failures.push(`Unable to validate agent guidance pack ${packEntry.path}: ${String(error)}`);
+    }
+  }
+
+  return {
+    failures,
+    validatedGuidancePacks,
+  };
 }
 
 /**
@@ -362,6 +401,8 @@ export async function validateRepoPack(rootDir = findRepoRoot(import.meta.url)) 
 
   const knowledgePackValidation = validateKnowledgePacks(rootDir, schemaRegistry);
   failures.push(...knowledgePackValidation.failures);
+  const agentGuidanceValidation = validateAgentGuidance(rootDir, schemaRegistry);
+  failures.push(...agentGuidanceValidation.failures);
 
   const evaluationSchemaId = 'contracts/evaluation-case.schema.json';
   let datasetRows = 0;
@@ -398,6 +439,7 @@ export async function validateRepoPack(rootDir = findRepoRoot(import.meta.url)) 
       exampleArtifactsValidated: validatedExamples,
       knowledgePacksValidated: knowledgePackValidation.validatedKnowledgePacks,
       promotedKnowledgePacksValidated: knowledgePackValidation.promotedKnowledgePacks,
+      agentGuidancePacksValidated: agentGuidanceValidation.validatedGuidancePacks,
       schemaFilesLoaded: schemaRegistry.schemaIds.length,
       workflowConfigsParsed: YAML_FILES.length,
       workflowRowsValidated: datasetRows,
@@ -422,6 +464,7 @@ async function main() {
   console.log(`Loaded ${stats.schemaFilesLoaded} contract schemas.`);
   console.log(`Validated ${stats.exampleArtifactsValidated} example artifacts.`);
   console.log(`Validated ${stats.knowledgePacksValidated} governed knowledge packs (${stats.promotedKnowledgePacksValidated} promoted).`);
+  console.log(`Validated ${stats.agentGuidancePacksValidated} agent guidance packs.`);
   console.log(`Validated ${stats.workflowRowsValidated} eval dataset rows.`);
   console.log(`Parsed ${stats.workflowConfigsParsed} YAML configs.`);
 }

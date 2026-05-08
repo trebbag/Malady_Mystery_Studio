@@ -4,6 +4,7 @@ This repo currently contains a backend/runtime and a frontend placeholder/prep l
 
 ## What is fixed
 
+- The active Figma direction in [`creator-operator-figma-design.md`](/Users/gregorygabbert/Documents/GitHub/MaladyMysteryStudio/docs/ui/creator-operator-figma-design.md)
 - The route inventory in `apps/web/src/route-manifest.mjs`
 - The named placeholder responsibilities in `apps/web/src/component-map.mjs`
 - The per-route states, banners, and component slots in `apps/web/src/page-shells.mjs`

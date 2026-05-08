@@ -221,6 +221,35 @@ async function queueRenderJob(baseUrl, runId) {
   return response.json();
 }
 
+/**
+ * @param {string} baseUrl
+ * @param {string} renderJobId
+ * @returns {Promise<any>}
+ */
+async function recordStructuralRenderedPanelQa(baseUrl, renderJobId) {
+  const detailResponse = await fetch(`${baseUrl}/api/v1/render-jobs/${encodeURIComponent(renderJobId)}`);
+  assert.equal(detailResponse.status, 200, await detailResponse.clone().text());
+  const renderJobDetail = await detailResponse.json();
+  assert.ok(renderJobDetail.renderedAssetManifest?.id);
+
+  const qaDecisionResponse = await fetch(`${baseUrl}/api/v1/rendered-asset-manifests/${encodeURIComponent(renderJobDetail.renderedAssetManifest.id)}/qa-decisions`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      decision: 'structural-only',
+      notes: 'Stub render QA recorded during local structural evaluation.',
+    }),
+  });
+  assert.equal(qaDecisionResponse.status, 201, await qaDecisionResponse.clone().text());
+
+  return {
+    renderJobDetail,
+    qaDecision: await qaDecisionResponse.json(),
+  };
+}
+
 test('local review pages load without sign-in and auth routes are gone', async () => {
   const sandbox = await createSandbox();
   const app = await startServer(sandbox);
@@ -530,6 +559,7 @@ test('evaluations persist, appear in the review UI, and gate export', async () =
     const renderJobPayload = await queueRenderJob(app.baseUrl, workflowRun.id);
     assert.ok(renderJobPayload.renderJob.renderingGuideId);
     assert.ok(renderJobPayload.renderJob.visualReferencePackId);
+    await recordStructuralRenderedPanelQa(app.baseUrl, renderJobPayload.renderJob.id);
 
     const postRenderRunResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}`);
     workflowRun = await postRenderRunResponse.json();
@@ -859,11 +889,14 @@ test('free-text disease input can compile through agent research into a provisio
     const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
 
     assert.equal(workflowRun.state, 'review');
-    assert.equal(workflowRun.currentStage, 'render-prep');
-    assert.equal(workflowRun.pauseReason, 'render-guide-review-required');
+    assert.equal(workflowRun.currentStage, 'research-assembly');
+    assert.equal(workflowRun.pauseReason, 'medical-dossier-review-required');
     assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'research-brief'), true);
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'agent-run'), true);
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'medical-dossier'), true);
     assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'disease-knowledge-pack'), true);
-    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'visual-reference-pack'), true);
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'story-workbook'), false);
+    assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'visual-reference-pack'), false);
     assert.equal(workflowRun.artifacts.some((/** @type {{ artifactType: string }} */ artifact) => artifact.artifactType === 'rendered-asset-manifest'), false);
 
     const researchBriefResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/research-brief`);
@@ -874,7 +907,14 @@ test('free-text disease input can compile through agent research into a provisio
     const buildReportResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/knowledge-pack-build-report`);
     assert.equal(buildReportResponse.status, 200);
     const buildReport = await buildReportResponse.json();
-    assert.equal(buildReport.fitForStoryContinuation, true);
+    assert.equal(buildReport.fitForStoryContinuation, false);
+
+    const dossierResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/medical-dossier`);
+    assert.equal(dossierResponse.status, 200);
+    const dossier = await dossierResponse.json();
+    assert.equal(dossier.reviewStatus, 'review-required');
+    assert.equal(dossier.completeness.requiredSectionCount, 16);
+    const originalDossierId = dossier.id;
 
     const blockedExportResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/exports`, {
       method: 'POST',
@@ -885,17 +925,54 @@ test('free-text disease input can compile through agent research into a provisio
     });
     assert.equal(blockedExportResponse.status, 409);
 
-    const approvePackResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/knowledge-pack/approve`, {
+    const approveDossierResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/medical-dossier/review-decisions`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
         decision: 'approved',
-        reason: 'Local reviewer approved the provisional pack for this run.',
+        notes: 'Local reviewer approved the medical dossier for clinical package generation.',
       }),
     });
-    assert.equal(approvePackResponse.status, 200);
+    assert.equal(approveDossierResponse.status, 200);
+    const afterDossierApproval = await approveDossierResponse.json();
+    assert.equal(afterDossierApproval.currentStage, 'disease-packet');
+    assert.equal(afterDossierApproval.pauseReason, 'clinical-governance-review-required');
+
+    const regenerateResearchResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/agent-runs/research`, {
+      method: 'POST',
+    });
+    assert.equal(regenerateResearchResponse.status, 200, await regenerateResearchResponse.clone().text());
+    const afterResearchRegeneration = await regenerateResearchResponse.json();
+    assert.equal(afterResearchRegeneration.currentStage, 'research-assembly');
+    assert.equal(afterResearchRegeneration.pauseReason, 'medical-dossier-review-required');
+
+    const regeneratedDossierResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/medical-dossier`);
+    assert.equal(regeneratedDossierResponse.status, 200);
+    const regeneratedDossier = await regeneratedDossierResponse.json();
+    assert.notEqual(regeneratedDossier.id, originalDossierId);
+    assert.equal(regeneratedDossier.reviewStatus, 'review-required');
+
+    const approveRegeneratedPackResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/knowledge-pack/approve`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ notes: 'Approve regenerated pack only to isolate the dossier stale gate.' }),
+    });
+    assert.equal(approveRegeneratedPackResponse.status, 200);
+
+    const staleDossierExportResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/exports`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ version: 'lch-stale-dossier' }),
+    });
+    assert.equal(staleDossierExportResponse.status, 409);
+    const staleDossierExportPayload = await staleDossierExportResponse.json();
+    assert.match(staleDossierExportPayload.error, /latest medical dossier/i);
   } finally {
     await app.close();
     await sandbox.cleanup();
@@ -919,24 +996,27 @@ test('free-text disease input falls back to local fixture research without an AP
     const workflowRun = await startWorkflowRun(app.baseUrl, project.id);
 
     assert.equal(workflowRun.state, 'review');
-    assert.equal(workflowRun.currentStage, 'render-prep');
-    assert.equal(workflowRun.pauseReason, 'render-guide-review-required');
+    assert.equal(workflowRun.currentStage, 'research-assembly');
+    assert.equal(workflowRun.pauseReason, 'medical-dossier-review-required');
 
-    const artifactListResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/artifacts?artifactType=disease-knowledge-pack,source-harvest&expand=true`);
+    const artifactListResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/artifacts?artifactType=disease-knowledge-pack,source-harvest,medical-dossier&expand=true`);
     assert.equal(artifactListResponse.status, 200);
     const artifactList = await artifactListResponse.json();
     const knowledgePack = artifactList.artifacts.find((/** @type {any} */ artifact) => artifact.artifactType === 'disease-knowledge-pack')?.payload;
     const sourceHarvest = artifactList.artifacts.find((/** @type {any} */ artifact) => artifact.artifactType === 'source-harvest')?.payload;
+    const medicalDossier = artifactList.artifacts.find((/** @type {any} */ artifact) => artifact.artifactType === 'medical-dossier')?.payload;
 
     assert.equal(knowledgePack.generationMode, 'local-fixture');
     assert.equal(knowledgePack.packStatus, 'provisional');
     assert.equal(knowledgePack.sourceOrigins['local-fixture'], 1);
     assert.equal(sourceHarvest.sources[0].origin, 'local-fixture');
+    assert.equal(medicalDossier.reviewStatus, 'review-required');
+    assert.equal(medicalDossier.generatedBy, 'local-fixture-research-assembly');
 
     const buildReportResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/knowledge-pack-build-report`);
     assert.equal(buildReportResponse.status, 200);
     const buildReport = await buildReportResponse.json();
-    assert.equal(buildReport.status, 'review-required');
+    assert.equal(buildReport.status, 'blocked');
     assert.match(buildReport.warnings.join(' '), /No OpenAI API key/u);
 
     const blockedExportResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}/exports`, {
@@ -1119,7 +1199,8 @@ test('workflow runs and eval state persist across restart', async () => {
     });
     let workflowRun = await startWorkflowRun(app.baseUrl, project.id);
     await approveRenderingGuide(app.baseUrl, workflowRun.id);
-    await queueRenderJob(app.baseUrl, workflowRun.id);
+    const renderJobPayload = await queueRenderJob(app.baseUrl, workflowRun.id);
+    await recordStructuralRenderedPanelQa(app.baseUrl, renderJobPayload.renderJob.id);
     const postRenderRunResponse = await fetch(`${app.baseUrl}/api/v1/workflow-runs/${encodeURIComponent(workflowRun.id)}`);
     workflowRun = await postRenderRunResponse.json();
     workflowRun = await submitApproval(app.baseUrl, workflowRun.id, 'clinical');
@@ -1232,7 +1313,7 @@ test('built web assets are served while debug pages remain available', async () 
       redirect: 'manual',
     });
     assert.equal(legacyReviewResponse.status, 302);
-    assert.equal(legacyReviewResponse.headers.get('location'), '/runs/run.example.001/review');
+    assert.equal(legacyReviewResponse.headers.get('location'), '/runs/run.example.001/overview');
 
     const debugReviewResponse = await fetch(`${app.baseUrl}/debug/review`);
     assert.equal(debugReviewResponse.status, 200);

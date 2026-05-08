@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/medical-dossier-qa-report.schema.json",
+  "title": "MedicalDossierQaReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "medicalDossierId",
+    "status",
+    "completenessScore",
+    "traceabilityScore",
+    "sourceGovernanceStatus",
+    "contradictionStatus",
+    "checks",
+    "blockingIssues",
+    "warnings",
+    "generatedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "medicalDossierId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "agentRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "status": { "type": "string", "enum": ["passed", "review-required", "failed"] },
+    "completenessScore": { "type": "number", "minimum": 0, "maximum": 1 },
+    "traceabilityScore": { "type": "number", "minimum": 0, "maximum": 1 },
+    "sourceGovernanceStatus": { "type": "string", "enum": ["approved", "review-required", "blocked"] },
+    "contradictionStatus": { "type": "string", "enum": ["clear", "monitor", "blocking"] },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["checkId", "status", "message"],
+        "properties": {
+          "checkId": { "type": "string" },
+          "status": { "type": "string", "enum": ["passed", "warning", "failed"] },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "blockingIssues": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  }
+}

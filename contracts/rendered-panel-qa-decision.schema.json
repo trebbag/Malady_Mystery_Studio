@@ -23,6 +23,38 @@
     "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
     "renderedAssetManifestId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
     "renderJobId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "guidancePackVersionIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      }
+    },
+    "sourceGuidanceProvenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "guidancePackId",
+          "version",
+          "ruleIds",
+          "sourceDocIds"
+        ],
+        "properties": {
+          "guidancePackId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "version": { "type": "string" },
+          "ruleIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          },
+          "sourceDocIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          }
+        }
+      }
+    },
     "decision": { "type": "string", "enum": ["approved", "changes-requested", "rejected", "structural-only"] },
     "checklist": {
       "type": "object",

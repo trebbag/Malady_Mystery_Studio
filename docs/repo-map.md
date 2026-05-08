@@ -13,8 +13,12 @@ CI workflows and repository automation. Keep quality gates here so pull requests
 ### `docs/`
 Product, architecture, operational, and planning documents. The canonical long-form spec lives here.
 
+Expert source documents approved for agent behavior live under `docs/expert-guidance/source-material/`. Runtime services should cite their distilled guidance pack IDs instead of embedding long raw excerpts.
+
 ### `data/`
 Local non-secret canon and compatibility seed data. The default `data/canon` files mirror the previous ClinicalEducation character/style/deck profile surface without copying secrets or provider-specific legacy runtime labels.
+
+`data/agent-guidance/` stores versioned, machine-readable guidance packs for story craft, panel adaptation, and `gpt-image-2` prompt/render QA.
 
 ### `docs/adr/`
 Architecture Decision Records. Use ADRs when making durable technical decisions or introducing breaking changes.

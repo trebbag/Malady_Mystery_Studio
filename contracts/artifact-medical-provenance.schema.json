@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/artifact-medical-provenance.schema.json",
+  "title": "ArtifactMedicalProvenance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sourceMode",
+    "reviewStatus",
+    "capturedAt"
+  ],
+  "properties": {
+    "sourceMode": {
+      "type": "string",
+      "enum": [
+        "agent-medical-dossier",
+        "governed-library",
+        "legacy"
+      ]
+    },
+    "medicalDossierId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "medicalDossierReviewDecisionId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "agentRunId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "sourceDiscoveryReportId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "diseaseKnowledgePackId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "diseasePacketId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "reviewStatus": {
+      "type": "string",
+      "enum": [
+        "not-required",
+        "review-required",
+        "approved",
+        "changes-requested",
+        "rejected",
+        "legacy"
+      ]
+    },
+    "reviewedBy": {
+      "type": "string"
+    },
+    "reviewedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

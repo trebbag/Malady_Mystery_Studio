@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/story-craft-report.schema.json",
+  "title": "StoryCraftReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "storyWorkbookId",
+    "diseasePacketId",
+    "guidancePackVersionIds",
+    "sourceGuidanceProvenance",
+    "beforeCaseBaseline",
+    "centralCaseQuestion",
+    "hiddenTruthTimeline",
+    "investigationTimeline",
+    "audienceInterpretationTimeline",
+    "clueLedger",
+    "redHerringAudit",
+    "fairRevealProofChain",
+    "repairCodaPlan",
+    "storyDnaRotation",
+    "findings",
+    "gateStatus",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "storyWorkbookId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "diseasePacketId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "medicalProvenance": {
+      "$ref": "artifact-medical-provenance.schema.json"
+    },
+    "guidancePackVersionIds": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+    },
+    "sourceGuidanceProvenance": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["guidancePackId", "version", "ruleIds", "sourceDocIds"],
+        "properties": {
+          "guidancePackId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "version": { "type": "string" },
+          "ruleIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          },
+          "sourceDocIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          }
+        }
+      }
+    },
+    "beforeCaseBaseline": { "type": "string" },
+    "centralCaseQuestion": { "type": "string" },
+    "hiddenTruthTimeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "event", "linkedClaimIds"],
+        "properties": {
+          "order": { "type": "integer", "minimum": 1 },
+          "event": { "type": "string" },
+          "linkedClaimIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          }
+        }
+      }
+    },
+    "investigationTimeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "detectiveAction", "readerKnowledge"],
+        "properties": {
+          "order": { "type": "integer", "minimum": 1 },
+          "detectiveAction": { "type": "string" },
+          "readerKnowledge": { "type": "string" }
+        }
+      }
+    },
+    "audienceInterpretationTimeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "expectedInterpretation", "controlledMisread"],
+        "properties": {
+          "order": { "type": "integer", "minimum": 1 },
+          "expectedInterpretation": { "type": "string" },
+          "controlledMisread": { "type": "string" }
+        }
+      }
+    },
+    "clueLedger": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "clueId",
+          "clue",
+          "plant",
+          "misread",
+          "pressure",
+          "retrieve",
+          "reframe",
+          "revealUse",
+          "linkedClaimIds"
+        ],
+        "properties": {
+          "clueId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "clue": { "type": "string" },
+          "plant": { "type": "string" },
+          "misread": { "type": "string" },
+          "pressure": { "type": "string" },
+          "retrieve": { "type": "string" },
+          "reframe": { "type": "string" },
+          "revealUse": { "type": "string" },
+          "linkedClaimIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          }
+        }
+      }
+    },
+    "redHerringAudit": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["misleadingInterpretation", "usefulness", "resolution"],
+        "properties": {
+          "misleadingInterpretation": { "type": "string" },
+          "usefulness": { "type": "string" },
+          "resolution": { "type": "string" }
+        }
+      }
+    },
+    "fairRevealProofChain": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "proofPoint", "sourceClueIds"],
+        "properties": {
+          "order": { "type": "integer", "minimum": 1 },
+          "proofPoint": { "type": "string" },
+          "sourceClueIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+          }
+        }
+      }
+    },
+    "repairCodaPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repairAction", "openerCallback", "finalImage"],
+      "properties": {
+        "repairAction": { "type": "string" },
+        "openerCallback": { "type": "string" },
+        "finalImage": { "type": "string" }
+      }
+    },
+    "storyDnaRotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caseType", "openingMode", "settingMode", "clueMode", "suspenseEngine", "repairFocus", "noveltyNotes"],
+      "properties": {
+        "caseType": { "type": "string" },
+        "openingMode": { "type": "string" },
+        "settingMode": { "type": "string" },
+        "clueMode": { "type": "string" },
+        "suspenseEngine": { "type": "string" },
+        "repairFocus": { "type": "string" },
+        "noveltyNotes": { "type": "string" }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ruleId", "severity", "message", "status"],
+        "properties": {
+          "ruleId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "severity": { "type": "string", "enum": ["info", "warning", "blocking", "critical"] },
+          "message": { "type": "string" },
+          "status": { "type": "string", "enum": ["passed", "warning", "failed"] },
+          "artifactId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+        }
+      }
+    },
+    "gateStatus": { "type": "string", "enum": ["passed", "blocked"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

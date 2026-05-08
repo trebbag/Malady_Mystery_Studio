@@ -1,6 +1,6 @@
 # Needs From You
 
-The current repo runs locally without external credentials by using fixture-backed provisional research assembly, SQLite metadata, filesystem object storage, in-process queueing, and the local `stub-image` renderer. Active persistence should stay local: `var/db/platform.sqlite` for metadata and `var/object-store/**` for generated files, rendered panels, release bundles, evidence packs, and attachments. Postgres is not required for the active product path and should not be used as a file/blob store.
+The current repo runs locally without external credentials by using fixture-backed provisional research assembly for UI/testing, SQLite metadata, filesystem object storage, in-process queueing, and the local `stub-image` renderer. Active persistence should stay local: `var/db/platform.sqlite` for metadata and `var/object-store/**` for generated files, rendered panels, release bundles, evidence packs, and attachments. Postgres is not required for the active product path and should not be used as a file/blob store.
 
 The items below are required only for live OpenAI rendering/research or local pilot operating decisions. Managed databases, Blob Storage, Service Bus, external auth, email, Slack, IdP, and managed secrets are not required for this product phase.
 
@@ -13,12 +13,13 @@ The items below are required only for live OpenAI rendering/research or local pi
 - Optional render quality override if you want to trade speed for finality. The default remains `OPENAI_RENDER_QUALITY=high`; set `OPENAI_RENDER_QUALITY=medium` or `low` only for faster drafts.
 - Optional render timeout override via `OPENAI_RENDER_TIMEOUT_MS`; the default is 300000ms so high-quality panels can finish while still failing cleanly if a request hangs.
 - Optional research-model override if you want something other than `OPENAI_RESEARCH_MODEL` / legacy `MMS_MODEL`.
+- Optional `KB_VECTOR_STORE_ID` if you want the research agents to combine allowed web sources with the old ClinicalEducation file-search knowledge base.
 - Optional canon-file path overrides if the legacy ClinicalEducation character/style/deck files should be used from a location outside this repo.
 - Confirmation that stub rendered assets should remain non-final placeholders in any pilot bundle until replaced by live `gpt-image-2` outputs.
 - The approved public-source policy for agent web research on unseen diseases:
   - allowed public domains beyond the current medical allowlist
   - whether user-supplied documents should outrank public web evidence by default
-  - whether provisional packs may continue into story and rendering automatically when they pass draft gates
+  - any source types that should be forbidden even when returned by web search
 
 ## Local Storage Pilot Confirmation
 

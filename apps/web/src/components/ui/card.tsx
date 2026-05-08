@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 export function Card({ children, className, ...props }: PropsWithChildren<HTMLAttributes<HTMLDivElement>>) {
   return (
     <section
-      className={cn('rounded-2xl border border-black/10 bg-white/90 p-5 shadow-panel backdrop-blur', className)}
+      className={cn('rounded-[1.75rem] border border-sand-300/80 bg-cream-50/95 p-6 shadow-panel backdrop-blur', className)}
       {...props}
     >
       {children}
@@ -23,7 +23,7 @@ export function CardTitle({ children, className, ...props }: PropsWithChildren<H
 
 export function CardDescription({ children, className, ...props }: PropsWithChildren<HTMLAttributes<HTMLParagraphElement>>) {
   return (
-    <p className={cn('text-sm text-slate-600', className)} {...props}>
+    <p className={cn('text-sm leading-6 text-slate-600', className)} {...props}>
       {children}
     </p>
   );

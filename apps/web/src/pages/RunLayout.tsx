@@ -2,7 +2,7 @@ import { NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom';
 
 import { RunHeader } from '@/components/RunHeader';
 import { ErrorPanel, LoadingPanel } from '@/components/StatePanel';
-import { runPageDefinitions } from '@/lib/navigation';
+import { creatorRunPageDefinitions } from '@/lib/navigation';
 import { useRefreshContext, useRefreshSignal } from '@/lib/refresh-context';
 import { useRemoteData } from '@/lib/use-remote-data';
 import { fetchWorkflowRun } from '@/lib/api';
@@ -36,19 +36,28 @@ export function RunLayout() {
   return (
     <div className="space-y-6">
       <RunHeader workflowRun={workflowRunState.data} />
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-black/10 bg-white/70 p-2">
-        {runPageDefinitions.map((page) => (
+      <div className="flex flex-wrap gap-2 rounded-[1.5rem] border border-sand-300/80 bg-cream-50/90 p-2 shadow-[0_18px_48px_rgba(16,35,51,0.08)]">
+        {creatorRunPageDefinitions.map((page) => (
           <NavLink
             key={page.path}
             to={`/runs/${encodeURIComponent(runId)}/${page.path}`}
             className={({ isActive }) => [
-              'rounded-xl px-4 py-3 text-sm transition',
-              isActive ? 'bg-shell-950 text-white' : 'text-slate-700 hover:bg-black/5',
+              'rounded-[1.1rem] px-4 py-3 text-sm font-semibold transition',
+              isActive ? 'bg-shell-950 text-white shadow-[0_12px_24px_rgba(7,18,24,0.14)]' : 'text-slate-700 hover:bg-shell-950/5',
             ].join(' ')}
           >
             {page.label}
           </NavLink>
         ))}
+        <NavLink
+          to={`/runs/${encodeURIComponent(runId)}/advanced`}
+          className={({ isActive }) => [
+            'rounded-[1.1rem] px-4 py-3 text-sm font-semibold transition',
+            isActive ? 'bg-sand-200 text-shell-950' : 'text-slate-600 hover:bg-shell-950/5',
+          ].join(' ')}
+        >
+          Advanced details
+        </NavLink>
       </div>
       <Outlet
         context={{

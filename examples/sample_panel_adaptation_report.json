@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "par_sample",
+  "storyWorkbookId": "swb_sample",
+  "guidancePackVersionIds": [
+    "comic-panel-breakdown:1.0.0"
+  ],
+  "sourceGuidanceProvenance": [
+    {
+      "guidancePackId": "comic-panel-breakdown",
+      "version": "1.0.0",
+      "ruleIds": [
+        "CPB-ADAPT-BEATS",
+        "CPB-ONE-DOMINANT-CHANGE"
+      ],
+      "sourceDocIds": [
+        "ai-comic-panel-breakdown-master"
+      ]
+    }
+  ],
+  "storySpine": "A clue-driven story moves from baseline to disruption, investigation, reveal, treatment, and repair.",
+  "sceneMap": [
+    {
+      "sceneId": "scn_sample",
+      "sceneFunction": "Open the case and establish the first clue.",
+      "startState": "The system appears stable.",
+      "endState": "The first suspicious change is visible."
+    }
+  ],
+  "beatMap": [
+    {
+      "panelId": "pnl_sample",
+      "sceneId": "scn_sample",
+      "beatType": "clue-plant",
+      "startState": "Detectives enter the body district.",
+      "endState": "They identify a suspicious visual pattern.",
+      "changeCreated": "The reader moves from orientation to suspicion.",
+      "treatmentChoice": "panel"
+    }
+  ],
+  "pageAllocation": [
+    {
+      "pageNumber": 1,
+      "purpose": "Orient the reader and plant the first clue.",
+      "panelIds": [
+        "pnl_sample"
+      ]
+    }
+  ],
+  "pageRhythm": [
+    {
+      "pageNumber": 1,
+      "rhythm": "Wide establishing panel followed by tighter clue emphasis.",
+      "pageEndingEffect": "Suspicion increases without naming the disease."
+    }
+  ],
+  "panelTransitionLogic": [
+    {
+      "fromPanelId": "pnl_sample",
+      "toPanelId": "pnl_sample_2",
+      "readerInference": "The clue causes the detectives to investigate deeper.",
+      "causality": "The next panel follows directly from the observed pattern."
+    }
+  ],
+  "continuityLedger": {
+    "characters": [
+      "Detective Cyto Kine",
+      "Deputy Pip"
+    ],
+    "props": [
+      "evidence vial",
+      "micro-scanner"
+    ],
+    "locations": [
+      "inside-body district"
+    ],
+    "time": [
+      "same case sequence"
+    ],
+    "costumes": [
+      "detective badges"
+    ],
+    "injuries": [
+      "none visible"
+    ],
+    "medicalDevices": [
+      "scanner only"
+    ]
+  },
+  "textImageRedundancyChecks": [
+    {
+      "panelId": "pnl_sample",
+      "status": "passed",
+      "note": "Lettering adds interpretation instead of repeating the image."
+    }
+  ],
+  "revisionNotes": [
+    "No panelization revisions required."
+  ],
+  "findings": [
+    {
+      "ruleId": "CPB-ONE-DOMINANT-CHANGE",
+      "severity": "blocking",
+      "message": "Panel has a clear state change.",
+      "status": "passed",
+      "artifactId": "pnl_sample"
+    }
+  ],
+  "gateStatus": "passed",
+  "createdAt": "2026-05-05T12:00:00.000Z"
+}

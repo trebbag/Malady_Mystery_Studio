@@ -10,6 +10,16 @@ export const webComponentMap = [
     feeds: ['contracts/review-run-view.schema.json'],
   },
   {
+    name: 'CreatorWorkflowStepper',
+    purpose: 'Shows the plain-language production path, active step, blocker state, and next action.',
+    feeds: ['contracts/review-run-view.schema.json', 'contracts/review-dashboard-view.schema.json'],
+  },
+  {
+    name: 'CreatorPrimaryActionCard',
+    purpose: 'Shows the single recommended next action and disabled reason for a creator-operator.',
+    feeds: ['contracts/review-run-view.schema.json'],
+  },
+  {
     name: 'ClinicalPackageSection',
     purpose: 'Container for disease packet, fact table, graph, teaching, anchors, and governance subsections.',
     feeds: ['contracts/clinical-package-view.schema.json'],

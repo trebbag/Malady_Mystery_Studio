@@ -12,7 +12,7 @@ export function RunHeader({ workflowRun }: { workflowRun: WorkflowRun }) {
   const requiredRoles = workflowRun.requiredApprovalRoles.length;
 
   return (
-    <Card className="figma-panel-stripe border-black/10 bg-white/90 shadow-none">
+    <Card className="figma-panel-stripe border-sand-300/80 bg-cream-50/95 shadow-none">
       <div className="grid gap-5 xl:grid-cols-[1.2fr_1.4fr_auto] xl:items-center">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -31,15 +31,15 @@ export function RunHeader({ workflowRun }: { workflowRun: WorkflowRun }) {
           <CommandMetric label="Progress" value={`${progress}%`} detail={`${completedStages}/${workflowRun.stages.length} stages`} />
           <CommandMetric label="Gate" value={workflowRun.currentStage} detail={workflowRun.pauseReason ?? 'No pause recorded'} />
           <CommandMetric label="Approvals" value={`${approvedRoles}/${requiredRoles}`} detail="required roles" />
-          <CommandMetric label="Evals" value={workflowRun.latestEvalStatus ?? 'missing'} detail={workflowRun.latestEvalAt ? formatDateTime(workflowRun.latestEvalAt) : 'No eval run'} />
+          <CommandMetric label="Safety checks" value={workflowRun.latestEvalStatus ?? 'missing'} detail={workflowRun.latestEvalAt ? formatDateTime(workflowRun.latestEvalAt) : 'Not run yet'} />
         </div>
 
         <div className="flex flex-wrap gap-2 xl:justify-end">
-          <Link className="rounded-xl bg-shell-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-shell-700" to={`/runs/${encodeURIComponent(workflowRun.id)}/review`}>
-            Review
+          <Link className="rounded-[1.125rem] bg-shell-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-shell-700" to={`/runs/${encodeURIComponent(workflowRun.id)}/overview`}>
+            Overview
           </Link>
-          <Link className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-shell-950 transition hover:bg-slate-50" to={`/runs/${encodeURIComponent(workflowRun.id)}/evals`}>
-            Evals
+          <Link className="rounded-[1.125rem] border border-sand-300 bg-white px-4 py-2.5 text-sm font-semibold text-shell-950 transition hover:bg-sand-50" to={`/runs/${encodeURIComponent(workflowRun.id)}/advanced`}>
+            Advanced
           </Link>
         </div>
       </div>

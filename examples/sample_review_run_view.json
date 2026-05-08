@@ -22,6 +22,77 @@
       "notes": "Awaiting human approvals."
     }
   ],
+  "creatorWorkflow": {
+    "friendlyStatus": "Ready for clinical review.",
+    "activeStep": "clinical-review",
+    "primaryAction": {
+      "label": "Review clinical package",
+      "targetPath": "/runs/run.hcc.001/clinical-review",
+      "actionId": "clinical-review"
+    },
+    "steps": [
+      {
+        "id": "clinical-review",
+        "label": "Clinical review",
+        "status": "current",
+        "description": "Confirm the disease packet, sources, contradictions, and clinical traceability.",
+        "targetPath": "/runs/run.hcc.001/clinical-review"
+      },
+      {
+        "id": "story-panel-plan",
+        "label": "Story and panel plan",
+        "status": "ready",
+        "description": "Check the mystery craft, scene flow, panel order, and continuity plan.",
+        "targetPath": "/runs/run.hcc.001/story-panel-plan"
+      },
+      {
+        "id": "guide-review",
+        "label": "Guide review",
+        "status": "waiting",
+        "description": "Approve the rendering guide, Cyto/Pip locks, and visual reference pack before image generation.",
+        "targetPath": "/runs/run.hcc.001/guide-review"
+      },
+      {
+        "id": "render-panels",
+        "label": "Render panels",
+        "status": "waiting",
+        "description": "Create or review final panel art from the approved guide/reference pair.",
+        "targetPath": "/runs/run.hcc.001/render-panels"
+      },
+      {
+        "id": "final-checks",
+        "label": "Final checks",
+        "status": "waiting",
+        "description": "Run deterministic evals and confirm the release gates are fresh and passing.",
+        "targetPath": "/runs/run.hcc.001/export"
+      },
+      {
+        "id": "export",
+        "label": "Export",
+        "status": "waiting",
+        "description": "Create the local release bundle, mirror it locally, and verify integrity.",
+        "targetPath": "/runs/run.hcc.001/export"
+      }
+    ],
+    "blockers": [],
+    "advancedLinks": [
+      {
+        "label": "Pipeline",
+        "path": "/runs/run.hcc.001/advanced/pipeline",
+        "description": "Workflow stages, artifact status, and audit flow."
+      },
+      {
+        "label": "Review console",
+        "path": "/runs/run.hcc.001/advanced/review-console",
+        "description": "Assignments, comments, threads, approvals, and safety-check actions."
+      },
+      {
+        "label": "Panels",
+        "path": "/runs/run.hcc.001/advanced/panels",
+        "description": "Panel plans, render prompts, rendered assets, lettering maps, and panel QA."
+      }
+    ]
+  },
   "clinicalPackage": {
     "schemaVersion": "1.0.0",
     "runId": "run.hcc.001",

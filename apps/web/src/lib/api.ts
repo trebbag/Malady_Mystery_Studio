@@ -169,6 +169,24 @@ export function fetchKnowledgePackBuildReport(runId: string) {
   return request<Record<string, unknown>>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/knowledge-pack-build-report`);
 }
 
+export function fetchMedicalDossier(runId: string) {
+  return request<Record<string, unknown>>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/medical-dossier`);
+}
+
+export function runMedicalResearchAgents(runId: string) {
+  return request<WorkflowRun>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/agent-runs/research`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export function submitMedicalDossierReviewDecision(runId: string, payload: Record<string, unknown>) {
+  return request<WorkflowRun>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/medical-dossier/review-decisions`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function regenerateKnowledgePack(runId: string) {
   return request<WorkflowRun>(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/knowledge-pack/regenerate`, {
     method: 'POST',

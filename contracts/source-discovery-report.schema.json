@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/source-discovery-report.schema.json",
+  "title": "SourceDiscoveryReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "targetCanonicalDiseaseName",
+    "agentRunId",
+    "searchStrategy",
+    "allowedDomains",
+    "sources",
+    "gaps",
+    "generatedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "targetCanonicalDiseaseName": { "type": "string" },
+    "agentRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "searchStrategy": { "type": "string" },
+    "allowedDomains": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourceId", "sourceLabel", "sourceType", "origin", "status"],
+        "properties": {
+          "sourceId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+          "sourceLabel": { "type": "string" },
+          "sourceType": { "type": "string" },
+          "origin": { "type": "string" },
+          "sourceUrl": { "type": "string" },
+          "status": { "type": "string" },
+          "topics": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "droppedSources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "gaps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  }
+}

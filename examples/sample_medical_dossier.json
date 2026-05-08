@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "mdos.sample.001",
+  "tenantId": "tenant.local",
+  "workflowRunId": "run.sample.001",
+  "canonicalDiseaseName": "Sample Disease",
+  "aliases": ["Sample Disease"],
+  "ontologyId": "prov:sample-disease",
+  "diseaseCategory": "provisional-research-needed",
+  "sourceDiscoveryReportId": "sdr.sample.001",
+  "agentRunId": "arun.sample.001",
+  "knowledgePackId": "kp.sample.001",
+  "sections": {
+    "epidemiology": { "sectionKey": "epidemiology", "title": "Epidemiology", "summary": "Who gets the disease and why it matters.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Sample disease epidemiology is source-linked.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "etiology": { "sectionKey": "etiology", "title": "Etiology", "summary": "Major causes and risk factors.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Etiology requires source-backed review.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "pathophysiology": { "sectionKey": "pathophysiology", "title": "Pathophysiology", "summary": "The mechanism that becomes the mystery culprit.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Mechanism is traceable to the evidence ledger.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "clinicalFeatures": { "sectionKey": "clinicalFeatures", "title": "Clinical Features", "summary": "Symptoms and disease clues.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Clinical features are preserved as clues.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "history": { "sectionKey": "history", "title": "History", "summary": "History clues for the detective case.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "History clues require evidence links.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "exam": { "sectionKey": "exam", "title": "Exam", "summary": "Physical exam findings.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Exam findings stay traceable.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "labs": { "sectionKey": "labs", "title": "Labs", "summary": "Laboratory clues.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Lab findings stay traceable.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "imaging": { "sectionKey": "imaging", "title": "Imaging", "summary": "Imaging clues when applicable.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Imaging findings stay traceable or marked not applicable.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "diagnosticCriteria": { "sectionKey": "diagnosticCriteria", "title": "Diagnostic Criteria", "summary": "How the diagnosis is earned.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Diagnostic logic must be source-backed.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "differentialDiagnosis": { "sectionKey": "differentialDiagnosis", "title": "Differential Diagnosis", "summary": "Fair suspects and red herrings.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Differential clues support a fair mystery.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "treatment": { "sectionKey": "treatment", "title": "Treatment", "summary": "Treatment as the story climax.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Treatment claims require source support.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "management": { "sectionKey": "management", "title": "Management", "summary": "Monitoring and longitudinal care.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Management claims require source support.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "complications": { "sectionKey": "complications", "title": "Complications", "summary": "What happens if the culprit wins.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Complications are traceable.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "prognosis": { "sectionKey": "prognosis", "title": "Prognosis", "summary": "Expected course and recovery loop.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Prognosis is traceable.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "teachingPoints": { "sectionKey": "teachingPoints", "title": "Teaching Points", "summary": "High-yield lessons for the comic.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Teaching points inherit evidence links.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] },
+    "visualAnchors": { "sectionKey": "visualAnchors", "title": "Visual Anchors", "summary": "Images that represent disease clues safely.", "highYieldFacts": [{ "claimId": "clm.sample.001", "statement": "Visual anchors must preserve medical meaning.", "sourceIds": ["src.sample.001"] }], "linkedClaimIds": ["clm.sample.001"] }
+  },
+  "claims": [
+    {
+      "claimId": "clm.sample.001",
+      "claimText": "Sample disease claims must remain tied to approved evidence.",
+      "sectionKeys": ["epidemiology", "pathophysiology"],
+      "sourceIds": ["src.sample.001"],
+      "confidence": 0.82
+    }
+  ],
+  "sourceIds": ["src.sample.001"],
+  "contradictions": [],
+  "completeness": {
+    "requiredSectionCount": 16,
+    "completedSectionCount": 16,
+    "missingSections": [],
+    "traceabilityScore": 1
+  },
+  "reviewStatus": "review-required",
+  "guidancePackVersionIds": ["guidance.sample.001"],
+  "generatedAt": "2026-04-23T12:04:00Z",
+  "generatedBy": "openai-agents-sdk"
+}

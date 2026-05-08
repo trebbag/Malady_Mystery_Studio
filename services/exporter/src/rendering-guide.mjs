@@ -75,6 +75,50 @@ function buildRenderPromptByPanel(renderPrompts) {
 
 /**
  * @param {any[]} renderPrompts
+ * @returns {string[]}
+ */
+function collectGuidancePackVersionIds(renderPrompts) {
+  return uniqueStrings((renderPrompts ?? []).flatMap((/** @type {any} */ renderPrompt) => renderPrompt.guidancePackVersionIds ?? []));
+}
+
+/**
+ * @param {any[]} renderPrompts
+ * @returns {any[]}
+ */
+function collectSourceGuidanceProvenance(renderPrompts) {
+  const byKey = new Map();
+
+  for (const renderPrompt of renderPrompts ?? []) {
+    for (const entry of renderPrompt.sourceGuidanceProvenance ?? []) {
+      const key = `${entry.guidancePackId}:${entry.version}`;
+      const existing = byKey.get(key) ?? {
+        guidancePackId: entry.guidancePackId,
+        version: entry.version,
+        ruleIds: [],
+        sourceDocIds: [],
+      };
+
+      existing.ruleIds = uniqueStrings([...existing.ruleIds, ...(entry.ruleIds ?? [])]);
+      existing.sourceDocIds = uniqueStrings([...existing.sourceDocIds, ...(entry.sourceDocIds ?? [])]);
+      byKey.set(key, existing);
+    }
+  }
+
+  return [...byKey.values()];
+}
+
+/**
+ * @param {any} options
+ * @returns {any | null}
+ */
+function selectMedicalProvenance(options) {
+  return options.medicalProvenance
+    ?? options.renderPrompts?.find((/** @type {any} */ renderPrompt) => renderPrompt.medicalProvenance)?.medicalProvenance
+    ?? null;
+}
+
+/**
+ * @param {any[]} renderPrompts
  * @returns {{ continuityAnchors: string[], characterLocks: string[], anatomyLocks: string[], styleLocks: string[], letteringPolicy: string }}
  */
 function buildContinuityBible(renderPrompts) {
@@ -159,17 +203,27 @@ function buildOpenAiImagePrompt(panel, renderPrompt) {
   const anatomyStatement = uniqueStrings(renderPrompt.anatomyLocks ?? []).join('; ');
   const styleStatement = uniqueStrings(renderPrompt.styleLocks ?? []).join('; ');
   const visualReferenceStatement = uniqueStrings(renderPrompt.visualReferenceItemIds ?? panel.visualReferenceItemIds ?? []).join(', ');
+  const compiledPanelPrompt = typeof renderPrompt.positivePrompt === 'string' && renderPrompt.positivePrompt.trim()
+    ? renderPrompt.positivePrompt.trim()
+    : [
+      `Create final image for panel ${panel.panelId} in ${renderPrompt.aspectRatio} aspect ratio; do not render any visible text.`,
+      `Core frozen moment: ${panel.actionSummary}.`,
+      continuityStatement ? `Continuity anchors: ${continuityStatement}.` : '',
+      `Composition: ${panel.cameraFraming}, ${panel.cameraAngle}, ${panel.compositionNotes}.`,
+      `Action and emotion: ${panel.renderIntent ?? panel.storyFunction}; lighting mood is ${panel.lightingMood}.`,
+      `Medical constraints: ${panel.medicalObjective}.`,
+      styleStatement ? `Visual style: ${styleStatement}.` : '',
+      'Required details: preserve approved characters, props, body scale, patient dignity, and medical traceability.',
+      'Negative constraints: no speech bubbles, captions, labels, fake clinical text, anatomy contradictions, or unapproved redesign.',
+      'Final output requirements: one polished panel image only, slide-safe empty space for separate lettering, no typography baked into the artwork.',
+    ].filter(Boolean).join(' ');
 
   return {
     aspectRatio: renderPrompt.aspectRatio,
     prompt: [
-      'Create a premium cinematic 3D animated felt-toy finished comic-book panel illustration.',
+      compiledPanelPrompt,
       `Scene and background: ${panel.location} at ${panel.bodyScale} scale.`,
-      `Subject and action: ${panel.actionSummary}.`,
-      `Key medical details: ${panel.medicalObjective}. Story purpose: ${panel.storyFunction}.`,
-      `Camera and composition: ${panel.cameraFraming}, ${panel.cameraAngle}, ${panel.compositionNotes}.`,
-      `Lighting and atmosphere: ${panel.lightingMood}.`,
-      continuityStatement ? `Continuity anchors: ${continuityStatement}.` : '',
+      `Story purpose: ${panel.storyFunction}; beat goal: ${panel.beatGoal}.`,
       characterStatement ? `Character locks: ${characterStatement}.` : '',
       anatomyStatement ? `Anatomy and mechanism locks: ${anatomyStatement}.` : '',
       styleStatement ? `Style and finish locks: ${styleStatement}.` : '',
@@ -292,6 +346,7 @@ export function normalizeRenderingGuide(renderingGuide) {
  *   panelPlans: any[],
  *   renderPrompts: any[],
  *   letteringMaps: any[],
+ *   medicalProvenance?: any,
  *   generatedAt: string,
  * }} options
  * @returns {any}
@@ -354,7 +409,10 @@ export function buildRenderingGuide(options) {
     tenantId: options.workflowRun.tenantId,
     projectTitle: options.project.title,
     canonicalDiseaseName: options.diseasePacket.canonicalDiseaseName,
+    ...(selectMedicalProvenance(options) ? { medicalProvenance: selectMedicalProvenance(options) } : {}),
     providerTargets: ['openai-gpt-image-2'],
+    guidancePackVersionIds: collectGuidancePackVersionIds(options.renderPrompts),
+    sourceGuidanceProvenance: collectSourceGuidanceProvenance(options.renderPrompts),
     generatedAt: options.generatedAt,
     markdownDocumentId: '',
     markdownLocation: '',

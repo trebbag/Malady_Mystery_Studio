@@ -75,6 +75,7 @@
       "enum": [
         "workflow-run",
         "artifact",
+        "medical-dossier",
         "disease-knowledge-pack",
         "visual-reference-pack",
         "source-record",

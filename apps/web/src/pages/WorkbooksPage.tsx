@@ -10,13 +10,13 @@ export function WorkbooksPage() {
   const { runId } = useRunPageContext();
   const refreshSignal = useRefreshSignal(runId);
   const artifactsState = useRemoteData(
-    () => fetchWorkflowArtifacts(runId, ['story-workbook', 'narrative-review-trace', 'qa-report'], true),
+    () => fetchWorkflowArtifacts(runId, ['story-workbook', 'story-craft-report', 'narrative-review-trace', 'qa-report'], true),
     [runId, refreshSignal],
   );
 
   return (
     <SectionStack>
-      <PageHeader eyebrow="Narrative" title="Workbooks Page" description="Story workbook, narrative review trace, and the workbook-stage QA report." />
+      <PageHeader eyebrow="Narrative" title="Workbooks Page" description="Story workbook, expert story craft report, narrative review trace, and the workbook-stage QA report." />
       {(artifactsState.data?.artifacts ?? []).map((artifact) => (
         <ArtifactJsonCard
           key={artifact.artifactId}

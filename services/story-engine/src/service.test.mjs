@@ -10,14 +10,29 @@ import {
   createStoryEngineService,
   reviewEducationalSequencing,
   reviewMysteryIntegrity,
+  reviewPanelAdaptationReport,
   reviewPanelPlans,
   reviewRenderPrompts,
   reviewSceneCards,
+  reviewStoryCraftReport,
 } from './service.mjs';
 
 const clinicalService = createClinicalRetrievalService();
 const storyEngine = createStoryEngineService();
 const rootDir = findRepoRoot(import.meta.url);
+const sampleMedicalProvenance = {
+  sourceMode: 'agent-medical-dossier',
+  medicalDossierId: 'mds.test.001',
+  medicalDossierReviewDecisionId: 'mdrd.test.001',
+  agentRunId: 'agr.test.001',
+  sourceDiscoveryReportId: 'sdr.test.001',
+  diseaseKnowledgePackId: 'dkp.test.001',
+  diseasePacketId: 'dpk.test.001',
+  reviewStatus: 'approved',
+  reviewedBy: 'local-operator',
+  reviewedAt: '2026-04-21T00:00:00Z',
+  capturedAt: '2026-04-21T00:00:00Z',
+};
 
 /**
  * @returns {Promise<any>}
@@ -42,17 +57,54 @@ test('story engine generates a workbook package that validates against repo cont
     styleProfile: 'whimsical-mystery',
     workflowRunId: 'run.test.001',
     existingStoryMemories: [],
+    medicalProvenance: {
+      ...sampleMedicalProvenance,
+      diseasePacketId: diseasePacket.id,
+    },
     timestamp: '2026-04-21T00:00:00Z',
   });
 
   schemaRegistry.assertValid('contracts/story-workbook.schema.json', generatedPackage.storyWorkbook);
+  schemaRegistry.assertValid('contracts/story-craft-report.schema.json', generatedPackage.storyCraftReport);
   schemaRegistry.assertValid('contracts/story-memory.schema.json', generatedPackage.storyMemory);
   schemaRegistry.assertValid('contracts/narrative-review-trace.schema.json', generatedPackage.narrativeReviewTrace);
   schemaRegistry.assertValid('contracts/qa-report.schema.json', generatedPackage.qaReport);
 
   assert.equal(generatedPackage.storyWorkbook.grandReveal.diagnosisName, 'Hepatocellular carcinoma');
+  assert.equal(generatedPackage.storyWorkbook.medicalProvenance.medicalDossierId, 'mds.test.001');
+  assert.equal(generatedPackage.storyCraftReport.medicalProvenance.medicalDossierReviewDecisionId, 'mdrd.test.001');
   assert.equal(generatedPackage.storyWorkbook.clueLadder.length >= 4, true);
+  assert.equal(generatedPackage.storyCraftReport.gateStatus, 'passed');
+  assert.equal(generatedPackage.storyCraftReport.guidancePackVersionIds.includes('detective-mystery-craft:1.0.0'), true);
   assert.equal(generatedPackage.narrativeReviewTrace.verdict, 'pass');
+});
+
+test('story craft report blocks weak clue and reveal craft', () => {
+  const diseasePacket = createDiseasePacket('community-acquired pneumonia');
+  const generatedPackage = storyEngine.generateStoryWorkbookPackage(diseasePacket, {
+    styleProfile: 'playful-detective',
+    workflowRunId: 'run.test.weak-story',
+    existingStoryMemories: [],
+    timestamp: '2026-04-21T00:00:00Z',
+  });
+  const weakReport = {
+    ...generatedPackage.storyCraftReport,
+    fairRevealProofChain: [],
+    findings: [
+      ...generatedPackage.storyCraftReport.findings,
+      {
+        ruleId: 'DSG-FAIR-REVEAL',
+        severity: 'critical',
+        message: 'Reveal is not supported by prior clues.',
+        status: 'failed',
+      },
+    ],
+    gateStatus: 'blocked',
+  };
+  const review = reviewStoryCraftReport(weakReport);
+
+  assert.equal(review.score < 1, true);
+  assert.equal(weakReport.gateStatus, 'blocked');
 });
 
 test('story engine preserves treatment showdown fields when provisional treatment details are sparse', async () => {
@@ -172,6 +224,10 @@ test('visual planning package generates valid scene, panel, render, lettering, a
     styleProfile: 'playful-detective',
     workflowRunId: 'run.test.201',
     existingStoryMemories: [],
+    medicalProvenance: {
+      ...sampleMedicalProvenance,
+      diseasePacketId: diseasePacket.id,
+    },
     timestamp: '2026-04-21T00:00:00Z',
   });
   const visualPackage = storyEngine.generateVisualPlanningPackage(
@@ -181,6 +237,7 @@ test('visual planning package generates valid scene, panel, render, lettering, a
     {
       workflowRunId: 'run.test.201',
       styleProfile: 'playful-detective',
+      medicalProvenance: workbookPackage.storyWorkbook.medicalProvenance,
       timestamp: '2026-04-21T00:01:00Z',
     },
   );
@@ -208,9 +265,53 @@ test('visual planning package generates valid scene, panel, render, lettering, a
   }
 
   schemaRegistry.assertValid('contracts/qa-report.schema.json', visualPackage.qaReport);
+  schemaRegistry.assertValid('contracts/panel-adaptation-report.schema.json', visualPackage.panelAdaptationReport);
   assert.equal(visualPackage.sceneCards[0].act, 'opener');
   assert.equal(visualPackage.sceneCards[visualPackage.sceneCards.length - 1].act, 'wrap-up');
   assert.equal(visualPackage.qaReport.subjectType, 'workflow-run');
+  assert.equal(visualPackage.panelAdaptationReport.gateStatus, 'passed');
+  assert.equal(visualPackage.panelPlans.every((panelPlan) => panelPlan.medicalProvenance.medicalDossierId === 'mds.test.001'), true);
+  assert.equal(visualPackage.renderPrompts.every((renderPrompt) => renderPrompt.medicalProvenance.agentRunId === 'agr.test.001'), true);
+  assert.equal(visualPackage.panelAdaptationReport.medicalProvenance.medicalDossierReviewDecisionId, 'mdrd.test.001');
+  assert.equal(visualPackage.panelAdaptationReport.guidancePackVersionIds.includes('comic-panel-breakdown:1.0.0'), true);
+});
+
+test('panel adaptation report blocks no-change panels before render prep', () => {
+  const diseasePacket = createDiseasePacket('myasthenia gravis');
+  const workbookPackage = storyEngine.generateStoryWorkbookPackage(diseasePacket, {
+    styleProfile: 'cinematic-sci-fi',
+    workflowRunId: 'run.test.weak-panel',
+    existingStoryMemories: [],
+    timestamp: '2026-04-21T00:00:00Z',
+  });
+  const visualPackage = storyEngine.generateVisualPlanningPackage(
+    diseasePacket,
+    workbookPackage.storyWorkbook,
+    workbookPackage.qaReport,
+    {
+      workflowRunId: 'run.test.weak-panel',
+      styleProfile: 'cinematic-sci-fi',
+      timestamp: '2026-04-21T00:01:00Z',
+    },
+  );
+  const weakReport = {
+    ...visualPackage.panelAdaptationReport,
+    findings: [
+      ...visualPackage.panelAdaptationReport.findings,
+      {
+        ruleId: 'CPB-ONE-DOMINANT-CHANGE',
+        severity: 'blocking',
+        message: 'Panel does not create a state change.',
+        status: 'failed',
+        artifactId: visualPackage.panelPlans[0].panels[0].panelId,
+      },
+    ],
+    gateStatus: 'blocked',
+  };
+  const review = reviewPanelAdaptationReport(weakReport);
+
+  assert.equal(review.score < 1, true);
+  assert.equal(weakReport.gateStatus, 'blocked');
 });
 
 test('scene review preserves opener-to-wrap-up ordering', () => {
@@ -318,6 +419,14 @@ test('render prompts keep text out of art while lettering maps carry the copy', 
   assert.equal(renderReview.findings.some((/** @type {{ severity: string }} */ finding) => finding.severity === 'blocking'), false);
   assert.equal(
     visualPackage.renderPrompts.every((/** @type {any} */ renderPrompt) => renderPrompt.textLayerPolicy.letteringHandledSeparately),
+    true,
+  );
+  assert.equal(
+    visualPackage.renderPrompts.every((/** @type {any} */ renderPrompt) => renderPrompt.guidancePackVersionIds.includes('chatgpt-image2-rendering:1.0.0')),
+    true,
+  );
+  assert.equal(
+    visualPackage.renderPrompts.every((/** @type {any} */ renderPrompt) => renderPrompt.positivePrompt.includes('Core frozen moment') && renderPrompt.positivePrompt.includes('Final output requirements')),
     true,
   );
   assert.equal(

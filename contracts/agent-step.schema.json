@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/agent-step.schema.json",
+  "title": "AgentStep",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "tenantId",
+    "workflowRunId",
+    "agentRunId",
+    "stepKey",
+    "agentName",
+    "status",
+    "inputSummary",
+    "outputSummary",
+    "startedAt",
+    "endedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "tenantId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "workflowRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "agentRunId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+    "stepKey": { "type": "string" },
+    "agentName": { "type": "string" },
+    "status": { "type": "string", "enum": ["succeeded", "review-required", "failed"] },
+    "inputSummary": { "type": "string" },
+    "outputSummary": { "type": "string" },
+    "toolSummary": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "artifactIds": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" }
+    },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "endedAt": { "type": "string", "format": "date-time" }
+  }
+}

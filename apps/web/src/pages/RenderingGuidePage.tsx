@@ -255,6 +255,15 @@ export function RenderingGuidePage() {
                   <Metric label="Attached assets" value={String(renderingGuideState.data.attachmentSummary.attachedRenderedAssetCount)} />
                   <Metric label="Panels" value={String(panelRows.length)} />
                 </div>
+                <div className="mt-4 rounded-2xl border border-black/10 bg-slate-50 p-4 text-sm text-slate-700">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Expert guidance provenance</p>
+                  <p className="mt-2 font-medium text-shell-950">
+                    {(renderingGuideState.data.renderingGuide.guidancePackVersionIds ?? []).join(', ') || 'No guidance pack versions recorded'}
+                  </p>
+                  <p className="mt-1">
+                    Prompt, continuity, lettering, and QA gates should cite these versions before rendering/export.
+                  </p>
+                </div>
               </Card>
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

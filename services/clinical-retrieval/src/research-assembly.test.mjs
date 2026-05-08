@@ -146,8 +146,11 @@ test('research assembly can compile a provisional knowledge pack through the inj
 
   assert.equal(compiled.knowledgePack.packStatus, 'provisional');
   assert.equal(compiled.knowledgePack.packScope, 'run');
-  assert.equal(compiled.buildReport.fitForStoryContinuation, true);
+  assert.equal(compiled.buildReport.fitForStoryContinuation, false);
   assert.equal(compiled.sourceHarvest.sources.length, 1);
+  assert.equal(compiled.medicalDossier.reviewStatus, 'review-required');
+  assert.equal(compiled.medicalDossier.completeness.requiredSectionCount, 16);
+  assert.equal(compiled.agentRun.purpose, 'research-disease-medical-dossier');
 });
 
 test('research assembly falls back to a local fixture pack when no API key is configured', async () => {
@@ -173,7 +176,10 @@ test('research assembly falls back to a local fixture pack when no API key is co
   assert.equal(compiled.knowledgePack.generationMode, 'local-fixture');
   assert.equal(compiled.knowledgePack.sourceOrigins['local-fixture'], 1);
   assert.equal(compiled.sourceHarvest.sources[0].origin, 'local-fixture');
-  assert.equal(compiled.buildReport.fitForStoryContinuation, true);
+  assert.equal(compiled.buildReport.fitForStoryContinuation, false);
+  assert.equal(compiled.medicalDossier.reviewStatus, 'review-required');
+  assert.equal(compiled.medicalDossier.generatedBy, 'local-fixture-research-assembly');
+  assert.equal(compiled.medicalDossierQaReport.status, 'failed');
   assert.match(compiled.buildReport.warnings.join(' '), /No OpenAI API key/u);
 });
 

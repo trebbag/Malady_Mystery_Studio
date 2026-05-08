@@ -4,6 +4,20 @@ import test from 'node:test';
 import { buildRenderingGuide, normalizeRenderingGuide, renderRenderingGuideMarkdown } from './rendering-guide.mjs';
 import { applyVisualReferencePackToRenderingGuide, buildVisualReferencePack } from './visual-reference-pack.mjs';
 
+const sampleMedicalProvenance = {
+  sourceMode: 'agent-medical-dossier',
+  medicalDossierId: 'mds.demo.001',
+  medicalDossierReviewDecisionId: 'mdrd.demo.001',
+  agentRunId: 'agr.demo.001',
+  sourceDiscoveryReportId: 'sdr.demo.001',
+  diseaseKnowledgePackId: 'dkp.demo.001',
+  diseasePacketId: 'dpk.demo.001',
+  reviewStatus: 'approved',
+  reviewedBy: 'local-operator',
+  reviewedAt: '2026-04-23T14:55:00Z',
+  capturedAt: '2026-04-23T15:00:00Z',
+};
+
 test('rendering guide compiler preserves panel order and emits OpenAI panel prompt blocks', () => {
   const guide = buildRenderingGuide({
     workflowRun: {
@@ -35,6 +49,7 @@ test('rendering guide compiler preserves panel order and emits OpenAI panel prom
         },
       ],
     },
+    medicalProvenance: sampleMedicalProvenance,
     storyWorkbook: {
       id: 'swb.demo.001',
     },
@@ -87,6 +102,13 @@ test('rendering guide compiler preserves panel order and emits OpenAI panel prom
         id: 'rpr.demo.001',
         panelId: 'pnl.demo.001',
         aspectRatio: '4:3',
+        guidancePackVersionIds: ['chatgpt-image2-rendering:1.0.0'],
+        sourceGuidanceProvenance: [{
+          guidancePackId: 'chatgpt-image2-rendering',
+          version: '1.0.0',
+          ruleIds: ['I2-PROMPT-ORDER', 'I2-TEXT-FREE-ART'],
+          sourceDocIds: ['chatgpt-image2-slide-deck-playbook'],
+        }],
         negativePrompt: 'no text, no labels',
         continuityAnchors: ['portal', 'jet packs', 'case tablet'],
         characterLocks: ['Detective Cyto Kine felt lead', 'Deputy Pip felt field deputy'],
@@ -97,6 +119,13 @@ test('rendering guide compiler preserves panel order and emits OpenAI panel prom
         id: 'rpr.demo.002',
         panelId: 'pnl.demo.002',
         aspectRatio: '4:3',
+        guidancePackVersionIds: ['chatgpt-image2-rendering:1.0.0'],
+        sourceGuidanceProvenance: [{
+          guidancePackId: 'chatgpt-image2-rendering',
+          version: '1.0.0',
+          ruleIds: ['I2-PROMPT-ORDER', 'I2-TEXT-FREE-ART'],
+          sourceDocIds: ['chatgpt-image2-slide-deck-playbook'],
+        }],
         negativePrompt: 'no text, no labels',
         continuityAnchors: ['jet packs', 'alveolar walls', 'case tablet'],
         characterLocks: ['Detective Cyto Kine felt lead', 'Deputy Pip felt field deputy'],
@@ -142,6 +171,9 @@ test('rendering guide compiler preserves panel order and emits OpenAI panel prom
   assert.match(guide.panels[0].openAiImagePrompt.prompt, /^Create /);
   assert.match(guide.panels[0].openAiImagePrompt.prompt, /Scene and background:/);
   assert.equal(guide.providerTargets.includes('openai-gpt-image-2'), true);
+  assert.equal(guide.medicalProvenance.medicalDossierId, 'mds.demo.001');
+  assert.deepEqual(guide.guidancePackVersionIds, ['chatgpt-image2-rendering:1.0.0']);
+  assert.equal(guide.sourceGuidanceProvenance[0].ruleIds.includes('I2-TEXT-FREE-ART'), true);
   assert.equal(guide.panelExecutionStrategy.separateLetteringRequired, true);
   assert.equal(guide.panels[1].claimReferences.length, 1);
 
@@ -223,6 +255,7 @@ test('visual reference pack extraction adds Cyto, Pip, reusable props, and panel
     id: 'rgd.demo.001',
     workflowRunId: 'run.demo.001',
     tenantId: 'tenant.local',
+    medicalProvenance: sampleMedicalProvenance,
     panels: [
       {
         panelId: 'pnl.demo.001',
@@ -267,6 +300,7 @@ test('visual reference pack extraction adds Cyto, Pip, reusable props, and panel
   const updatedGuide = applyVisualReferencePackToRenderingGuide(renderingGuide, visualReferencePack);
 
   assert.equal(visualReferencePack.items.some((/** @type {any} */ item) => item.id === 'vref.character.cyto-kine'), true);
+  assert.equal(visualReferencePack.medicalProvenance.medicalDossierReviewDecisionId, 'mdrd.demo.001');
   assert.equal(visualReferencePack.items.some((/** @type {any} */ item) => item.id === 'vref.character.pip'), true);
   assert.equal(visualReferencePack.items.some((/** @type {any} */ item) => item.itemType === 'set-piece'), true);
   assert.equal(updatedGuide.visualReferencePackId, visualReferencePack.id);
